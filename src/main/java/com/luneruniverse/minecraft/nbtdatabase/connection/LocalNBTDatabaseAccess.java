@@ -57,6 +57,17 @@ public class LocalNBTDatabaseAccess implements NBTDatabaseAccess {
 	}
 	
 	@Override
+	public CompletableFuture<List<NBTEntry>> getEntries() {
+		return CompletableFuture.supplyAsync(() -> {
+			try {
+				return database.getEntries();
+			} catch (SQLException e) {
+				throw new RuntimeException("Failed to get entries", e);
+			}
+		}, executor);
+	}
+	
+	@Override
 	public CompletableFuture<List<NBTEntry>> getEntriesByName(String query) {
 		return CompletableFuture.supplyAsync(() -> {
 			try {

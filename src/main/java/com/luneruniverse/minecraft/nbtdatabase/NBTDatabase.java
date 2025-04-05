@@ -137,6 +137,18 @@ public class NBTDatabase {
 		}
 	}
 	
+	public List<NBTEntry> getEntries() throws SQLException {
+		try (PreparedStatement sql = connection.prepareStatement("SELECT * FROM `entries`")) {
+			sql.setQueryTimeout(5);
+			ResultSet result = sql.executeQuery();
+			
+			List<NBTEntry> output = new ArrayList<>();
+			while (result.next())
+				output.add(NBTEntry.fromDatabase(result));
+			return output;
+		}
+	}
+	
 	public List<NBTEntry> getEntriesByName(String query) throws SQLException {
 		try (PreparedStatement sql = connection.prepareStatement("SELECT * FROM `entries` WHERE `name` LIKE \"%?%\"")) {
 			sql.setQueryTimeout(5);

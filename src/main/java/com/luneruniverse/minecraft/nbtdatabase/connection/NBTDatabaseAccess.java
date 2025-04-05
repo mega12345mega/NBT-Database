@@ -11,6 +11,7 @@ public interface NBTDatabaseAccess {
 	public CompletableFuture<NBTEntry> addEntry(String name, byte[] nbt, int dataVersion, UUID authorUuid, String authorUsername);
 	public CompletableFuture<Void> removeEntry(long id);
 	public CompletableFuture<NBTEntry> getEntry(long id);
+	public CompletableFuture<List<NBTEntry>> getEntries();
 	public CompletableFuture<List<NBTEntry>> getEntriesByName(String query);
 	public CompletableFuture<List<NBTEntry>> getEntriesByAuthorUUID(UUID uuid);
 	public CompletableFuture<List<NBTEntry>> getEntriesByAuthorName(String query);
