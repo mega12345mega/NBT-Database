@@ -8,6 +8,7 @@ import com.luneruniverse.minecraft.nbtdatabase.NBTEntry;
 import com.luneruniverse.minecraft.nbtdatabase.Tag;
 
 public interface NBTDatabaseAccess {
+	public CompletableFuture<NBTDatabaseMetadata> getMetadata();
 	public CompletableFuture<NBTEntry> addEntry(String name, byte[] nbt, int dataVersion, UUID authorUuid, String authorUsername);
 	public CompletableFuture<Void> removeEntry(long id);
 	public CompletableFuture<NBTEntry> getEntry(long id);

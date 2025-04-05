@@ -12,6 +12,8 @@ import java.util.List;
 import java.util.Random;
 import java.util.UUID;
 
+import com.luneruniverse.minecraft.nbtdatabase.connection.NBTDatabaseMetadata;
+
 public class NBTDatabase {
 	
 	private final Connection connection;
@@ -30,6 +32,7 @@ public class NBTDatabase {
 						+ "`value` BLOB NOT NULL)");
 				sql.executeUpdate("CREATE UNIQUE INDEX `config-key` ON `config` (`key`)");
 				sql.executeUpdate("INSERT INTO `config` VALUES (\"max_nbt_size\", 1048576)");
+				sql.executeUpdate("INSERT INTO `config` VALUES (\"max_num_results\", 100)");
 				
 				sql.executeUpdate("CREATE TABLE `entries` ("
 						+ "`id` INTEGER PRIMARY KEY,"
@@ -69,6 +72,10 @@ public class NBTDatabase {
 	
 	public NBTDatabaseConfig getConfig() {
 		return config;
+	}
+	
+	public NBTDatabaseMetadata getMetadata() {
+		return new NBTDatabaseMetadata(config.getMaxNbtSize(), config.getMaxNumResults());
 	}
 	
 	public NBTEntry addEntry(String name, byte[] nbt, int dataVersion, UUID authorUuid, String authorUsername, boolean verified) throws SQLException {
@@ -138,8 +145,9 @@ public class NBTDatabase {
 	}
 	
 	public List<NBTEntry> getEntries() throws SQLException {
-		try (PreparedStatement sql = connection.prepareStatement("SELECT * FROM `entries`")) {
+		try (PreparedStatement sql = connection.prepareStatement("SELECT * FROM `entries` LIMIT ?")) {
 			sql.setQueryTimeout(5);
+			sql.setInt(1, config.getMaxNumResults());
 			ResultSet result = sql.executeQuery();
 			
 			List<NBTEntry> output = new ArrayList<>();
@@ -150,9 +158,10 @@ public class NBTDatabase {
 	}
 	
 	public List<NBTEntry> getEntriesByName(String query) throws SQLException {
-		try (PreparedStatement sql = connection.prepareStatement("SELECT * FROM `entries` WHERE `name` LIKE \"%?%\"")) {
+		try (PreparedStatement sql = connection.prepareStatement("SELECT * FROM `entries` WHERE `name` LIKE \"%?%\" LIMIT ?")) {
 			sql.setQueryTimeout(5);
 			sql.setString(1, query);
+			sql.setInt(2, config.getMaxNumResults());
 			ResultSet result = sql.executeQuery();
 			
 			List<NBTEntry> output = new ArrayList<>();
@@ -163,9 +172,10 @@ public class NBTDatabase {
 	}
 	
 	public List<NBTEntry> getEntriesByAuthorUUID(UUID uuid) throws SQLException {
-		try (PreparedStatement sql = connection.prepareStatement("SELECT * FROM `entries` WHERE `author_uuid`=?")) {
+		try (PreparedStatement sql = connection.prepareStatement("SELECT * FROM `entries` WHERE `author_uuid`=? LIMIT ?")) {
 			sql.setQueryTimeout(5);
 			sql.setString(1, uuid.toString());
+			sql.setInt(2, config.getMaxNumResults());
 			ResultSet result = sql.executeQuery();
 			
 			List<NBTEntry> output = new ArrayList<>();
@@ -176,9 +186,10 @@ public class NBTDatabase {
 	}
 	
 	public List<NBTEntry> getEntriesByAuthorName(String query) throws SQLException {
-		try (PreparedStatement sql = connection.prepareStatement("SELECT * FROM `entries` WHERE `author_username` LIKE \"%?%\"")) {
+		try (PreparedStatement sql = connection.prepareStatement("SELECT * FROM `entries` WHERE `author_username` LIKE \"%?%\" LIMIT ?")) {
 			sql.setQueryTimeout(5);
 			sql.setString(1, query);
+			sql.setInt(2, config.getMaxNumResults());
 			ResultSet result = sql.executeQuery();
 			
 			List<NBTEntry> output = new ArrayList<>();
@@ -249,9 +260,10 @@ public class NBTDatabase {
 	}
 	
 	public List<Long> getEntriesByTag(String tag) throws SQLException {
-		try (PreparedStatement sql = connection.prepareStatement("SELECT entry_id FROM `entries_tags` WHERE `tag`=?")) {
+		try (PreparedStatement sql = connection.prepareStatement("SELECT entry_id FROM `entries_tags` WHERE `tag`=? LIMIT ?")) {
 			sql.setQueryTimeout(5);
 			sql.setString(1, tag);
+			sql.setInt(2, config.getMaxNumResults());
 			ResultSet result = sql.executeQuery();
 			
 			List<Long> output = new ArrayList<>();

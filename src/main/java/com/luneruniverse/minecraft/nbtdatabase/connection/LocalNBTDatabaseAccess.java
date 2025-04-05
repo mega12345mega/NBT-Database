@@ -24,6 +24,11 @@ public class LocalNBTDatabaseAccess implements NBTDatabaseAccess {
 	}
 	
 	@Override
+	public CompletableFuture<NBTDatabaseMetadata> getMetadata() {
+		return CompletableFuture.completedFuture(database.getMetadata());
+	}
+	
+	@Override
 	public CompletableFuture<NBTEntry> addEntry(String name, byte[] nbt, int dataVersion, UUID authorUuid, String authorUsername) {
 		return CompletableFuture.supplyAsync(() -> {
 			try {
