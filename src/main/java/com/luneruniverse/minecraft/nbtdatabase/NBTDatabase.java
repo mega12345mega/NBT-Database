@@ -78,7 +78,7 @@ public class NBTDatabase {
 		return new NBTDatabaseMetadata(config.getMaxNbtSize(), config.getMaxNumResults());
 	}
 	
-	public NBTEntry addEntry(String name, byte[] nbt, int dataVersion, UUID authorUuid, String authorUsername, boolean verified) throws SQLException {
+	public long addEntry(String name, byte[] nbt, int dataVersion, UUID authorUuid, String authorUsername, boolean verified) throws IllegalArgumentException, SQLException {
 		if (name.length() > 64)
 			throw new IllegalArgumentException("name must be <= 64 characters long");
 		if (nbt.length > config.getMaxNbtSize())
@@ -107,7 +107,7 @@ public class NBTDatabase {
 			sql.executeUpdate();
 		}
 		
-		return new NBTEntry(id, name, nbt, dataVersion, authorUuid, authorUsername, created, modified, hash, verified);
+		return id;
 	}
 	private long genNewEntryId() throws SQLException {
 		Random rand = new Random();
@@ -158,9 +158,9 @@ public class NBTDatabase {
 	}
 	
 	public List<NBTEntry> getEntriesByName(String query) throws SQLException {
-		try (PreparedStatement sql = connection.prepareStatement("SELECT * FROM `entries` WHERE `name` LIKE \"%?%\" LIMIT ?")) {
+		try (PreparedStatement sql = connection.prepareStatement("SELECT * FROM `entries` WHERE `name` LIKE ? ESCAPE \"\\\" LIMIT ?")) {
 			sql.setQueryTimeout(5);
-			sql.setString(1, query);
+			sql.setString(1, "%" + escapeQuery(query) + "%");
 			sql.setInt(2, config.getMaxNumResults());
 			ResultSet result = sql.executeQuery();
 			
@@ -186,9 +186,9 @@ public class NBTDatabase {
 	}
 	
 	public List<NBTEntry> getEntriesByAuthorName(String query) throws SQLException {
-		try (PreparedStatement sql = connection.prepareStatement("SELECT * FROM `entries` WHERE `author_username` LIKE \"%?%\" LIMIT ?")) {
+		try (PreparedStatement sql = connection.prepareStatement("SELECT * FROM `entries` WHERE `author_username` LIKE ? ESCAPE \"\\\" LIMIT ?")) {
 			sql.setQueryTimeout(5);
-			sql.setString(1, query);
+			sql.setString(1, "%" + escapeQuery(query) + "%");
 			sql.setInt(2, config.getMaxNumResults());
 			ResultSet result = sql.executeQuery();
 			
@@ -246,31 +246,35 @@ public class NBTDatabase {
 		}
 	}
 	
-	public List<String> getTagsByEntry(long entry) throws SQLException {
-		try (PreparedStatement sql = connection.prepareStatement("SELECT tag FROM `entries_tags` WHERE `entry_id`=?")) {
+	public List<Tag> getTagsByEntry(long entry) throws SQLException {
+		try (PreparedStatement sql = connection.prepareStatement("SELECT `tags`.* FROM `entries_tags` JOIN `tags` ON `tags`.`name` = `entries_tags`.`tag` WHERE `entries_tags`.`entry_id`=?")) {
 			sql.setQueryTimeout(5);
 			sql.setLong(1, entry);
 			ResultSet result = sql.executeQuery();
 			
-			List<String> output = new ArrayList<>();
+			List<Tag> output = new ArrayList<>();
 			while (result.next())
-				output.add(result.getString("tag"));
+				output.add(Tag.fromDatabase(result));
 			return output;
 		}
 	}
 	
-	public List<Long> getEntriesByTag(String tag) throws SQLException {
-		try (PreparedStatement sql = connection.prepareStatement("SELECT entry_id FROM `entries_tags` WHERE `tag`=? LIMIT ?")) {
+	public List<NBTEntry> getEntriesByTag(String tag) throws SQLException {
+		try (PreparedStatement sql = connection.prepareStatement("SELECT `entries`.* FROM `entries_tags` JOIN `entries` ON `entries`.`id` = `entries_tags`.`entry_id` WHERE `entries_tags`.`tag`=? LIMIT ?")) {
 			sql.setQueryTimeout(5);
 			sql.setString(1, tag);
 			sql.setInt(2, config.getMaxNumResults());
 			ResultSet result = sql.executeQuery();
 			
-			List<Long> output = new ArrayList<>();
+			List<NBTEntry> output = new ArrayList<>();
 			while (result.next())
-				output.add(result.getLong("entry_id"));
+				output.add(NBTEntry.fromDatabase(result));
 			return output;
 		}
+	}
+	
+	private String escapeQuery(String query) {
+		return query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
 	}
 	
 }

@@ -17,4 +17,9 @@ public class Tag {
 		this.color = color;
 	}
 	
+	@Override
+	public String toString() {
+		return "Tag[name=" + name + ", color=" + color + "]";
+	}
+	
 }

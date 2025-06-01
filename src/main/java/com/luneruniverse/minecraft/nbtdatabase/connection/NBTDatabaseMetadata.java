@@ -18,4 +18,9 @@ public class NBTDatabaseMetadata {
 		return maxNumResults;
 	}
 	
+	@Override
+	public String toString() {
+		return "NBTDatabaseMetadata[maxNbtSize=" + maxNbtSize + ", maxNumResults=" + maxNumResults + "]";
+	}
+	
 }

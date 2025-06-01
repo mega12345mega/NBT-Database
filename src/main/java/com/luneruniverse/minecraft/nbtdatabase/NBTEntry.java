@@ -86,4 +86,9 @@ public class NBTEntry {
 		this.verified = verified;
 	}
 	
+	@Override
+	public String toString() {
+		return "NBTEntry[id=" + id + ", name=" + name + ", ...]";
+	}
+	
 }
