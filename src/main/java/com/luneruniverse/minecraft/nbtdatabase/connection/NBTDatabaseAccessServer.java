@@ -2,8 +2,10 @@ package com.luneruniverse.minecraft.nbtdatabase.connection;
 
 import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ForkJoinPool;
 import java.util.function.Function;
 
+import com.luneruniverse.minecraft.nbtdatabase.Util;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.AddEntryRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.AddTagRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.AddTagToEntryRequestPacket;
@@ -67,8 +69,12 @@ public class NBTDatabaseAccessServer implements AutoCloseable {
 		request.whenComplete((value, e) -> {
 			try {
 				if (e != null) {
-					e.printStackTrace();
-					conn.reply(packet, new PrimitivePacket(e.toString()));
+					if (e instanceof ReplyException)
+						conn.reply(packet, new PrimitivePacket(e.getMessage()));
+					else {
+						e.printStackTrace();
+						conn.reply(packet, new PrimitivePacket("An internal server error occurred"));
+					}
 				} else
 					conn.reply(packet, packer.apply(value));
 			} catch (IOException e2) {
@@ -141,8 +147,12 @@ public class NBTDatabaseAccessServer implements AutoCloseable {
 		respond(packet, conn, database.getEntriesByTag(packet.getTag()), EntriesPacket::new);
 	}
 	
+	public CompletableFuture<Void> closeAsync() {
+		return Util.runAsync(server::close, ForkJoinPool.commonPool());
+	}
+	
 	@Override
-	public void close() throws InterruptedException, IOException {
+	public void close() throws IOException, InterruptedException {
 		server.close();
 	}
 	

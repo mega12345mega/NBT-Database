@@ -14,7 +14,7 @@ import java.util.UUID;
 
 import com.luneruniverse.minecraft.nbtdatabase.connection.NBTDatabaseMetadata;
 
-public class NBTDatabase {
+public class NBTDatabase implements AutoCloseable {
 	
 	private final Connection connection;
 	private final NBTDatabaseConfig config;
@@ -275,6 +275,11 @@ public class NBTDatabase {
 	
 	private String escapeQuery(String query) {
 		return query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
+	}
+	
+	@Override
+	public void close() throws SQLException {
+		connection.close();
 	}
 	
 }

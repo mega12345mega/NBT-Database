@@ -1,6 +1,5 @@
 package com.luneruniverse.minecraft.nbtdatabase.connection;
 
-import java.sql.SQLException;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -30,156 +29,77 @@ public class LocalNBTDatabaseAccess implements NBTDatabaseAccess {
 	
 	@Override
 	public CompletableFuture<Long> addEntry(String name, byte[] nbt, int dataVersion, UUID authorUuid, String authorUsername, boolean verified) {
-		return Util.supplyAsync(() -> {
-			try {
-				return database.addEntry(name, nbt, dataVersion, authorUuid, authorUsername, verified);
-			} catch (IllegalArgumentException | SQLException e) {
-				throw new RuntimeException("Failed to add entry", e);
-			}
-		}, executor);
+		return Util.supplyAsync(() -> database.addEntry(name, nbt, dataVersion, authorUuid, authorUsername, verified), executor);
 	}
 	
 	@Override
 	public CompletableFuture<Void> removeEntry(long id) {
-		return Util.runAsync(() -> {
-			try {
-				database.removeEntry(id);
-			} catch (SQLException e) {
-				throw new RuntimeException("Failed to remove entry", e);
-			}
-		}, executor);
+		return Util.runAsync(() -> database.removeEntry(id), executor);
 	}
 	
 	@Override
 	public CompletableFuture<NBTEntry> getEntry(long id) {
-		return Util.supplyAsync(() -> {
-			try {
-				return database.getEntry(id);
-			} catch (SQLException e) {
-				throw new RuntimeException("Failed to get entry", e);
-			}
-		}, executor);
+		return Util.supplyAsync(() -> database.getEntry(id), executor);
 	}
 	
 	@Override
 	public CompletableFuture<List<NBTEntry>> getEntries() {
-		return Util.supplyAsync(() -> {
-			try {
-				return database.getEntries();
-			} catch (SQLException e) {
-				throw new RuntimeException("Failed to get entries", e);
-			}
-		}, executor);
+		return Util.supplyAsync(() -> database.getEntries(), executor);
 	}
 	
 	@Override
 	public CompletableFuture<List<NBTEntry>> getEntriesByName(String query) {
-		return Util.supplyAsync(() -> {
-			try {
-				return database.getEntriesByName(query);
-			} catch (SQLException e) {
-				throw new RuntimeException("Failed to get entries by name", e);
-			}
-		}, executor);
+		return Util.supplyAsync(() -> database.getEntriesByName(query), executor);
 	}
 	
 	@Override
 	public CompletableFuture<List<NBTEntry>> getEntriesByAuthorUUID(UUID query) {
-		return Util.supplyAsync(() -> {
-			try {
-				return database.getEntriesByAuthorUUID(query);
-			} catch (SQLException e) {
-				throw new RuntimeException("Failed to get entries by author uuid", e);
-			}
-		}, executor);
+		return Util.supplyAsync(() -> database.getEntriesByAuthorUUID(query), executor);
 	}
 	
 	@Override
 	public CompletableFuture<List<NBTEntry>> getEntriesByAuthorName(String query) {
-		return Util.supplyAsync(() -> {
-			try {
-				return database.getEntriesByAuthorName(query);
-			} catch (SQLException e) {
-				throw new RuntimeException("Failed to get entries by author name", e);
-			}
-		}, executor);
+		return Util.supplyAsync(() -> database.getEntriesByAuthorName(query), executor);
 	}
 	
 	@Override
 	public CompletableFuture<Void> addTag(String name, int color) {
-		return Util.runAsync(() -> {
-			try {
-				database.addTag(name, color);
-			} catch (SQLException e) {
-				throw new RuntimeException("Failed to add a tag", e);
-			}
-		}, executor);
+		return Util.runAsync(() -> database.addTag(name, color), executor);
 	}
 	
 	@Override
 	public CompletableFuture<Void> removeTag(String name) {
-		return Util.runAsync(() -> {
-			try {
-				database.removeTag(name);
-			} catch (SQLException e) {
-				throw new RuntimeException("Failed to remove a tag", e);
-			}
-		}, executor);
+		return Util.runAsync(() -> database.removeTag(name), executor);
 	}
 	
 	@Override
 	public CompletableFuture<List<Tag>> getTags() {
-		return Util.supplyAsync(() -> {
-			try {
-				return database.getTags();
-			} catch (SQLException e) {
-				throw new RuntimeException("Failed to get tags", e);
-			}
-		}, executor);
+		return Util.supplyAsync(() -> database.getTags(), executor);
 	}
 	
 	@Override
 	public CompletableFuture<Void> addTagToEntry(long entry, String tag) {
-		return Util.runAsync(() -> {
-			try {
-				database.addTagToEntry(entry, tag);
-			} catch (SQLException e) {
-				throw new RuntimeException("Failed to add a tag to an entry", e);
-			}
-		}, executor);
+		return Util.runAsync(() -> database.addTagToEntry(entry, tag), executor);
 	}
 	
 	@Override
 	public CompletableFuture<Void> removeTagFromEntry(long entry, String tag) {
-		return Util.runAsync(() -> {
-			try {
-				database.removeTagFromEntry(entry, tag);
-			} catch (SQLException e) {
-				throw new RuntimeException("Failed to remove a tag from an entry", e);
-			}
-		}, executor);
+		return Util.runAsync(() -> database.removeTagFromEntry(entry, tag), executor);
 	}
 	
 	@Override
 	public CompletableFuture<List<Tag>> getTagsByEntry(long entry) {
-		return Util.supplyAsync(() -> {
-			try {
-				return database.getTagsByEntry(entry);
-			} catch (SQLException e) {
-				throw new RuntimeException("Failed to get tags by entry");
-			}
-		}, executor);
+		return Util.supplyAsync(() -> database.getTagsByEntry(entry), executor);
 	}
 	
 	@Override
 	public CompletableFuture<List<NBTEntry>> getEntriesByTag(String tag) {
-		return Util.supplyAsync(() -> {
-			try {
-				return database.getEntriesByTag(tag);
-			} catch (SQLException e) {
-				throw new RuntimeException("Failed to get entries by tag");
-			}
-		}, executor);
+		return Util.supplyAsync(() -> database.getEntriesByTag(tag), executor);
+	}
+	
+	@Override
+	public CompletableFuture<Void> closeAsync() {
+		return Util.shutdown(executor);
 	}
 	
 	@Override

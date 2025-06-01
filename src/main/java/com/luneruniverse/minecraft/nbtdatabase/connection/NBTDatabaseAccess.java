@@ -23,4 +23,5 @@ public interface NBTDatabaseAccess extends AutoCloseable {
 	public CompletableFuture<Void> removeTagFromEntry(long entry, String tag);
 	public CompletableFuture<List<Tag>> getTagsByEntry(long entry);
 	public CompletableFuture<List<NBTEntry>> getEntriesByTag(String tag);
+	public CompletableFuture<Void> closeAsync();
 }

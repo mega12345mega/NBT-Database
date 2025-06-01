@@ -1,7 +1,6 @@
 package com.luneruniverse.minecraft.nbtdatabase.connection;
 
 import java.io.IOException;
-import java.net.UnknownHostException;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -42,7 +41,7 @@ public class RemoteNBTDatabaseAccess implements NBTDatabaseAccess {
 	private final Client client;
 	private final ExecutorService executor;
 	
-	public RemoteNBTDatabaseAccess(String ip, int port) throws UnknownHostException, IOException {
+	public RemoteNBTDatabaseAccess(String ip, int port) throws IOException {
 		client = new Client(ip, port);
 		client.addErrorHandler((e, client, context) -> e.printStackTrace());
 		client.registerPackets(Packets.PACKETS);
@@ -68,7 +67,7 @@ public class RemoteNBTDatabaseAccess implements NBTDatabaseAccess {
 			} catch (IOException e) {
 				throw new RuntimeException("Error while sending request", e);
 			} catch (InterruptedException e) {
-				throw new RuntimeException("Request interrupted");
+				throw new RuntimeException("Request interrupted", e);
 			}
 		}, executor);
 	}
@@ -156,9 +155,14 @@ public class RemoteNBTDatabaseAccess implements NBTDatabaseAccess {
 	}
 	
 	@Override
+	public CompletableFuture<Void> closeAsync() {
+		return Util.finallyDo(Util.shutdown(executor), client::close);
+	}
+	
+	@Override
 	public void close() throws IOException, InterruptedException {
-		executor.shutdown();
 		try {
+			executor.shutdown();
 			executor.awaitTermination(Long.MAX_VALUE, TimeUnit.DAYS);
 		} finally {
 			client.close();

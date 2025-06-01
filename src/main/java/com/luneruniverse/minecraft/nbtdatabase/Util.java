@@ -2,12 +2,21 @@ package com.luneruniverse.minecraft.nbtdatabase;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.RejectedExecutionException;
-import java.util.function.Supplier;
+import java.util.concurrent.TimeUnit;
 
 public class Util {
 	
-	public static <T> CompletableFuture<T> supplyAsync(Supplier<T> supplier, Executor executor) {
+	public interface ThrowableSupplier<T> {
+		public T get() throws Throwable;
+	}
+	public interface ThrowableRunnable {
+		public void run() throws Throwable;
+	}
+	
+	public static <T> CompletableFuture<T> supplyAsync(ThrowableSupplier<T> supplier, Executor executor) {
 		CompletableFuture<T> future = new CompletableFuture<>();
 		try {
 			executor.execute(() -> {
@@ -23,7 +32,7 @@ public class Util {
 		return future;
 	}
 	
-	public static CompletableFuture<Void> runAsync(Runnable runnable, Executor executor) {
+	public static CompletableFuture<Void> runAsync(ThrowableRunnable runnable, Executor executor) {
 		CompletableFuture<Void> future = new CompletableFuture<>();
 		try {
 			executor.execute(() -> {
@@ -37,6 +46,36 @@ public class Util {
 		} catch (RejectedExecutionException e) {
 			future.completeExceptionally(e);
 		}
+		return future;
+	}
+	
+	public static <T> CompletableFuture<T> finallyDo(CompletableFuture<T> first, ThrowableRunnable last) {
+		CompletableFuture<T> future = new CompletableFuture<>();
+		first.whenComplete((value, e) -> {
+			try {
+				last.run();
+				if (e != null)
+					future.completeExceptionally(e);
+				else
+					future.complete(value);
+			} catch (Throwable e2) {
+				future.completeExceptionally(e2);
+			}
+		});
+		return future;
+	}
+	
+	public static CompletableFuture<Void> shutdown(ExecutorService executor) {
+		CompletableFuture<Void> future = new CompletableFuture<>();
+		executor.shutdown();
+		ForkJoinPool.commonPool().execute(() -> {
+			try {
+				executor.awaitTermination(Long.MAX_VALUE, TimeUnit.DAYS);
+				future.complete(null);
+			} catch (InterruptedException e) {
+				future.completeExceptionally(e);
+			}
+		});
 		return future;
 	}
 	
