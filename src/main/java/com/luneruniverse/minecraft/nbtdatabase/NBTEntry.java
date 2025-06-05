@@ -50,7 +50,7 @@ public class NBTEntry {
 			
 			MessageDigest digest = MessageDigest.getInstance("SHA-256");
 			byte[] hash = digest.digest(buf.toByteArray());
-			String hashStr = DatatypeConverter.printHexBinary(hash);
+			String hashStr = DatatypeConverter.printHexBinary(hash).toLowerCase();
 			StringBuilder paddedHashStr = new StringBuilder();
 			for (int i = 0; i < 64 - hashStr.length(); i++)
 				paddedHashStr.append("0");

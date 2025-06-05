@@ -4,9 +4,16 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.file.Files;
 import java.sql.SQLException;
+import java.util.Arrays;
+import java.util.List;
+import java.util.UUID;
 
+import com.luneruniverse.minecraft.nbtdatabase.DataVersion;
 import com.luneruniverse.minecraft.nbtdatabase.NBTDatabase;
+import com.luneruniverse.minecraft.nbtdatabase.NBTEntry;
+import com.luneruniverse.minecraft.nbtdatabase.Tag;
 import com.luneruniverse.minecraft.nbtdatabase.connection.LocalNBTDatabaseAccess;
 import com.luneruniverse.minecraft.nbtdatabase.connection.NBTDatabaseAccess;
 import com.luneruniverse.minecraft.nbtdatabase.connection.NBTDatabaseAccessServer;
@@ -26,8 +33,11 @@ public class CLI extends Thread {
 	private NBTDatabase localDatabase;
 	private NBTDatabaseAccess connection;
 	private NBTDatabaseAccessServer server;
+	private List<NBTEntry> result;
 	
 	public CLI() {
+		DataVersion.loadVersions();
+		
 		root = new GroupCommand(null);
 		
 		root.addCommand(new SingleCommand("exit", () -> exit = true));
@@ -53,6 +63,52 @@ public class CLI extends Thread {
 				.addCommand(new SingleCommand("stop", this::serverStopCmd)));
 		
 		root.addCommand(new SingleCommand("metadata", this::metadataCmd));
+		
+		root.addCommand(new GroupCommand("entry")
+				.addCommand(new SingleCommand("add", inputs -> entryAddCmd(
+						inputs.getArgument("name", String.class), new File(inputs.getArgument("file", String.class)), inputs.getArgument("data_version", Integer.class), inputs.getArgument("author_uuid", UUID.class), inputs.getArgument("author_username", String.class), !inputs.hasFlag("unverified")))
+						.addArgument("name", new StringInput()).addArgument("file", new StringInput()).addArgument("data_version", new DataVersionInput()).addArgument("author_uuid", new UUIDInput()).addArgument("author_username", new StringInput()).addFlag("unverified", "uv"))
+				.addCommand(new SingleCommand("remove", inputs -> entryRemoveCmd(
+						inputs.getArgument("id", Long.class)))
+						.addArgument("id", new LongInput()))
+				.addCommand(new SingleCommand("get", inputs -> entryGetCmd(
+						inputs.getArgument("id", Long.class), inputs.hasFlag("verbose")))
+						.addArgument("id", new LongInput()).addFlag("verbose", "v"))
+				.addCommand(new SingleCommand("list", inputs -> entryListCmd(
+						inputs.hasFlag("verbose")))
+						.addFlag("verbose", "v")));
+		
+		root.addCommand(new GroupCommand("tag")
+				.addCommand(new SingleCommand("add", inputs -> tagAddCmd(
+						inputs.getArgument("name", String.class), inputs.getArgument("color", Integer.class)))
+						.addArgument("name", new StringInput()).addArgument("color", new ColorInput()))
+				.addCommand(new SingleCommand("remove", inputs -> tagRemoveCmd(
+						inputs.getArgument("name", String.class)))
+						.addArgument("name", new StringInput()))
+				.addCommand(new SingleCommand("list", inputs -> tagListCmd()))
+				.addCommand(new SingleCommand("attach", inputs -> tagAttachCmd(
+						inputs.getArgument("entry", Long.class), inputs.getArgument("tag", String.class)))
+						.addArgument("entry", new LongInput()).addArgument("tag", new StringInput()))
+				.addCommand(new SingleCommand("detach", inputs -> tagDetachCmd(
+						inputs.getArgument("entry", Long.class), inputs.getArgument("tag", String.class)))
+						.addArgument("entry", new LongInput()).addArgument("tag", new StringInput())));
+		
+		root.addCommand(new GroupCommand("result")
+				.addCommand(new SingleCommand("export", inputs -> resultExportCmd(
+						inputs.getArgument("index", Integer.class), new File(inputs.getArgument("file", String.class)), inputs.hasFlag("overwrite")))
+						.addArgument("index", new IntegerInput().min(0)).addArgument("file", new StringInput()).addFlag("overwrite", "o"))
+				.addCommand(new SingleCommand("remove", inputs -> resultRemoveCmd(
+						inputs.getArgument("index", Integer.class)))
+						.addArgument("index", new IntegerInput().min(0)))
+				.addCommand(new SingleCommand("list", inputs -> resultListCmd(
+						inputs.hasFlag("verbose")))
+						.addFlag("verbose", "v"))
+				.addCommand(new SingleCommand("attach", inputs -> resultAttachCmd(
+						inputs.getArgument("index", Integer.class), inputs.getArgument("tag", String.class)))
+						.addArgument("index", new IntegerInput().min(0)).addArgument("tag", new StringInput()))
+				.addCommand(new SingleCommand("detach", inputs -> resultDetachCmd(
+						inputs.getArgument("index", Integer.class), inputs.getArgument("tag", String.class)))
+						.addArgument("index", new IntegerInput().min(0)).addArgument("tag", new StringInput())));
 	}
 	
 	private void closeConnection(boolean silent) {
@@ -201,6 +257,296 @@ public class CLI extends Thread {
 				System.out.println("max_nbt_size: " + metadata.getMaxNbtSize());
 				System.out.println("max_num_results: " + metadata.getMaxNumResults());
 			}
+		});
+	}
+	
+	private void entryAddCmd(String name, File file, int dataVersion, UUID authorUuid, String authorUsername, boolean verified) {
+		if (connection == null) {
+			System.err.println("There is not an open connection");
+			return;
+		}
+		
+		if (!file.exists()) {
+			System.err.println("File doesn't exist: " + file.getAbsolutePath());
+			return;
+		}
+		
+		if (!file.isFile()) {
+			System.err.println("Not a file: " + file.getAbsolutePath());
+			return;
+		}
+		
+		try {
+			connection.addEntry(name, Files.readAllBytes(file.toPath()), dataVersion, authorUuid, authorUsername, verified).whenComplete((id, e) -> {
+				if (e != null)
+					e.printStackTrace();
+				else
+					System.out.println("Added entry '" + name + "' with id " + id);
+			});
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	private void entryRemoveCmd(long id) {
+		if (connection == null) {
+			System.err.println("There is not an open connection");
+			return;
+		}
+		
+		connection.removeEntry(id).whenComplete((v, e) -> {
+			if (e != null)
+				e.printStackTrace();
+			else
+				System.out.println("Removed entry with id " + id);
+		});
+	}
+	
+	private void entryGetCmd(long id, boolean verbose) {
+		if (connection == null) {
+			System.err.println("There is not an open connection");
+			return;
+		}
+		
+		connection.getEntry(id).whenComplete((entry, e) -> {
+			if (e != null)
+				e.printStackTrace();
+			else if (entry == null)
+				System.err.println("Entry doesn't exist: " + id);
+			else {
+				result = Arrays.asList(entry);
+				resultListCmd(verbose);
+			}
+		});
+	}
+	
+	private void entryListCmd(boolean verbose) {
+		if (connection == null) {
+			System.err.println("There is not an open connection");
+			return;
+		}
+		
+		connection.getEntries().whenComplete((entries, e) -> {
+			if (e != null)
+				e.printStackTrace();
+			else {
+				result = entries;
+				resultListCmd(verbose);
+			}
+		});
+	}
+	
+	private void tagAddCmd(String name, int color) {
+		if (connection == null) {
+			System.err.println("There is not an open connection");
+			return;
+		}
+		
+		connection.addTag(name, color).whenComplete((v, e) -> {
+			if (e != null)
+				e.printStackTrace();
+			else
+				System.out.println("Added tag: " + name + " (#" + ColorInput.toString(color) + ")");
+		});
+	}
+	
+	private void tagRemoveCmd(String name) {
+		if (connection == null) {
+			System.err.println("There is not an open connection");
+			return;
+		}
+		
+		connection.removeTag(name).whenComplete((v, e) -> {
+			if (e != null)
+				e.printStackTrace();
+			else
+				System.out.println("Removed tag: " + name);
+		});
+	}
+	
+	private void tagListCmd() {
+		if (connection == null) {
+			System.err.println("There is not an open connection");
+			return;
+		}
+		
+		connection.getTags().whenComplete((tags, e) -> {
+			if (e != null)
+				e.printStackTrace();
+			else if (tags.isEmpty())
+				System.out.println("There are no tags");
+			else {
+				for (Tag tag : tags)
+					System.out.println(tag.name + " (#" + ColorInput.toString(tag.color) + ")");
+			}
+		});
+	}
+	
+	private void tagAttachCmd(long entry, String tag) {
+		if (connection == null) {
+			System.err.println("There is not an open connection");
+			return;
+		}
+		
+		connection.addTagToEntry(entry, tag).whenComplete((v, e) -> {
+			if (e != null)
+				e.printStackTrace();
+			else
+				System.out.println("Attached tag '" + tag + "' to entry with id " + entry);
+		});
+	}
+	
+	private void tagDetachCmd(long entry, String tag) {
+		if (connection == null) {
+			System.err.println("There is not an open connection");
+			return;
+		}
+		
+		connection.removeTagFromEntry(entry, tag).whenComplete((v, e) -> {
+			if (e != null)
+				e.printStackTrace();
+			else
+				System.out.println("Detached tag '" + tag + "' from entry with id " + entry);
+		});
+	}
+	
+	private void resultExportCmd(int index, File file, boolean overwrite) {
+		if (result == null) {
+			System.err.println("There are no saved results");
+			return;
+		}
+		
+		if (index >= result.size()) {
+			System.err.println("Invalid index: " + index);
+			return;
+		}
+		
+		if (file.exists()) {
+			if (!overwrite) {
+				System.err.println("File already exists: " + file.getAbsolutePath());
+				return;
+			}
+			
+			if (!file.isFile()) {
+				System.err.println("Can only overwrite a file: " + file.getAbsolutePath());
+				return;
+			}
+			
+			file.delete();
+		}
+		file.getAbsoluteFile().getParentFile().mkdirs();
+		
+		NBTEntry entry = result.get(index);
+		try {
+			Files.write(file.toPath(), entry.nbt);
+			System.out.println("Exported " + entry.id + " to: " + file.getAbsolutePath());
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	private void resultRemoveCmd(int index) {
+		if (connection == null) {
+			System.err.println("There is not an open connection");
+			return;
+		}
+		
+		if (result == null) {
+			System.err.println("There are no saved results");
+			return;
+		}
+		
+		if (index >= result.size()) {
+			System.err.println("Invalid index: " + index);
+			return;
+		}
+		
+		long id = result.get(index).id;
+		connection.removeEntry(id).whenComplete((v, e) -> {
+			if (e != null)
+				e.printStackTrace();
+			else
+				System.out.println("Removed entry with id " + id);
+		});
+	}
+	
+	private void resultListCmd(boolean verbose) {
+		if (result == null) {
+			System.err.println("There are no saved results");
+			return;
+		}
+		
+		if (result.isEmpty()) {
+			System.out.println("There are no entries");
+			return;
+		}
+		
+		for (int i = 0; i < result.size(); i++) {
+			NBTEntry entry = result.get(i);
+			
+			if (i != 0)
+				System.out.println();
+			
+			System.out.println("#" + i + ": " + entry.id + ": " + entry.name);
+			System.out.println("  Author: " + entry.authorUsername + " (" + entry.authorUuid + ")");
+			System.out.println("  Data Version: " + DataVersion.toString(entry.dataVersion));
+			if (verbose) {
+				System.out.println("  Bytes: " + entry.nbt.length);
+				System.out.println("  Created: " + entry.created); // TODO format
+				System.out.println("  Modified: " + entry.modified);
+				System.out.println("  Hash: " + entry.hash);
+				System.out.println("  Verified: " + entry.verified);
+			}
+		}
+	}
+	
+	private void resultAttachCmd(int index, String tag) {
+		if (connection == null) {
+			System.err.println("There is not an open connection");
+			return;
+		}
+		
+		if (result == null) {
+			System.err.println("There are no saved results");
+			return;
+		}
+		
+		if (index >= result.size()) {
+			System.err.println("Invalid index: " + index);
+			return;
+		}
+		
+		long id = result.get(index).id;
+		connection.addTagToEntry(id, tag).whenComplete((v, e) -> {
+			if (e != null)
+				e.printStackTrace();
+			else
+				System.out.println("Attached tag '" + tag + "' to entry with id " + id);
+		});
+	}
+	
+	private void resultDetachCmd(int index, String tag) {
+		if (connection == null) {
+			System.err.println("There is not an open connection");
+			return;
+		}
+		
+		if (result == null) {
+			System.err.println("There are no saved results");
+			return;
+		}
+		
+		if (index >= result.size()) {
+			System.err.println("Invalid index: " + index);
+			return;
+		}
+		
+		long id = result.get(index).id;
+		connection.removeTagFromEntry(id, tag).whenComplete((v, e) -> {
+			if (e != null)
+				e.printStackTrace();
+			else
+				System.out.println("Detached tag '" + tag + "' from entry with id " + id);
 		});
 	}
 	
