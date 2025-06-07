@@ -19,7 +19,7 @@ public class NBTEntry {
 				row.getLong("id"),
 				row.getString("name"),
 				row.getBytes("nbt"),
-				row.getInt("DataVersion"),
+				row.getInt("data_version"),
 				UUID.fromString(row.getString("author_uuid")),
 				row.getString("author_username"),
 				row.getLong("created"),

@@ -12,9 +12,6 @@ public class Packets {
 		PACKETS.registerPacket(RemoveEntryRequestPacket.class);
 		PACKETS.registerPacket(GetEntryRequestPacket.class);
 		PACKETS.registerPacket(GetEntriesRequestPacket.class);
-		PACKETS.registerPacket(GetEntriesByNameRequestPacket.class);
-		PACKETS.registerPacket(GetEntriesByAuthorUUIDRequestPacket.class);
-		PACKETS.registerPacket(GetEntriesByAuthorNameRequestPacket.class);
 		PACKETS.registerPacket(AddTagRequestPacket.class);
 		PACKETS.registerPacket(RemoveTagRequestPacket.class);
 		PACKETS.registerPacket(GetTagsRequestPacket.class);

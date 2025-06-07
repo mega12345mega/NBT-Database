@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.UUID;
 
 import com.luneruniverse.minecraft.nbtdatabase.DataVersion;
+import com.luneruniverse.minecraft.nbtdatabase.EntryFilter;
 import com.luneruniverse.minecraft.nbtdatabase.NBTDatabase;
 import com.luneruniverse.minecraft.nbtdatabase.NBTEntry;
 import com.luneruniverse.minecraft.nbtdatabase.Tag;
@@ -74,9 +75,26 @@ public class CLI extends Thread {
 				.addCommand(new SingleCommand("get", inputs -> entryGetCmd(
 						inputs.getArgument("id", Long.class), inputs.hasFlag("verbose")))
 						.addArgument("id", new LongInput()).addFlag("verbose", "v"))
-				.addCommand(new SingleCommand("list", inputs -> entryListCmd(
-						inputs.hasFlag("verbose")))
-						.addFlag("verbose", "v")));
+				.addCommand(new SingleCommand("list",
+						inputs -> {
+							EntryFilter filter = new EntryFilter();
+							if (inputs.hasFlag("name"))
+								filter.filterByName(inputs.getFlag("name", String.class));
+							if (inputs.hasFlag("data_version"))
+								filter.filterByDataVersion(inputs.getFlag("data_version", Integer.class));
+							else {
+								if (inputs.hasFlag("data_version_min"))
+									filter.filterByMinDataVersion(inputs.getFlag("data_version_min", Integer.class));
+								if (inputs.hasFlag("data_version_max"))
+									filter.filterByMaxDataVersion(inputs.getFlag("data_version_max", Integer.class));
+							}
+							if (inputs.hasFlag("author_uuid"))
+								filter.filterByAuthorUuid(inputs.getFlag("author_uuid", UUID.class));
+							if (inputs.hasFlag("author_name"))
+								filter.filterByAuthorName(inputs.getFlag("author_name", String.class));
+							entryListCmd(filter, inputs.hasFlag("verbose"));
+						})
+						.addFlag("name", "n", new StringInput()).addFlag("data_version", "d", new DataVersionInput()).addFlag("data_version_min", "dmin", new DataVersionInput()).addFlag("data_version_max", "dmax", new DataVersionInput()).addFlag("author_uuid", "au", new UUIDInput()).addFlag("author_name", "an", new StringInput()).addFlag("verbose", "v")));
 		
 		root.addCommand(new GroupCommand("tag")
 				.addCommand(new SingleCommand("add", inputs -> tagAddCmd(
@@ -320,13 +338,13 @@ public class CLI extends Thread {
 		});
 	}
 	
-	private void entryListCmd(boolean verbose) {
+	private void entryListCmd(EntryFilter filter, boolean verbose) {
 		if (connection == null) {
 			System.err.println("There is not an open connection");
 			return;
 		}
 		
-		connection.getEntries().whenComplete((entries, e) -> {
+		connection.getEntries(filter).whenComplete((entries, e) -> {
 			if (e != null)
 				e.printStackTrace();
 			else {

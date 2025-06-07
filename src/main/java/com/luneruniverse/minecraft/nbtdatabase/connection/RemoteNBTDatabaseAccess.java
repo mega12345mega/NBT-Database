@@ -10,6 +10,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
+import com.luneruniverse.minecraft.nbtdatabase.EntryFilter;
 import com.luneruniverse.minecraft.nbtdatabase.NBTEntry;
 import com.luneruniverse.minecraft.nbtdatabase.Tag;
 import com.luneruniverse.minecraft.nbtdatabase.Util;
@@ -17,9 +18,6 @@ import com.luneruniverse.minecraft.nbtdatabase.connection.packets.AddEntryReques
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.AddTagRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.AddTagToEntryRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.EntriesPacket;
-import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetEntriesByAuthorNameRequestPacket;
-import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetEntriesByAuthorUUIDRequestPacket;
-import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetEntriesByNameRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetEntriesByTagRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetEntriesRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetEntryRequestPacket;
@@ -100,23 +98,8 @@ public class RemoteNBTDatabaseAccess implements NBTDatabaseAccess {
 	}
 	
 	@Override
-	public CompletableFuture<List<NBTEntry>> getEntries() {
-		return request(new GetEntriesRequestPacket(), EntriesPacket.class, EntriesPacket::getEntriesList);
-	}
-	
-	@Override
-	public CompletableFuture<List<NBTEntry>> getEntriesByName(String query) {
-		return request(new GetEntriesByNameRequestPacket(query), EntriesPacket.class, EntriesPacket::getEntriesList);
-	}
-	
-	@Override
-	public CompletableFuture<List<NBTEntry>> getEntriesByAuthorUUID(UUID query) {
-		return request(new GetEntriesByAuthorUUIDRequestPacket(query), EntriesPacket.class, EntriesPacket::getEntriesList);
-	}
-	
-	@Override
-	public CompletableFuture<List<NBTEntry>> getEntriesByAuthorName(String query) {
-		return request(new GetEntriesByAuthorNameRequestPacket(query), EntriesPacket.class, EntriesPacket::getEntriesList);
+	public CompletableFuture<List<NBTEntry>> getEntries(EntryFilter filter) {
+		return request(new GetEntriesRequestPacket(filter), EntriesPacket.class, EntriesPacket::getEntriesList);
 	}
 	
 	@Override

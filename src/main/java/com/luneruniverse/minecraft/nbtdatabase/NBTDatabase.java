@@ -38,13 +38,14 @@ public class NBTDatabase implements AutoCloseable {
 						+ "`id` INTEGER PRIMARY KEY,"
 						+ "`name` TEXT NOT NULL,"
 						+ "`nbt` BLOB NOT NULL,"
-						+ "`DataVersion` INTEGER NOT NULL,"
+						+ "`data_version` INTEGER NOT NULL,"
 						+ "`author_uuid` TEXT NOT NULL,"
 						+ "`author_username` TEXT NOT NULL,"
 						+ "`created` INTEGER NOT NULL,"
 						+ "`modified` INTEGER NOT NULL,"
 						+ "`hash` TEXT NOT NULL,"
 						+ "`verified` INTEGER NOT NULL)");
+				sql.executeUpdate("CREATE INDEX `entries-data_version` ON `entries` (`data_version`)");
 				sql.executeUpdate("CREATE INDEX `entries-author_uuid` ON `entries` (`author_uuid`)");
 				
 				sql.executeUpdate("CREATE TABLE `tags` ("
@@ -145,52 +146,46 @@ public class NBTDatabase implements AutoCloseable {
 		}
 	}
 	
-	public List<NBTEntry> getEntries() throws SQLException {
-		try (PreparedStatement sql = connection.prepareStatement("SELECT * FROM `entries` LIMIT ?")) {
-			sql.setQueryTimeout(5);
-			sql.setInt(1, config.getMaxNumResults());
-			ResultSet result = sql.executeQuery();
-			
-			List<NBTEntry> output = new ArrayList<>();
-			while (result.next())
-				output.add(NBTEntry.fromDatabase(result));
-			return output;
+	public List<NBTEntry> getEntries(EntryFilter filter) throws SQLException {
+		List<String> queries = new ArrayList<>();
+		if (filter.getName() != null)
+			queries.add("`name` LIKE ? ESCAPE \"\\\"");
+		if (filter.getMinDataVersion() != null || filter.getMaxDataVersion() != null) {
+			if (filter.getMaxDataVersion() == null)
+				queries.add("`data_version`>=?");
+			else if (filter.getMinDataVersion() == null)
+				queries.add("`data_version`<=?");
+			else if (filter.getMinDataVersion() == filter.getMaxDataVersion())
+				queries.add("`data_version`=?");
+			else
+				queries.add("`data_version` BETWEEN ? AND ?");
 		}
-	}
-	
-	public List<NBTEntry> getEntriesByName(String query) throws SQLException {
-		try (PreparedStatement sql = connection.prepareStatement("SELECT * FROM `entries` WHERE `name` LIKE ? ESCAPE \"\\\" LIMIT ?")) {
-			sql.setQueryTimeout(5);
-			sql.setString(1, "%" + escapeQuery(query) + "%");
-			sql.setInt(2, config.getMaxNumResults());
-			ResultSet result = sql.executeQuery();
-			
-			List<NBTEntry> output = new ArrayList<>();
-			while (result.next())
-				output.add(NBTEntry.fromDatabase(result));
-			return output;
+		if (filter.getAuthorUuid() != null)
+			queries.add("`author_uuid`=?");
+		if (filter.getAuthorName() != null)
+			queries.add("`author_username` LIKE ? ESCAPE \"\\\"");
+		
+		StringBuilder sqlBuilder = new StringBuilder("SELECT * FROM `entries`");
+		for (int i = 0; i < queries.size(); i++) {
+			sqlBuilder.append(i == 0 ? " WHERE " : " AND ");
+			sqlBuilder.append(queries.get(i));
 		}
-	}
-	
-	public List<NBTEntry> getEntriesByAuthorUUID(UUID uuid) throws SQLException {
-		try (PreparedStatement sql = connection.prepareStatement("SELECT * FROM `entries` WHERE `author_uuid`=? LIMIT ?")) {
+		sqlBuilder.append(" LIMIT ?");
+		
+		try (PreparedStatement sql = connection.prepareStatement(sqlBuilder.toString())) {
 			sql.setQueryTimeout(5);
-			sql.setString(1, uuid.toString());
-			sql.setInt(2, config.getMaxNumResults());
-			ResultSet result = sql.executeQuery();
-			
-			List<NBTEntry> output = new ArrayList<>();
-			while (result.next())
-				output.add(NBTEntry.fromDatabase(result));
-			return output;
-		}
-	}
-	
-	public List<NBTEntry> getEntriesByAuthorName(String query) throws SQLException {
-		try (PreparedStatement sql = connection.prepareStatement("SELECT * FROM `entries` WHERE `author_username` LIKE ? ESCAPE \"\\\" LIMIT ?")) {
-			sql.setQueryTimeout(5);
-			sql.setString(1, "%" + escapeQuery(query) + "%");
-			sql.setInt(2, config.getMaxNumResults());
+			int param = 0;
+			if (filter.getName() != null)
+				sql.setString(++param, "%" + escapeQuery(filter.getName()) + "%");
+			if (filter.getMinDataVersion() != null)
+				sql.setInt(++param, filter.getMinDataVersion());
+			if (filter.getMaxDataVersion() != null && filter.getMinDataVersion() != filter.getMaxDataVersion())
+				sql.setInt(++param, filter.getMaxDataVersion());
+			if (filter.getAuthorUuid() != null)
+				sql.setString(++param, filter.getAuthorUuid().toString());
+			if (filter.getAuthorName() != null)
+				sql.setString(++param, "%" + escapeQuery(filter.getAuthorName()) + "%");
+			sql.setInt(++param, config.getMaxNumResults());
 			ResultSet result = sql.executeQuery();
 			
 			List<NBTEntry> output = new ArrayList<>();

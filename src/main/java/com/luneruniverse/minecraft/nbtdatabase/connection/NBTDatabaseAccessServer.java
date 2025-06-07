@@ -10,9 +10,6 @@ import com.luneruniverse.minecraft.nbtdatabase.connection.packets.AddEntryReques
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.AddTagRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.AddTagToEntryRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.EntriesPacket;
-import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetEntriesByAuthorNameRequestPacket;
-import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetEntriesByAuthorUUIDRequestPacket;
-import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetEntriesByNameRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetEntriesByTagRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetEntriesRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetEntryRequestPacket;
@@ -51,9 +48,6 @@ public class NBTDatabaseAccessServer implements AutoCloseable {
 				.when(RemoveEntryRequestPacket.class, this::removeEntryRequestPacket)
 				.when(GetEntryRequestPacket.class, this::getEntryRequestPacket)
 				.when(GetEntriesRequestPacket.class, this::getEntriesRequestPacket)
-				.when(GetEntriesByNameRequestPacket.class, this::getEntriesByNameRequestPacket)
-				.when(GetEntriesByAuthorUUIDRequestPacket.class, this::getEntriesByAuthorUUIDRequestPacket)
-				.when(GetEntriesByAuthorNameRequestPacket.class, this::getEntriesByAuthorNameRequestPacket)
 				.when(AddTagRequestPacket.class, this::addTagRequestPacket)
 				.when(RemoveTagRequestPacket.class, this::removeTagRequestPacket)
 				.when(GetTagsRequestPacket.class, this::getTagsRequestPacket)
@@ -104,19 +98,7 @@ public class NBTDatabaseAccessServer implements AutoCloseable {
 	}
 	
 	private void getEntriesRequestPacket(GetEntriesRequestPacket packet, Connection conn, WaitState wait) {
-		respond(packet, conn, database.getEntries(), EntriesPacket::new);
-	}
-	
-	private void getEntriesByNameRequestPacket(GetEntriesByNameRequestPacket packet, Connection conn, WaitState wait) {
-		respond(packet, conn, database.getEntriesByName(packet.getQuery()), EntriesPacket::new);
-	}
-	
-	private void getEntriesByAuthorUUIDRequestPacket(GetEntriesByAuthorUUIDRequestPacket packet, Connection conn, WaitState wait) {
-		respond(packet, conn, database.getEntriesByAuthorUUID(packet.getQuery()), EntriesPacket::new);
-	}
-	
-	private void getEntriesByAuthorNameRequestPacket(GetEntriesByAuthorNameRequestPacket packet, Connection conn, WaitState wait) {
-		respond(packet, conn, database.getEntriesByAuthorName(packet.getQuery()), EntriesPacket::new);
+		respond(packet, conn, database.getEntries(packet.getFilter()), EntriesPacket::new);
 	}
 	
 	private void addTagRequestPacket(AddTagRequestPacket packet, Connection conn, WaitState wait) {

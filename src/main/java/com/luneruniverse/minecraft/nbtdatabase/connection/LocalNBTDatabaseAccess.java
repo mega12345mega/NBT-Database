@@ -7,6 +7,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
+import com.luneruniverse.minecraft.nbtdatabase.EntryFilter;
 import com.luneruniverse.minecraft.nbtdatabase.NBTDatabase;
 import com.luneruniverse.minecraft.nbtdatabase.NBTEntry;
 import com.luneruniverse.minecraft.nbtdatabase.Tag;
@@ -43,23 +44,8 @@ public class LocalNBTDatabaseAccess implements NBTDatabaseAccess {
 	}
 	
 	@Override
-	public CompletableFuture<List<NBTEntry>> getEntries() {
-		return Util.supplyAsync(() -> database.getEntries(), executor);
-	}
-	
-	@Override
-	public CompletableFuture<List<NBTEntry>> getEntriesByName(String query) {
-		return Util.supplyAsync(() -> database.getEntriesByName(query), executor);
-	}
-	
-	@Override
-	public CompletableFuture<List<NBTEntry>> getEntriesByAuthorUUID(UUID query) {
-		return Util.supplyAsync(() -> database.getEntriesByAuthorUUID(query), executor);
-	}
-	
-	@Override
-	public CompletableFuture<List<NBTEntry>> getEntriesByAuthorName(String query) {
-		return Util.supplyAsync(() -> database.getEntriesByAuthorName(query), executor);
+	public CompletableFuture<List<NBTEntry>> getEntries(EntryFilter filter) {
+		return Util.supplyAsync(() -> database.getEntries(filter), executor);
 	}
 	
 	@Override
