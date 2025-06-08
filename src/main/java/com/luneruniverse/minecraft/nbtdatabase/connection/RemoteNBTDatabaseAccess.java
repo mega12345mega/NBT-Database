@@ -73,7 +73,8 @@ public class RemoteNBTDatabaseAccess implements NBTDatabaseAccess {
 	}
 	
 	private CompletableFuture<Void> requestVoid(Packet packet) {
-		return requestOptionalResponse(packet, PrimitivePacket.class, response -> response.isBoolean() && (boolean) response.getValue() ? Optional.of(true) : Optional.empty()).<Void>thenApply(success -> null);
+		return requestOptionalResponse(packet, PrimitivePacket.class, response -> response.isBoolean() &&
+				(boolean) response.getValue() ? Optional.of(true) : Optional.empty()).<Void>thenApply(success -> null);
 	}
 	
 	@Override
@@ -83,7 +84,8 @@ public class RemoteNBTDatabaseAccess implements NBTDatabaseAccess {
 	
 	@Override
 	public CompletableFuture<Long> addEntry(String name, byte[] nbt, int dataVersion, UUID authorUuid, String authorUsername, boolean verified) {
-		return requestOptionalResponse(new AddEntryRequestPacket(name, nbt, dataVersion, authorUuid, authorUsername, verified), PrimitivePacket.class, response -> response.isLong() ? Optional.of((long) response.getValue()) : Optional.empty());
+		return requestOptionalResponse(new AddEntryRequestPacket(name, nbt, dataVersion, authorUuid, authorUsername, verified),
+				PrimitivePacket.class, response -> response.isLong() ? Optional.of((long) response.getValue()) : Optional.empty());
 	}
 	
 	@Override

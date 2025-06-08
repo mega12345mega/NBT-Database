@@ -69,8 +69,18 @@ public class CLI extends Thread {
 		
 		root.addCommand(new GroupCommand("entry")
 				.addCommand(new SingleCommand("add", inputs -> entryAddCmd(
-						inputs.getArgument("name", String.class), new File(inputs.getArgument("file", String.class)), inputs.getArgument("data_version", Integer.class), inputs.getArgument("author_uuid", UUID.class), inputs.getArgument("author_username", String.class), !inputs.hasFlag("unverified")))
-						.addArgument("name", new StringInput()).addArgument("file", new StringInput()).addArgument("data_version", new DataVersionInput()).addArgument("author_uuid", new UUIDInput()).addArgument("author_username", new StringInput()).addFlag("unverified", "uv"))
+						inputs.getArgument("name", String.class),
+						new File(inputs.getArgument("file", String.class)),
+						inputs.getArgument("data_version", Integer.class),
+						inputs.getArgument("author_uuid", UUID.class),
+						inputs.getArgument("author_username", String.class),
+						!inputs.hasFlag("unverified")))
+						.addArgument("name", new StringInput())
+						.addArgument("file", new StringInput())
+						.addArgument("data_version", new DataVersionInput())
+						.addArgument("author_uuid", new UUIDInput())
+						.addArgument("author_username", new StringInput())
+						.addFlag("unverified", "uv"))
 				.addCommand(new SingleCommand("remove", inputs -> entryRemoveCmd(
 						inputs.getArgument("id", Long.class)))
 						.addArgument("id", new LongInput()))
@@ -98,7 +108,14 @@ public class CLI extends Thread {
 								filter.filterByTags(new HashSet<>(Arrays.asList(inputs.getFlag("tags", String.class).split(","))));
 							entryListCmd(filter, inputs.hasFlag("verbose"));
 						})
-						.addFlag("name", "n", new StringInput()).addFlag("data_version", "d", new DataVersionInput()).addFlag("data_version_min", "dmin", new DataVersionInput()).addFlag("data_version_max", "dmax", new DataVersionInput()).addFlag("author_uuid", "au", new UUIDInput()).addFlag("author_name", "an", new StringInput()).addFlag("tags", "t", new StringInput()).addFlag("verbose", "v")));
+						.addFlag("name", "n", new StringInput())
+						.addFlag("data_version", "d", new DataVersionInput())
+						.addFlag("data_version_min", "dmin", new DataVersionInput())
+						.addFlag("data_version_max", "dmax", new DataVersionInput())
+						.addFlag("author_uuid", "au", new UUIDInput())
+						.addFlag("author_name", "an", new StringInput())
+						.addFlag("tags", "t", new StringInput())
+						.addFlag("verbose", "v")));
 		
 		root.addCommand(new GroupCommand("tag")
 				.addCommand(new SingleCommand("add", inputs -> tagAddCmd(
@@ -126,8 +143,12 @@ public class CLI extends Thread {
 		
 		root.addCommand(new GroupCommand("result")
 				.addCommand(new SingleCommand("export", inputs -> resultExportCmd(
-						inputs.getArgument("index", Integer.class), new File(inputs.getArgument("file", String.class)), inputs.hasFlag("overwrite")))
-						.addArgument("index", new IntegerInput().min(0)).addArgument("file", new StringInput()).addFlag("overwrite", "o"))
+						inputs.getArgument("index", Integer.class),
+						new File(inputs.getArgument("file", String.class)),
+						inputs.hasFlag("overwrite")))
+						.addArgument("index", new IntegerInput().min(0))
+						.addArgument("file", new StringInput())
+						.addFlag("overwrite", "o"))
 				.addCommand(new SingleCommand("remove", inputs -> resultRemoveCmd(
 						inputs.getArgument("index", Integer.class)))
 						.addArgument("index", new IntegerInput().min(0)))
