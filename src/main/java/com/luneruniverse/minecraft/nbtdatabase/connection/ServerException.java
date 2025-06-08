@@ -1,9 +1,9 @@
 package com.luneruniverse.minecraft.nbtdatabase.connection;
 
 @SuppressWarnings("serial")
-public class ReplyException extends RuntimeException {
+public class ServerException extends RequestFailedException {
 	
-	public ReplyException(String message) {
+	public ServerException(String message) {
 		super(message);
 	}
 	

@@ -5,6 +5,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ForkJoinPool;
 import java.util.function.Function;
 
+import com.luneruniverse.minecraft.nbtdatabase.IllegalRequestException;
 import com.luneruniverse.minecraft.nbtdatabase.Util;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.AddEntryRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.AddTagRequestPacket;
@@ -59,7 +60,7 @@ public class NBTDatabaseAccessServer implements AutoCloseable {
 		request.whenComplete((value, e) -> {
 			try {
 				if (e != null) {
-					if (e instanceof ReplyException)
+					if (e instanceof IllegalRequestException)
 						conn.reply(packet, new PrimitivePacket(e.getMessage()));
 					else {
 						e.printStackTrace();

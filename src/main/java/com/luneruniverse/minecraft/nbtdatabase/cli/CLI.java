@@ -639,18 +639,21 @@ public class CLI extends Thread {
 		});
 	}
 	
+	public void exec(String cmd) {
+		try {
+			root.parse(CommandStream.parse(cmd));
+		} catch (CommandParseException | CommandSyntaxException e) {
+			System.err.println(e.getMessage());
+		}
+	}
+	
 	@Override
 	public void run() {
 		try {
 			BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
 			String line;
-			while (!exit && (line = in.readLine()) != null) {
-				try {
-					root.parse(CommandStream.parse(line));
-				} catch (CommandParseException | CommandSyntaxException e) {
-					System.err.println(e.getMessage());
-				}
-			}
+			while (!exit && (line = in.readLine()) != null)
+				exec(line);
 		} catch (IOException e) {
 			e.printStackTrace();
 		} finally {

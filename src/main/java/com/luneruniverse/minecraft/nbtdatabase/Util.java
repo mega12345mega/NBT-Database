@@ -15,6 +15,9 @@ public class Util {
 	public interface ThrowableRunnable {
 		public void run() throws Throwable;
 	}
+	public interface ThrowableFunction<I, O> {
+		public O apply(I input) throws Throwable;
+	}
 	
 	public static <T> CompletableFuture<T> supplyAsync(ThrowableSupplier<T> supplier, Executor executor) {
 		CompletableFuture<T> future = new CompletableFuture<>();
@@ -60,6 +63,22 @@ public class Util {
 					future.complete(value);
 			} catch (Throwable e2) {
 				future.completeExceptionally(e2);
+			}
+		});
+		return future;
+	}
+	
+	public static <I, O> CompletableFuture<O> thenApply(CompletableFuture<I> input, ThrowableFunction<I, O> function) {
+		CompletableFuture<O> future = new CompletableFuture<>();
+		input.whenComplete((value, e) -> {
+			if (e != null)
+				future.completeExceptionally(e);
+			else {
+				try {
+					future.complete(function.apply(value));
+				} catch (Throwable e2) {
+					future.completeExceptionally(e2);
+				}
 			}
 		});
 		return future;

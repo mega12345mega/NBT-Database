@@ -12,6 +12,9 @@ import java.util.List;
 import java.util.Random;
 import java.util.UUID;
 
+import org.sqlite.SQLiteErrorCode;
+import org.sqlite.SQLiteException;
+
 import com.luneruniverse.minecraft.nbtdatabase.connection.NBTDatabaseMetadata;
 
 public class NBTDatabase implements AutoCloseable {
@@ -80,14 +83,13 @@ public class NBTDatabase implements AutoCloseable {
 		return new NBTDatabaseMetadata(config.getMaxNbtSize(), config.getMaxNumResults());
 	}
 	
-	public long addEntry(String name, byte[] nbt, int dataVersion, UUID authorUuid, String authorUsername, boolean verified) throws IllegalArgumentException, SQLException {
-		if (name.length() > 64)
-			throw new IllegalArgumentException("name must be <= 64 characters long");
+	public long addEntry(String name, byte[] nbt, int dataVersion, UUID authorUuid, String authorUsername, boolean verified) throws IllegalRequestException, SQLException {
+		if (name.length() > 256)
+			throw new IllegalRequestException("name must be <= 256 characters long");
 		if (nbt.length > config.getMaxNbtSize())
-			throw new IllegalArgumentException("nbt must be <= " + config.getMaxNbtSize() + " bytes long");
+			throw new IllegalRequestException("nbt must be <= " + config.getMaxNbtSize() + " bytes long");
 		if (authorUsername.length() > 16)
-			throw new IllegalArgumentException("authorUsername must be <= 16 characters long");
-		
+			throw new IllegalRequestException("authorUsername must be <= 16 characters long");
 		
 		long id = genNewEntryId();
 		long created = System.currentTimeMillis();
@@ -126,11 +128,12 @@ public class NBTDatabase implements AutoCloseable {
 		return id;
 	}
 	
-	public void removeEntry(long id) throws SQLException {
+	public void removeEntry(long id) throws IllegalRequestException, SQLException {
 		try (PreparedStatement sql = connection.prepareStatement("DELETE FROM `entries` WHERE `id`=?")) {
 			sql.setQueryTimeout(5);
 			sql.setLong(1, id);
-			sql.executeUpdate();
+			if (sql.executeUpdate() == 0)
+				throw new IllegalRequestException("Entry doesn't exist: " + id);
 		}
 	}
 	
@@ -189,20 +192,40 @@ public class NBTDatabase implements AutoCloseable {
 		}
 	}
 	
-	public void addTag(String name, int color) throws SQLException {
+	public void addTag(String name, int color) throws IllegalRequestException, SQLException {
 		try (PreparedStatement sql = connection.prepareStatement("INSERT INTO `tags` VALUES (?, ?)")) {
 			sql.setQueryTimeout(5);
 			sql.setString(1, name);
 			sql.setInt(2, color);
-			sql.executeUpdate();
+			try {
+				sql.executeUpdate();
+			} catch (SQLiteException e) {
+				if (e.getResultCode() == SQLiteErrorCode.SQLITE_CONSTRAINT_UNIQUE)
+					throw new IllegalRequestException("Tag already exists: " + name);
+				else
+					throw e;
+			}
 		}
 	}
 	
-	public void removeTag(String name) throws SQLException {
+	public void removeTag(String name) throws IllegalRequestException, SQLException {
 		try (PreparedStatement sql = connection.prepareStatement("DELETE FROM `tags` WHERE `name`=?")) {
 			sql.setQueryTimeout(5);
 			sql.setString(1, name);
-			sql.executeUpdate();
+			if (sql.executeUpdate() == 0)
+				throw new IllegalRequestException("Tag doesn't exist: " + name);
+		}
+	}
+	
+	public Tag getTag(String name) throws SQLException {
+		try (PreparedStatement sql = connection.prepareStatement("SELECT * FROM `tags` WHERE `name`=?")) {
+			sql.setQueryTimeout(5);
+			sql.setString(1, name);
+			ResultSet result = sql.executeQuery();
+			
+			if (!result.isBeforeFirst())
+				return null;
+			return Tag.fromDatabase(result);
 		}
 	}
 	
@@ -227,21 +250,36 @@ public class NBTDatabase implements AutoCloseable {
 		}
 	}
 	
-	public void addTagToEntry(long entry, String tag) throws SQLException {
+	public void addTagToEntry(long entry, String tag) throws IllegalRequestException, SQLException {
 		try (PreparedStatement sql = connection.prepareStatement("INSERT INTO `entries_tags` VALUES(?, ?)")) {
 			sql.setQueryTimeout(5);
 			sql.setLong(1, entry);
 			sql.setString(2, tag);
-			sql.executeUpdate();
+			try {
+				sql.executeUpdate();
+			} catch (SQLiteException e) {
+				if (e.getResultCode() == SQLiteErrorCode.SQLITE_CONSTRAINT_UNIQUE)
+					throw new IllegalRequestException("Entry with id " + entry + " already has tag '" + tag + "'");
+				else if (e.getResultCode() == SQLiteErrorCode.SQLITE_CONSTRAINT_FOREIGNKEY)
+					throw new IllegalRequestException(getEntry(entry) == null ? "Entry doesn't exist: " + entry : "Tag doesn't exist: " + tag);
+				else
+					throw e;
+			}
 		}
 	}
 	
-	public void removeTagFromEntry(long entry, String tag) throws SQLException {
+	public void removeTagFromEntry(long entry, String tag) throws IllegalRequestException, SQLException {
 		try (PreparedStatement sql = connection.prepareStatement("DELETE FROM `entries_tags` WHERE entry_id=? AND `tag`=?")) {
 			sql.setQueryTimeout(5);
 			sql.setLong(1, entry);
 			sql.setString(2, tag);
-			sql.executeUpdate();
+			if (sql.executeUpdate() == 0) {
+				if (getEntry(entry) == null)
+					throw new IllegalRequestException("Entry doesn't exist: " + entry);
+				if (getTag(tag) == null)
+					throw new IllegalRequestException("Tag doesn't exist: " + tag);
+				throw new IllegalRequestException("Entry with id " + entry + " already doesn't have tag '" + tag + "'");
+			}
 		}
 	}
 	

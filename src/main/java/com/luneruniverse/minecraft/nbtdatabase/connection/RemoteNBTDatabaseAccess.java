@@ -57,14 +57,14 @@ public class RemoteNBTDatabaseAccess implements NBTDatabaseAccess {
 						return value.get();
 				}
 				if (response instanceof PrimitivePacket)
-					throw new RuntimeException(((PrimitivePacket) response).getValue().toString());
+					throw new ServerException(((PrimitivePacket) response).getValue().toString());
 				if (response == null)
-					throw new RuntimeException("Request timed out");
-				throw new RuntimeException("Request response was invalid");
+					throw new RequestFailedException("Request timed out");
+				throw new RequestFailedException("Request response was invalid");
 			} catch (IOException e) {
-				throw new RuntimeException("Error while sending request", e);
+				throw new RequestFailedException("Error while sending request", e);
 			} catch (InterruptedException e) {
-				throw new RuntimeException("Request interrupted", e);
+				throw new RequestFailedException("Request interrupted", e);
 			}
 		}, executor);
 	}
@@ -73,8 +73,8 @@ public class RemoteNBTDatabaseAccess implements NBTDatabaseAccess {
 	}
 	
 	private CompletableFuture<Void> requestVoid(Packet packet) {
-		return requestOptionalResponse(packet, PrimitivePacket.class, response -> response.isBoolean() &&
-				(boolean) response.getValue() ? Optional.of(true) : Optional.empty()).<Void>thenApply(success -> null);
+		return Util.thenApply(requestOptionalResponse(packet, PrimitivePacket.class, response -> response.isBoolean() &&
+				(boolean) response.getValue() ? Optional.of(true) : Optional.empty()), success -> null);
 	}
 	
 	@Override
