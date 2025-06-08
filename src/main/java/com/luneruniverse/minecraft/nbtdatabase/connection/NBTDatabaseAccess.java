@@ -7,6 +7,7 @@ import java.util.concurrent.CompletableFuture;
 import com.luneruniverse.minecraft.nbtdatabase.EntryFilter;
 import com.luneruniverse.minecraft.nbtdatabase.NBTEntry;
 import com.luneruniverse.minecraft.nbtdatabase.Tag;
+import com.luneruniverse.minecraft.nbtdatabase.TagFilter;
 
 public interface NBTDatabaseAccess extends AutoCloseable {
 	public CompletableFuture<NBTDatabaseMetadata> getMetadata();
@@ -16,10 +17,8 @@ public interface NBTDatabaseAccess extends AutoCloseable {
 	public CompletableFuture<List<NBTEntry>> getEntries(EntryFilter filter);
 	public CompletableFuture<Void> addTag(String name, int color);
 	public CompletableFuture<Void> removeTag(String name);
-	public CompletableFuture<List<Tag>> getTags();
+	public CompletableFuture<List<Tag>> getTags(TagFilter filter);
 	public CompletableFuture<Void> addTagToEntry(long entry, String tag);
 	public CompletableFuture<Void> removeTagFromEntry(long entry, String tag);
-	public CompletableFuture<List<Tag>> getTagsByEntry(long entry);
-	public CompletableFuture<List<NBTEntry>> getEntriesByTag(String tag);
 	public CompletableFuture<Void> closeAsync();
 }

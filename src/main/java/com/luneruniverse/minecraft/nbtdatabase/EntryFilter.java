@@ -1,5 +1,7 @@
 package com.luneruniverse.minecraft.nbtdatabase;
 
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
 public class EntryFilter {
@@ -9,14 +11,16 @@ public class EntryFilter {
 	private Integer maxDataVersion;
 	private UUID authorUuid;
 	private String authorName;
+	private Set<String> tags;
 	
 	public EntryFilter() {}
-	public EntryFilter(String name, Integer minDataVersion, Integer maxDataVersion, UUID authorUuid, String authorName) {
+	public EntryFilter(String name, Integer minDataVersion, Integer maxDataVersion, UUID authorUuid, String authorName, Set<String> tags) {
 		this.name = name;
 		this.minDataVersion = minDataVersion;
 		this.maxDataVersion = maxDataVersion;
 		this.authorUuid = authorUuid;
 		this.authorName = authorName;
+		this.tags = (tags == null || tags.isEmpty() ? null : tags);
 	}
 	
 	public EntryFilter filterByName(String query) {
@@ -44,6 +48,20 @@ public class EntryFilter {
 		authorName = query;
 		return this;
 	}
+	public EntryFilter filterByTags(Set<String> query) {
+		if (query == null || query.isEmpty())
+			return this;
+		if (tags == null)
+			tags = new HashSet<>();
+		tags.addAll(query);
+		return this;
+	}
+	public EntryFilter filterByTag(String query) {
+		if (tags == null)
+			tags = new HashSet<>();
+		tags.add(query);
+		return this;
+	}
 	
 	public String getName() {
 		return name;
@@ -59,6 +77,9 @@ public class EntryFilter {
 	}
 	public String getAuthorName() {
 		return authorName;
+	}
+	public Set<String> getTags() {
+		return tags;
 	}
 	
 }

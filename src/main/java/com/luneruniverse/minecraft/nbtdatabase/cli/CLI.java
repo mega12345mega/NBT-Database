@@ -7,6 +7,7 @@ import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.sql.SQLException;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
 
@@ -15,6 +16,7 @@ import com.luneruniverse.minecraft.nbtdatabase.EntryFilter;
 import com.luneruniverse.minecraft.nbtdatabase.NBTDatabase;
 import com.luneruniverse.minecraft.nbtdatabase.NBTEntry;
 import com.luneruniverse.minecraft.nbtdatabase.Tag;
+import com.luneruniverse.minecraft.nbtdatabase.TagFilter;
 import com.luneruniverse.minecraft.nbtdatabase.connection.LocalNBTDatabaseAccess;
 import com.luneruniverse.minecraft.nbtdatabase.connection.NBTDatabaseAccess;
 import com.luneruniverse.minecraft.nbtdatabase.connection.NBTDatabaseAccessServer;
@@ -92,9 +94,11 @@ public class CLI extends Thread {
 								filter.filterByAuthorUuid(inputs.getFlag("author_uuid", UUID.class));
 							if (inputs.hasFlag("author_name"))
 								filter.filterByAuthorName(inputs.getFlag("author_name", String.class));
+							if (inputs.hasFlag("tags"))
+								filter.filterByTags(new HashSet<>(Arrays.asList(inputs.getFlag("tags", String.class).split(","))));
 							entryListCmd(filter, inputs.hasFlag("verbose"));
 						})
-						.addFlag("name", "n", new StringInput()).addFlag("data_version", "d", new DataVersionInput()).addFlag("data_version_min", "dmin", new DataVersionInput()).addFlag("data_version_max", "dmax", new DataVersionInput()).addFlag("author_uuid", "au", new UUIDInput()).addFlag("author_name", "an", new StringInput()).addFlag("verbose", "v")));
+						.addFlag("name", "n", new StringInput()).addFlag("data_version", "d", new DataVersionInput()).addFlag("data_version_min", "dmin", new DataVersionInput()).addFlag("data_version_max", "dmax", new DataVersionInput()).addFlag("author_uuid", "au", new UUIDInput()).addFlag("author_name", "an", new StringInput()).addFlag("tags", "t", new StringInput()).addFlag("verbose", "v")));
 		
 		root.addCommand(new GroupCommand("tag")
 				.addCommand(new SingleCommand("add", inputs -> tagAddCmd(
@@ -103,7 +107,16 @@ public class CLI extends Thread {
 				.addCommand(new SingleCommand("remove", inputs -> tagRemoveCmd(
 						inputs.getArgument("name", String.class)))
 						.addArgument("name", new StringInput()))
-				.addCommand(new SingleCommand("list", inputs -> tagListCmd()))
+				.addCommand(new SingleCommand("list",
+						inputs -> {
+							TagFilter filter = new TagFilter();
+							if (inputs.hasFlag("name"))
+								filter.filterByName(inputs.getFlag("name", String.class));
+							if (inputs.hasFlag("entry_id"))
+								filter.filterByEntryId(inputs.getFlag("entry_id", Long.class));
+							tagListCmd(filter);
+						})
+						.addFlag("name", "n", new StringInput()).addFlag("entry_id", "e", new LongInput()))
 				.addCommand(new SingleCommand("attach", inputs -> tagAttachCmd(
 						inputs.getArgument("entry", Long.class), inputs.getArgument("tag", String.class)))
 						.addArgument("entry", new LongInput()).addArgument("tag", new StringInput()))
@@ -121,6 +134,14 @@ public class CLI extends Thread {
 				.addCommand(new SingleCommand("list", inputs -> resultListCmd(
 						inputs.hasFlag("verbose")))
 						.addFlag("verbose", "v"))
+				.addCommand(new SingleCommand("tags",
+						inputs -> {
+							TagFilter filter = new TagFilter();
+							if (inputs.hasFlag("name"))
+								filter.filterByName(inputs.getFlag("name", String.class));
+							resultTagsCmd(inputs.getArgument("index", Integer.class), filter);
+						})
+						.addArgument("index", new IntegerInput().min(0)).addFlag("name", "n", new StringInput()))
 				.addCommand(new SingleCommand("attach", inputs -> resultAttachCmd(
 						inputs.getArgument("index", Integer.class), inputs.getArgument("tag", String.class)))
 						.addArgument("index", new IntegerInput().min(0)).addArgument("tag", new StringInput()))
@@ -382,13 +403,13 @@ public class CLI extends Thread {
 		});
 	}
 	
-	private void tagListCmd() {
+	private void tagListCmd(TagFilter filter) {
 		if (connection == null) {
 			System.err.println("There is not an open connection");
 			return;
 		}
 		
-		connection.getTags().whenComplete((tags, e) -> {
+		connection.getTags(filter).whenComplete((tags, e) -> {
 			if (e != null)
 				e.printStackTrace();
 			else if (tags.isEmpty())
@@ -516,6 +537,35 @@ public class CLI extends Thread {
 				System.out.println("  Verified: " + entry.verified);
 			}
 		}
+	}
+	
+	private void resultTagsCmd(int index, TagFilter filter) {
+		if (connection == null) {
+			System.err.println("There is not an open connection");
+			return;
+		}
+		
+		if (result == null) {
+			System.err.println("There are no saved results");
+			return;
+		}
+		
+		if (index >= result.size()) {
+			System.err.println("Invalid index: " + index);
+			return;
+		}
+		
+		filter.filterByEntryId(result.get(index).id);
+		connection.getTags(filter).whenComplete((tags, e) -> {
+			if (e != null)
+				e.printStackTrace();
+			else if (tags.isEmpty())
+				System.out.println("There are no tags");
+			else {
+				for (Tag tag : tags)
+					System.out.println(tag.name + " (#" + ColorInput.toString(tag.color) + ")");
+			}
+		});
 	}
 	
 	private void resultAttachCmd(int index, String tag) {

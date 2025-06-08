@@ -21,7 +21,10 @@ public class GetEntriesRequestPacket extends Packet {
 				in.readBoolean() ? in.readInt() : null,
 				in.readBoolean() ? in.readInt() : null,
 				in.readBoolean() ? new UUID(in.readLong(), in.readLong()) : null,
-				in.readBoolean() ? in.readUTF() : null);
+				in.readBoolean() ? in.readUTF() : null,
+				null);
+		for (int i = 0, numTags = in.readInt(); i < numTags; i++)
+			filter.filterByTag(in.readUTF());
 	}
 	
 	public EntryFilter getFilter() {
@@ -51,6 +54,12 @@ public class GetEntriesRequestPacket extends Packet {
 		out.writeBoolean(filter.getAuthorName() != null);
 		if (filter.getAuthorName() != null)
 			out.writeUTF(filter.getAuthorName());
+		
+		out.writeInt(filter.getTags() == null ? 0 : filter.getTags().size());
+		if (filter.getTags() != null) {
+			for (String tag : filter.getTags())
+				out.writeUTF(tag);
+		}
 	}
 	
 }

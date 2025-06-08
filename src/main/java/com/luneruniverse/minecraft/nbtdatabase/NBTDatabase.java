@@ -147,45 +147,39 @@ public class NBTDatabase implements AutoCloseable {
 	}
 	
 	public List<NBTEntry> getEntries(EntryFilter filter) throws SQLException {
-		List<String> queries = new ArrayList<>();
+		SQLSelectBuilder select = new SQLSelectBuilder("`entries`.* FROM `entries`");
 		if (filter.getName() != null)
-			queries.add("`name` LIKE ? ESCAPE \"\\\"");
+			select.addFilter("`entries`.`name` LIKE ? ESCAPE \"\\\"", PreparedStatement::setString, "%" + escapeQuery(filter.getName()) + "%");
 		if (filter.getMinDataVersion() != null || filter.getMaxDataVersion() != null) {
 			if (filter.getMaxDataVersion() == null)
-				queries.add("`data_version`>=?");
+				select.addFilter("`entries`.`data_version`>=?", PreparedStatement::setInt, filter.getMinDataVersion());
 			else if (filter.getMinDataVersion() == null)
-				queries.add("`data_version`<=?");
+				select.addFilter("`entries`.`data_version`<=?", PreparedStatement::setInt, filter.getMaxDataVersion());
 			else if (filter.getMinDataVersion() == filter.getMaxDataVersion())
-				queries.add("`data_version`=?");
-			else
-				queries.add("`data_version` BETWEEN ? AND ?");
+				select.addFilter("`entries`.`data_version`=?", PreparedStatement::setInt, filter.getMinDataVersion());
+			else {
+				select.addFilter("`entries`.`data_version` BETWEEN ? AND ?");
+				select.addParam(PreparedStatement::setInt, filter.getMinDataVersion());
+				select.addParam(PreparedStatement::setInt, filter.getMaxDataVersion());
+			}
 		}
 		if (filter.getAuthorUuid() != null)
-			queries.add("`author_uuid`=?");
+			select.addFilter("`entries`.`author_uuid`=?", PreparedStatement::setString, filter.getAuthorUuid().toString());
 		if (filter.getAuthorName() != null)
-			queries.add("`author_username` LIKE ? ESCAPE \"\\\"");
-		
-		StringBuilder sqlBuilder = new StringBuilder("SELECT * FROM `entries`");
-		for (int i = 0; i < queries.size(); i++) {
-			sqlBuilder.append(i == 0 ? " WHERE " : " AND ");
-			sqlBuilder.append(queries.get(i));
+			select.addFilter("`entries`.`author_username` LIKE ? ESCAPE \"\\\"", PreparedStatement::setString, "%" + escapeQuery(filter.getAuthorName()) + "%");
+		if (filter.getTags() != null) {
+			select.addJoin("JOIN `entries_tags` ON `entries_tags`.`entry_id`=`entries`.`id`");
+			select.addFilter("`entries_tags`.`tag` IN " + SQLSelectBuilder.genParamList(filter.getTags().size()));
+			for (String tag : filter.getTags())
+				select.addParam(PreparedStatement::setString, tag);
+			select.addGroup("`entries`.`id`");
+			select.addGroupFilter("COUNT(*)=?", PreparedStatement::setInt, filter.getTags().size());
 		}
-		sqlBuilder.append(" LIMIT ?");
+		select.setLimit(config.getMaxNumResults());
 		
-		try (PreparedStatement sql = connection.prepareStatement(sqlBuilder.toString())) {
+		try (PreparedStatement sql = connection.prepareStatement(select.toSQL())) {
 			sql.setQueryTimeout(5);
-			int param = 0;
-			if (filter.getName() != null)
-				sql.setString(++param, "%" + escapeQuery(filter.getName()) + "%");
-			if (filter.getMinDataVersion() != null)
-				sql.setInt(++param, filter.getMinDataVersion());
-			if (filter.getMaxDataVersion() != null && filter.getMinDataVersion() != filter.getMaxDataVersion())
-				sql.setInt(++param, filter.getMaxDataVersion());
-			if (filter.getAuthorUuid() != null)
-				sql.setString(++param, filter.getAuthorUuid().toString());
-			if (filter.getAuthorName() != null)
-				sql.setString(++param, "%" + escapeQuery(filter.getAuthorName()) + "%");
-			sql.setInt(++param, config.getMaxNumResults());
+			select.setParams(sql);
 			ResultSet result = sql.executeQuery();
 			
 			List<NBTEntry> output = new ArrayList<>();
@@ -212,10 +206,19 @@ public class NBTDatabase implements AutoCloseable {
 		}
 	}
 	
-	public List<Tag> getTags() throws SQLException {
-		try (Statement sql = connection.createStatement()) {
+	public List<Tag> getTags(TagFilter filter) throws SQLException {
+		SQLSelectBuilder select = new SQLSelectBuilder("`tags`.* FROM `tags`");
+		if (filter.getName() != null)
+			select.addFilter("`tags`.`name` LIKE ? ESCAPE \"\\\"", PreparedStatement::setString, "%" + escapeQuery(filter.getName()) + "%");
+		if (filter.getEntryId() != null) {
+			select.addJoin("JOIN `entries_tags` ON `entries_tags`.`tag`=`tags`.`name`");
+			select.addFilter("`entries_tags`.`entry_id`=?", PreparedStatement::setLong, filter.getEntryId());
+		}
+		
+		try (PreparedStatement sql = connection.prepareStatement(select.toSQL())) {
 			sql.setQueryTimeout(5);
-			ResultSet result = sql.executeQuery("SELECT * FROM `tags`");
+			select.setParams(sql);
+			ResultSet result = sql.executeQuery();
 			
 			List<Tag> output = new ArrayList<>();
 			while (result.next())
@@ -239,33 +242,6 @@ public class NBTDatabase implements AutoCloseable {
 			sql.setLong(1, entry);
 			sql.setString(2, tag);
 			sql.executeUpdate();
-		}
-	}
-	
-	public List<Tag> getTagsByEntry(long entry) throws SQLException {
-		try (PreparedStatement sql = connection.prepareStatement("SELECT `tags`.* FROM `entries_tags` JOIN `tags` ON `tags`.`name` = `entries_tags`.`tag` WHERE `entries_tags`.`entry_id`=?")) {
-			sql.setQueryTimeout(5);
-			sql.setLong(1, entry);
-			ResultSet result = sql.executeQuery();
-			
-			List<Tag> output = new ArrayList<>();
-			while (result.next())
-				output.add(Tag.fromDatabase(result));
-			return output;
-		}
-	}
-	
-	public List<NBTEntry> getEntriesByTag(String tag) throws SQLException {
-		try (PreparedStatement sql = connection.prepareStatement("SELECT `entries`.* FROM `entries_tags` JOIN `entries` ON `entries`.`id` = `entries_tags`.`entry_id` WHERE `entries_tags`.`tag`=? LIMIT ?")) {
-			sql.setQueryTimeout(5);
-			sql.setString(1, tag);
-			sql.setInt(2, config.getMaxNumResults());
-			ResultSet result = sql.executeQuery();
-			
-			List<NBTEntry> output = new ArrayList<>();
-			while (result.next())
-				output.add(NBTEntry.fromDatabase(result));
-			return output;
 		}
 	}
 	

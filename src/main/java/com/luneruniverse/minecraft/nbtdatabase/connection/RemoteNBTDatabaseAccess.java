@@ -13,15 +13,14 @@ import java.util.function.Function;
 import com.luneruniverse.minecraft.nbtdatabase.EntryFilter;
 import com.luneruniverse.minecraft.nbtdatabase.NBTEntry;
 import com.luneruniverse.minecraft.nbtdatabase.Tag;
+import com.luneruniverse.minecraft.nbtdatabase.TagFilter;
 import com.luneruniverse.minecraft.nbtdatabase.Util;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.AddEntryRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.AddTagRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.AddTagToEntryRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.EntriesPacket;
-import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetEntriesByTagRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetEntriesRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetEntryRequestPacket;
-import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetTagsByEntryRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetTagsRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.MetadataPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.MetadataRequestPacket;
@@ -113,8 +112,8 @@ public class RemoteNBTDatabaseAccess implements NBTDatabaseAccess {
 	}
 	
 	@Override
-	public CompletableFuture<List<Tag>> getTags() {
-		return request(new GetTagsRequestPacket(), TagsPacket.class, TagsPacket::getTagsList);
+	public CompletableFuture<List<Tag>> getTags(TagFilter filter) {
+		return request(new GetTagsRequestPacket(filter), TagsPacket.class, TagsPacket::getTagsList);
 	}
 	
 	@Override
@@ -125,16 +124,6 @@ public class RemoteNBTDatabaseAccess implements NBTDatabaseAccess {
 	@Override
 	public CompletableFuture<Void> removeTagFromEntry(long entry, String tag) {
 		return requestVoid(new RemoveTagFromEntryRequestPacket(entry, tag));
-	}
-	
-	@Override
-	public CompletableFuture<List<Tag>> getTagsByEntry(long entry) {
-		return request(new GetTagsByEntryRequestPacket(entry), TagsPacket.class, TagsPacket::getTagsList);
-	}
-	
-	@Override
-	public CompletableFuture<List<NBTEntry>> getEntriesByTag(String tag) {
-		return request(new GetEntriesByTagRequestPacket(tag), EntriesPacket.class, EntriesPacket::getEntriesList);
 	}
 	
 	@Override

@@ -17,8 +17,6 @@ public class Packets {
 		PACKETS.registerPacket(GetTagsRequestPacket.class);
 		PACKETS.registerPacket(AddTagToEntryRequestPacket.class);
 		PACKETS.registerPacket(RemoveTagFromEntryRequestPacket.class);
-		PACKETS.registerPacket(GetTagsByEntryRequestPacket.class);
-		PACKETS.registerPacket(GetEntriesByTagRequestPacket.class);
 		
 		// Server -> Client
 		PACKETS.registerPacket(MetadataPacket.class);

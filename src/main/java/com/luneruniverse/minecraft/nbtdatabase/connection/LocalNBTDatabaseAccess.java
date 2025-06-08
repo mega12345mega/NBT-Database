@@ -11,6 +11,7 @@ import com.luneruniverse.minecraft.nbtdatabase.EntryFilter;
 import com.luneruniverse.minecraft.nbtdatabase.NBTDatabase;
 import com.luneruniverse.minecraft.nbtdatabase.NBTEntry;
 import com.luneruniverse.minecraft.nbtdatabase.Tag;
+import com.luneruniverse.minecraft.nbtdatabase.TagFilter;
 import com.luneruniverse.minecraft.nbtdatabase.Util;
 
 public class LocalNBTDatabaseAccess implements NBTDatabaseAccess {
@@ -59,8 +60,8 @@ public class LocalNBTDatabaseAccess implements NBTDatabaseAccess {
 	}
 	
 	@Override
-	public CompletableFuture<List<Tag>> getTags() {
-		return Util.supplyAsync(() -> database.getTags(), executor);
+	public CompletableFuture<List<Tag>> getTags(TagFilter filter) {
+		return Util.supplyAsync(() -> database.getTags(filter), executor);
 	}
 	
 	@Override
@@ -71,16 +72,6 @@ public class LocalNBTDatabaseAccess implements NBTDatabaseAccess {
 	@Override
 	public CompletableFuture<Void> removeTagFromEntry(long entry, String tag) {
 		return Util.runAsync(() -> database.removeTagFromEntry(entry, tag), executor);
-	}
-	
-	@Override
-	public CompletableFuture<List<Tag>> getTagsByEntry(long entry) {
-		return Util.supplyAsync(() -> database.getTagsByEntry(entry), executor);
-	}
-	
-	@Override
-	public CompletableFuture<List<NBTEntry>> getEntriesByTag(String tag) {
-		return Util.supplyAsync(() -> database.getEntriesByTag(tag), executor);
 	}
 	
 	@Override

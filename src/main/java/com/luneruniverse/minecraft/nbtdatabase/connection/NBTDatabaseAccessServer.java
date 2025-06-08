@@ -10,10 +10,8 @@ import com.luneruniverse.minecraft.nbtdatabase.connection.packets.AddEntryReques
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.AddTagRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.AddTagToEntryRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.EntriesPacket;
-import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetEntriesByTagRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetEntriesRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetEntryRequestPacket;
-import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetTagsByEntryRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetTagsRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.MetadataPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.MetadataRequestPacket;
@@ -52,9 +50,7 @@ public class NBTDatabaseAccessServer implements AutoCloseable {
 				.when(RemoveTagRequestPacket.class, this::removeTagRequestPacket)
 				.when(GetTagsRequestPacket.class, this::getTagsRequestPacket)
 				.when(AddTagToEntryRequestPacket.class, this::addTagToEntryRequestPacket)
-				.when(RemoveTagFromEntryRequestPacket.class, this::removeTagFromEntryRequestPacket)
-				.when(GetTagsByEntryRequestPacket.class, this::getTagsByEntryRequestPacket)
-				.when(GetEntriesByTagRequestPacket.class, this::getEntriesByTagRequestPacket));
+				.when(RemoveTagFromEntryRequestPacket.class, this::removeTagFromEntryRequestPacket));
 		
 		server.start();
 	}
@@ -110,7 +106,7 @@ public class NBTDatabaseAccessServer implements AutoCloseable {
 	}
 	
 	private void getTagsRequestPacket(GetTagsRequestPacket packet, Connection conn, WaitState wait) {
-		respond(packet, conn, database.getTags(), TagsPacket::new);
+		respond(packet, conn, database.getTags(packet.getFilter()), TagsPacket::new);
 	}
 	
 	private void addTagToEntryRequestPacket(AddTagToEntryRequestPacket packet, Connection conn, WaitState wait) {
@@ -119,14 +115,6 @@ public class NBTDatabaseAccessServer implements AutoCloseable {
 	
 	private void removeTagFromEntryRequestPacket(RemoveTagFromEntryRequestPacket packet, Connection conn, WaitState wait) {
 		respondVoid(packet, conn, database.removeTagFromEntry(packet.getEntry(), packet.getTag()));
-	}
-	
-	private void getTagsByEntryRequestPacket(GetTagsByEntryRequestPacket packet, Connection conn, WaitState wait) {
-		respond(packet, conn, database.getTagsByEntry(packet.getEntry()), TagsPacket::new);
-	}
-	
-	private void getEntriesByTagRequestPacket(GetEntriesByTagRequestPacket packet, Connection conn, WaitState wait) {
-		respond(packet, conn, database.getEntriesByTag(packet.getTag()), EntriesPacket::new);
 	}
 	
 	public CompletableFuture<Void> closeAsync() {
