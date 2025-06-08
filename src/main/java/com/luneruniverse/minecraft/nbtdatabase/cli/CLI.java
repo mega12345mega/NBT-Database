@@ -10,9 +10,12 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
 
 import com.luneruniverse.minecraft.nbtdatabase.DataVersion;
 import com.luneruniverse.minecraft.nbtdatabase.EntryFilter;
+import com.luneruniverse.minecraft.nbtdatabase.IllegalRequestException;
 import com.luneruniverse.minecraft.nbtdatabase.NBTDatabase;
 import com.luneruniverse.minecraft.nbtdatabase.NBTEntry;
 import com.luneruniverse.minecraft.nbtdatabase.Tag;
@@ -21,6 +24,8 @@ import com.luneruniverse.minecraft.nbtdatabase.connection.LocalNBTDatabaseAccess
 import com.luneruniverse.minecraft.nbtdatabase.connection.NBTDatabaseAccess;
 import com.luneruniverse.minecraft.nbtdatabase.connection.NBTDatabaseAccessServer;
 import com.luneruniverse.minecraft.nbtdatabase.connection.RemoteNBTDatabaseAccess;
+import com.luneruniverse.minecraft.nbtdatabase.connection.RequestFailedException;
+import com.luneruniverse.minecraft.nbtdatabase.connection.ServerException;
 import com.luneruniverse.simplecli.CommandParseException;
 import com.luneruniverse.simplecli.CommandStream;
 import com.luneruniverse.simplecli.CommandSyntaxException;
@@ -174,16 +179,105 @@ public class CLI extends Thread {
 						.addArgument("index", new IntegerInput().min(0)).addArgument("tag", new StringInput())));
 	}
 	
+	private <T> void whenComplete(CompletableFuture<T> future, Consumer<T> consumer) {
+		future.whenComplete((value, e) -> {
+			if (e == null)
+				consumer.accept(value);
+			else {
+				if (e instanceof IllegalRequestException || e instanceof RequestFailedException) {
+					if (e instanceof IllegalRequestException)
+						System.err.println("[Database] " + e.getMessage());
+					else if (e instanceof ServerException)
+						System.err.println("[Server] " + e.getMessage());
+					else
+						System.err.println(e.getMessage());
+					if (e.getCause() != null)
+						e.getCause().printStackTrace();
+				} else
+					e.printStackTrace();
+			}
+		});
+	}
+	
+	private boolean checkFileDoesntExist(File file, boolean overwrite) {
+		if (file.exists()) {
+			if (!overwrite) {
+				System.err.println("File already exists: " + file.getAbsolutePath());
+				return true;
+			}
+			
+			if (!file.isFile()) {
+				System.err.println("Can only overwrite a file: " + file.getAbsolutePath());
+				return true;
+			}
+			
+			file.delete();
+		}
+		
+		file.getAbsoluteFile().getParentFile().mkdirs();
+		return false;
+	}
+	
+	private boolean checkFileExists(File file) {
+		if (!file.exists()) {
+			System.err.println("File doesn't exist: " + file.getAbsolutePath());
+			return true;
+		}
+		
+		if (!file.isFile()) {
+			System.err.println("Not a file: " + file.getAbsolutePath());
+			return true;
+		}
+		
+		return false;
+	}
+	
+	private boolean checkConnectionExists() {
+		if (connection == null) {
+			System.err.println("There is not an open connection");
+			return true;
+		}
+		
+		return false;
+	}
+	
+	private boolean checkServerExists() {
+		if (server == null) {
+			System.err.println("There is not a running server");
+			return true;
+		}
+		
+		return false;
+	}
+	
+	private boolean checkResultsExist() {
+		if (result == null) {
+			System.err.println("There are no saved results");
+			return true;
+		}
+		
+		return false;
+	}
+	
+	private boolean checkResultExists(int index) {
+		if (checkResultsExist())
+			return true;
+		
+		if (index >= result.size()) {
+			System.err.println("Invalid result index: " + index);
+			return true;
+		}
+		
+		return false;
+	}
+	
 	private void closeConnection(boolean silent) {
 		closeServer(silent);
 		
 		if (connection != null) {
-			connection.closeAsync().whenComplete((v, e) -> {
-				if (e == null) {
-					if (!silent)
-						System.out.println("Closed connection");
-				} else
-					e.printStackTrace();
+			whenComplete(connection.closeAsync(), v -> {
+				if (!silent)
+					System.out.println("Closed connection");
 			});
 			connection = null;
 		}
@@ -202,32 +296,17 @@ public class CLI extends Thread {
 	
 	private void closeServer(boolean silent) {
 		if (server != null) {
-			server.closeAsync().whenComplete((v, e) -> {
-				if (e == null) {
-					if (!silent)
-						System.out.println("Closed server");
-				} else
-					e.printStackTrace();
+			whenComplete(server.closeAsync(), v -> {
+				if (!silent)
+					System.out.println("Closed server");
 			});
 			server = null;
 		}
 	}
 	
 	private void createCmd(File file, boolean overwrite) {
-		if (file.exists()) {
-			if (!overwrite) {
-				System.err.println("File already exists: " + file.getAbsolutePath());
-				return;
-			}
-			
-			if (!file.isFile()) {
-				System.err.println("Can only overwrite a file: " + file.getAbsolutePath());
-				return;
-			}
-			
-			file.delete();
-		}
-		file.getAbsoluteFile().getParentFile().mkdirs();
+		if (checkFileDoesntExist(file, overwrite))
+			return;
 		
 		closeConnection(true);
 		
@@ -241,15 +320,8 @@ public class CLI extends Thread {
 	}
 	
 	private void openLocalCmd(File file) {
-		if (!file.exists()) {
-			System.err.println("File doesn't exist: " + file.getAbsolutePath());
+		if (checkFileExists(file))
 			return;
-		}
-		
-		if (!file.isFile()) {
-			System.err.println("Not a file: " + file.getAbsolutePath());
-			return;
-		}
 		
 		closeConnection(true);
 		
@@ -274,19 +346,15 @@ public class CLI extends Thread {
 	}
 	
 	private void closeCmd() {
-		if (connection == null) {
-			System.err.println("There is not an open connection");
+		if (checkConnectionExists())
 			return;
-		}
 		
 		closeConnection(false);
 	}
 	
 	private void serverStartCmd(int port) {
-		if (connection == null) {
-			System.err.println("There is not an open connection");
+		if (checkConnectionExists())
 			return;
-		}
 		
 		closeServer(true);
 		
@@ -299,82 +367,48 @@ public class CLI extends Thread {
 	}
 	
 	private void serverStopCmd() {
-		if (server == null) {
-			System.err.println("There is not a running server");
+		if (checkServerExists())
 			return;
-		}
 		
 		closeServer(false);
 	}
 	
 	private void metadataCmd() {
-		if (connection == null) {
-			System.err.println("There is not an open connection");
+		if (checkConnectionExists())
 			return;
-		}
 		
-		connection.getMetadata().whenComplete((metadata, e) -> {
-			if (e != null)
-				e.printStackTrace();
-			else {
-				System.out.println("max_nbt_size: " + metadata.getMaxNbtSize());
-				System.out.println("max_num_results: " + metadata.getMaxNumResults());
-			}
+		whenComplete(connection.getMetadata(), metadata -> {
+			System.out.println("max_nbt_size: " + metadata.getMaxNbtSize());
+			System.out.println("max_num_results: " + metadata.getMaxNumResults());
 		});
 	}
 	
 	private void entryAddCmd(String name, File file, int dataVersion, UUID authorUuid, String authorUsername, boolean verified) {
-		if (connection == null) {
-			System.err.println("There is not an open connection");
+		if (checkConnectionExists() || checkFileExists(file))
 			return;
-		}
-		
-		if (!file.exists()) {
-			System.err.println("File doesn't exist: " + file.getAbsolutePath());
-			return;
-		}
-		
-		if (!file.isFile()) {
-			System.err.println("Not a file: " + file.getAbsolutePath());
-			return;
-		}
 		
 		try {
-			connection.addEntry(name, Files.readAllBytes(file.toPath()), dataVersion, authorUuid, authorUsername, verified).whenComplete((id, e) -> {
-				if (e != null)
-					e.printStackTrace();
-				else
-					System.out.println("Added entry '" + name + "' with id " + id);
-			});
+			whenComplete(connection.addEntry(
+					name, Files.readAllBytes(file.toPath()), dataVersion, authorUuid, authorUsername, verified),
+					id -> System.out.println("Added entry '" + name + "' with id " + id));
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 	}
 	
 	private void entryRemoveCmd(long id) {
-		if (connection == null) {
-			System.err.println("There is not an open connection");
+		if (checkConnectionExists())
 			return;
-		}
 		
-		connection.removeEntry(id).whenComplete((v, e) -> {
-			if (e != null)
-				e.printStackTrace();
-			else
-				System.out.println("Removed entry with id " + id);
-		});
+		whenComplete(connection.removeEntry(id), v -> System.out.println("Removed entry with id " + id));
 	}
 	
 	private void entryGetCmd(long id, boolean verbose) {
-		if (connection == null) {
-			System.err.println("There is not an open connection");
+		if (checkConnectionExists())
 			return;
-		}
 		
-		connection.getEntry(id).whenComplete((entry, e) -> {
-			if (e != null)
-				e.printStackTrace();
-			else if (entry == null)
+		whenComplete(connection.getEntry(id), entry -> {
+			if (entry == null)
 				System.err.println("Entry doesn't exist: " + id);
 			else {
 				result = Arrays.asList(entry);
@@ -384,59 +418,36 @@ public class CLI extends Thread {
 	}
 	
 	private void entryListCmd(EntryFilter filter, boolean verbose) {
-		if (connection == null) {
-			System.err.println("There is not an open connection");
+		if (checkConnectionExists())
 			return;
-		}
 		
-		connection.getEntries(filter).whenComplete((entries, e) -> {
-			if (e != null)
-				e.printStackTrace();
-			else {
-				result = entries;
-				resultListCmd(verbose);
-			}
+		whenComplete(connection.getEntries(filter), entries -> {
+			result = entries;
+			resultListCmd(verbose);
 		});
 	}
 	
 	private void tagAddCmd(String name, int color) {
-		if (connection == null) {
-			System.err.println("There is not an open connection");
+		if (checkConnectionExists())
 			return;
-		}
 		
-		connection.addTag(name, color).whenComplete((v, e) -> {
-			if (e != null)
-				e.printStackTrace();
-			else
-				System.out.println("Added tag: " + name + " (#" + ColorInput.toString(color) + ")");
-		});
+		whenComplete(connection.addTag(name, color),
+				v -> System.out.println("Added tag: " + name + " (#" + ColorInput.toString(color) + ")"));
 	}
 	
 	private void tagRemoveCmd(String name) {
-		if (connection == null) {
-			System.err.println("There is not an open connection");
+		if (checkConnectionExists())
 			return;
-		}
 		
-		connection.removeTag(name).whenComplete((v, e) -> {
-			if (e != null)
-				e.printStackTrace();
-			else
-				System.out.println("Removed tag: " + name);
-		});
+		whenComplete(connection.removeTag(name), v -> System.out.println("Removed tag: " + name));
 	}
 	
 	private void tagGetCmd(String name) {
-		if (connection == null) {
-			System.err.println("There is not an open connection");
+		if (checkConnectionExists())
 			return;
-		}
 		
-		connection.getTag(name).whenComplete((tag, e) -> {
-			if (e != null)
-				e.printStackTrace();
-			else if (tag == null)
+		whenComplete(connection.getTag(name), tag -> {
+			if (tag == null)
 				System.err.println("Tag doesn't exist: " + name);
 			else
 				System.out.println(tag.name + " (#" + ColorInput.toString(tag.color) + ")");
@@ -444,15 +455,11 @@ public class CLI extends Thread {
 	}
 	
 	private void tagListCmd(TagFilter filter) {
-		if (connection == null) {
-			System.err.println("There is not an open connection");
+		if (checkConnectionExists())
 			return;
-		}
 		
-		connection.getTags(filter).whenComplete((tags, e) -> {
-			if (e != null)
-				e.printStackTrace();
-			else if (tags.isEmpty())
+		whenComplete(connection.getTags(filter), tags -> {
+			if (tags.isEmpty())
 				System.out.println("There are no tags");
 			else {
 				for (Tag tag : tags)
@@ -462,58 +469,24 @@ public class CLI extends Thread {
 	}
 	
 	private void tagAttachCmd(long entry, String tag) {
-		if (connection == null) {
-			System.err.println("There is not an open connection");
+		if (checkConnectionExists())
 			return;
-		}
 		
-		connection.addTagToEntry(entry, tag).whenComplete((v, e) -> {
-			if (e != null)
-				e.printStackTrace();
-			else
-				System.out.println("Attached tag '" + tag + "' to entry with id " + entry);
-		});
+		whenComplete(connection.addTagToEntry(entry, tag),
+				v -> System.out.println("Attached tag '" + tag + "' to entry with id " + entry));
 	}
 	
 	private void tagDetachCmd(long entry, String tag) {
-		if (connection == null) {
-			System.err.println("There is not an open connection");
+		if (checkConnectionExists())
 			return;
-		}
 		
-		connection.removeTagFromEntry(entry, tag).whenComplete((v, e) -> {
-			if (e != null)
-				e.printStackTrace();
-			else
-				System.out.println("Detached tag '" + tag + "' from entry with id " + entry);
-		});
+		whenComplete(connection.removeTagFromEntry(entry, tag),
+				v -> System.out.println("Detached tag '" + tag + "' from entry with id " + entry));
 	}
 	
 	private void resultExportCmd(int index, File file, boolean overwrite) {
-		if (result == null) {
-			System.err.println("There are no saved results");
+		if (checkResultExists(index) || checkFileDoesntExist(file, overwrite))
 			return;
-		}
-		
-		if (index >= result.size()) {
-			System.err.println("Invalid index: " + index);
-			return;
-		}
-		
-		if (file.exists()) {
-			if (!overwrite) {
-				System.err.println("File already exists: " + file.getAbsolutePath());
-				return;
-			}
-			
-			if (!file.isFile()) {
-				System.err.println("Can only overwrite a file: " + file.getAbsolutePath());
-				return;
-			}
-			
-			file.delete();
-		}
-		file.getAbsoluteFile().getParentFile().mkdirs();
 		
 		NBTEntry entry = result.get(index);
 		try {
@@ -525,35 +498,16 @@ public class CLI extends Thread {
 	}
 	
 	private void resultRemoveCmd(int index) {
-		if (connection == null) {
-			System.err.println("There is not an open connection");
+		if (checkConnectionExists() || checkResultExists(index))
 			return;
-		}
-		
-		if (result == null) {
-			System.err.println("There are no saved results");
-			return;
-		}
-		
-		if (index >= result.size()) {
-			System.err.println("Invalid index: " + index);
-			return;
-		}
 		
 		long id = result.get(index).id;
-		connection.removeEntry(id).whenComplete((v, e) -> {
-			if (e != null)
-				e.printStackTrace();
-			else
-				System.out.println("Removed entry with id " + id);
-		});
+		whenComplete(connection.removeEntry(id), v -> System.out.println("Removed entry with id " + id));
 	}
 	
 	private void resultListCmd(boolean verbose) {
-		if (result == null) {
-			System.err.println("There are no saved results");
+		if (checkResultsExist())
 			return;
-		}
 		
 		if (result.isEmpty()) {
 			System.out.println("There are no entries");
@@ -580,26 +534,12 @@ public class CLI extends Thread {
 	}
 	
 	private void resultTagsCmd(int index, TagFilter filter) {
-		if (connection == null) {
-			System.err.println("There is not an open connection");
+		if (checkConnectionExists() || checkResultExists(index))
 			return;
-		}
-		
-		if (result == null) {
-			System.err.println("There are no saved results");
-			return;
-		}
-		
-		if (index >= result.size()) {
-			System.err.println("Invalid index: " + index);
-			return;
-		}
 		
 		filter.filterByEntryId(result.get(index).id);
-		connection.getTags(filter).whenComplete((tags, e) -> {
-			if (e != null)
-				e.printStackTrace();
-			else if (tags.isEmpty())
+		whenComplete(connection.getTags(filter), tags -> {
+			if (tags.isEmpty())
 				System.out.println("There are no tags");
 			else {
 				for (Tag tag : tags)
@@ -609,53 +549,21 @@ public class CLI extends Thread {
 	}
 	
 	private void resultAttachCmd(int index, String tag) {
-		if (connection == null) {
-			System.err.println("There is not an open connection");
+		if (checkConnectionExists() || checkResultExists(index))
 			return;
-		}
-		
-		if (result == null) {
-			System.err.println("There are no saved results");
-			return;
-		}
-		
-		if (index >= result.size()) {
-			System.err.println("Invalid index: " + index);
-			return;
-		}
 		
 		long id = result.get(index).id;
-		connection.addTagToEntry(id, tag).whenComplete((v, e) -> {
-			if (e != null)
-				e.printStackTrace();
-			else
-				System.out.println("Attached tag '" + tag + "' to entry with id " + id);
-		});
+		whenComplete(connection.addTagToEntry(id, tag),
+				v -> System.out.println("Attached tag '" + tag + "' to entry with id " + id));
 	}
 	
 	private void resultDetachCmd(int index, String tag) {
-		if (connection == null) {
-			System.err.println("There is not an open connection");
+		if (checkConnectionExists() || checkResultExists(index))
 			return;
-		}
-		
-		if (result == null) {
-			System.err.println("There are no saved results");
-			return;
-		}
-		
-		if (index >= result.size()) {
-			System.err.println("Invalid index: " + index);
-			return;
-		}
 		
 		long id = result.get(index).id;
-		connection.removeTagFromEntry(id, tag).whenComplete((v, e) -> {
-			if (e != null)
-				e.printStackTrace();
-			else
-				System.out.println("Detached tag '" + tag + "' from entry with id " + id);
-		});
+		whenComplete(connection.removeTagFromEntry(id, tag),
+				v -> System.out.println("Detached tag '" + tag + "' from entry with id " + id));
 	}
 	
 	public void exec(String cmd) {
