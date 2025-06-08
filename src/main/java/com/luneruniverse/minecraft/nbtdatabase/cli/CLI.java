@@ -124,6 +124,9 @@ public class CLI extends Thread {
 				.addCommand(new SingleCommand("remove", inputs -> tagRemoveCmd(
 						inputs.getArgument("name", String.class)))
 						.addArgument("name", new StringInput()))
+				.addCommand(new SingleCommand("get", inputs -> tagGetCmd(
+						inputs.getArgument("name", String.class)))
+						.addArgument("name", new StringInput()))
 				.addCommand(new SingleCommand("list",
 						inputs -> {
 							TagFilter filter = new TagFilter();
@@ -421,6 +424,22 @@ public class CLI extends Thread {
 				e.printStackTrace();
 			else
 				System.out.println("Removed tag: " + name);
+		});
+	}
+	
+	private void tagGetCmd(String name) {
+		if (connection == null) {
+			System.err.println("There is not an open connection");
+			return;
+		}
+		
+		connection.getTag(name).whenComplete((tag, e) -> {
+			if (e != null)
+				e.printStackTrace();
+			else if (tag == null)
+				System.err.println("Tag doesn't exist: " + name);
+			else
+				System.out.println(tag.name + " (#" + ColorInput.toString(tag.color) + ")");
 		});
 	}
 	

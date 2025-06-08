@@ -21,6 +21,7 @@ import com.luneruniverse.minecraft.nbtdatabase.connection.packets.AddTagToEntryR
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.EntriesPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetEntriesRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetEntryRequestPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetTagRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetTagsRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.MetadataPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.MetadataRequestPacket;
@@ -111,6 +112,11 @@ public class RemoteNBTDatabaseAccess implements NBTDatabaseAccess {
 	@Override
 	public CompletableFuture<Void> removeTag(String name) {
 		return requestVoid(new RemoveTagRequestPacket(name));
+	}
+	
+	@Override
+	public CompletableFuture<Tag> getTag(String name) {
+		return request(new GetTagRequestPacket(name), TagsPacket.class, TagsPacket::getTagNullable);
 	}
 	
 	@Override

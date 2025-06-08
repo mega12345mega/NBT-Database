@@ -17,6 +17,7 @@ public interface NBTDatabaseAccess extends AutoCloseable {
 	public CompletableFuture<List<NBTEntry>> getEntries(EntryFilter filter);
 	public CompletableFuture<Void> addTag(String name, int color);
 	public CompletableFuture<Void> removeTag(String name);
+	public CompletableFuture<Tag> getTag(String name);
 	public CompletableFuture<List<Tag>> getTags(TagFilter filter);
 	public CompletableFuture<Void> addTagToEntry(long entry, String tag);
 	public CompletableFuture<Void> removeTagFromEntry(long entry, String tag);

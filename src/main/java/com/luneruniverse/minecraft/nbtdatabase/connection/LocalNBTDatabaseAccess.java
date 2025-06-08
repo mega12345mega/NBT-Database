@@ -60,6 +60,11 @@ public class LocalNBTDatabaseAccess implements NBTDatabaseAccess {
 	}
 	
 	@Override
+	public CompletableFuture<Tag> getTag(String name) {
+		return Util.supplyAsync(() -> database.getTag(name), executor);
+	}
+	
+	@Override
 	public CompletableFuture<List<Tag>> getTags(TagFilter filter) {
 		return Util.supplyAsync(() -> database.getTags(filter), executor);
 	}
