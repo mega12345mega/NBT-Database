@@ -1,5 +1,8 @@
 package com.luneruniverse.minecraft.nbtdatabase;
 
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
@@ -96,6 +99,10 @@ public class Util {
 			}
 		});
 		return future;
+	}
+	
+	public static String formatTimestamp(long utcMillis) {
+		return Instant.ofEpochMilli(utcMillis).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.RFC_1123_DATE_TIME);
 	}
 	
 }

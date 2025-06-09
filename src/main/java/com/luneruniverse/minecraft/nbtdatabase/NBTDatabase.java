@@ -7,6 +7,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -92,7 +93,7 @@ public class NBTDatabase implements AutoCloseable {
 			throw new IllegalRequestException("authorUsername must be <= 16 characters long");
 		
 		long id = genNewEntryId();
-		long created = System.currentTimeMillis();
+		long created = Instant.now().toEpochMilli();
 		long modified = created;
 		String hash = NBTEntry.genHash(name, nbt, dataVersion, authorUuid, created, modified);
 		
