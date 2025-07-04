@@ -10,6 +10,7 @@ import java.nio.file.Files;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
@@ -130,7 +131,7 @@ public class EntriesTab {
 		details.add(tags);
 		tags.setAlignmentX(0);
 		
-		JLabel author = new JLabel("By " + entry.authorUsername);
+		JLabel author = new JLabel("Author: " + entry.authorUsername);
 		author.setToolTipText("UUID: " + entry.authorUuid);
 		details.add(author);
 		
@@ -149,6 +150,10 @@ public class EntriesTab {
 		options.setLayout(new BoxLayout(options, BoxLayout.X_AXIS));
 		panel.add(options);
 		options.setAlignmentY(1);
+		
+		JButton detailsEntryBtn = new JButton("Details");
+		options.add(detailsEntryBtn);
+		detailsEntryBtn.addActionListener(event -> detailsEntryBtn(entry));
 		
 		JButton exportEntryBtn = new JButton("Export");
 		options.add(exportEntryBtn);
@@ -187,7 +192,9 @@ public class EntriesTab {
 				
 				gui.whenComplete(gui.getConnection().getTags(new TagFilter().filterByEntryId(entry.id)), tags -> {
 					for (Tag tag : tags) {
-						if (tagsPanel.getComponentCount() > 0)
+						if (tagsPanel.getComponentCount() == 0)
+							tagsPanel.setBorder(new EmptyBorder(0, 0, 4, 0));
+						else
 							tagsPanel.add(Box.createRigidArea(new Dimension(4, 0)));
 						tagsPanel.add(createTag(tag));
 					}
@@ -295,114 +302,155 @@ public class EntriesTab {
 	}
 	
 	private void addEntryBtn() {
-		JPanel panel = new JPanel(new GridLayout(0, 2, 4, 4));
-		
-		panel.add(new JLabel("Name:"));
-		
-		JTextField nameField = new JTextField();
-		panel.add(nameField);
-		
-		panel.add(new JLabel("File:"));
-		
-		JButton selectFileBtn = new JButton("Select File");
-		panel.add(selectFileBtn);
-		AtomicReference<File> selectFileField = new AtomicReference<>();
-		selectFileBtn.addActionListener(event -> {
-			JnaFileChooser chooser = new JnaFileChooser(".");
-			chooser.setTitle("Select NBT File");
-			chooser.addFilter("Named Binary Tag (*.nbt)", "nbt");
-			chooser.addFilter("All Files (*.*)", "*");
-			if (!chooser.showOpenDialog(frame))
-				return;
-			File file = chooser.getSelectedFile();
+		gui.whenComplete(gui.getConnection().getTags(new TagFilter()), tags -> {
+			JPanel panel = new JPanel(new GridLayout(0, 2, 4, 4));
 			
-			selectFileField.set(file);
-			selectFileBtn.setText(file.getName());
-			if (nameField.getText().isEmpty()) {
-				nameField.setText(file.getName().endsWith(".nbt") ?
-						file.getName().substring(0, file.getName().length() - ".nbt".length()) : file.getName());
+			panel.add(new JLabel("Name:"));
+			
+			JTextField nameField = new JTextField();
+			panel.add(nameField);
+			
+			panel.add(new JLabel("File:"));
+			
+			JButton selectFileBtn = new JButton("Select File");
+			panel.add(selectFileBtn);
+			AtomicReference<File> selectFileField = new AtomicReference<>();
+			selectFileBtn.addActionListener(event -> {
+				JnaFileChooser chooser = new JnaFileChooser(".");
+				chooser.setTitle("Select NBT File");
+				chooser.addFilter("Named Binary Tag (*.nbt)", "nbt");
+				chooser.addFilter("All Files (*.*)", "*");
+				if (!chooser.showOpenDialog(frame))
+					return;
+				File file = chooser.getSelectedFile();
+				
+				selectFileField.set(file);
+				selectFileBtn.setText(file.getName());
+				if (nameField.getText().isEmpty()) {
+					nameField.setText(file.getName().endsWith(".nbt") ?
+							file.getName().substring(0, file.getName().length() - ".nbt".length()) : file.getName());
+				}
+			});
+			
+			panel.add(new JLabel("Author UUID:"));
+			
+			JTextField authorUuidField = new JTextField();
+			panel.add(authorUuidField);
+			
+			panel.add(new JLabel("Author Username:"));
+			
+			JTextField authorUsernameField = new JTextField();
+			panel.add(authorUsernameField);
+			
+			panel.add(new JLabel("Verified:"));
+			
+			JCheckBox verifiedField = new JCheckBox();
+			panel.add(verifiedField);
+			
+			panel.add(new JLabel("Tags:"));
+			
+			Map<String, JCheckBox> tagFields = new HashMap<>();
+			if (tags.isEmpty()) {
+				panel.add(new JLabel("There are no tags"));
+			} else {
+				panel.add(new JLabel());
+				
+				for (Tag tag : tags) {
+					panel.add(createTag(tag));
+					
+					JCheckBox tagField = new JCheckBox();
+					tagFields.put(tag.name, tagField);
+					panel.add(tagField);
+				}
 			}
-		});
-		
-		panel.add(new JLabel("Author UUID:"));
-		
-		JTextField authorUuidField = new JTextField();
-		panel.add(authorUuidField);
-		
-		panel.add(new JLabel("Author Username:"));
-		
-		JTextField authorUsernameField = new JTextField();
-		panel.add(authorUsernameField);
-		
-		panel.add(new JLabel("Verified:"));
-		
-		JCheckBox verifiedField = new JCheckBox();
-		panel.add(verifiedField);
-		
-		if (JOptionPane.showConfirmDialog(frame, panel, "Add Entry", JOptionPane.OK_CANCEL_OPTION) != JOptionPane.OK_OPTION)
-			return;
-		
-		File file = selectFileField.get();
-		if (file == null) {
-			JOptionPane.showMessageDialog(frame, "You must select a file!", "Error", JOptionPane.ERROR_MESSAGE);
-			return;
-		}
-		if (!file.exists()) {
-			JOptionPane.showMessageDialog(frame, "'" + file.getName() + "' doesn't exist!", "Error", JOptionPane.ERROR_MESSAGE);
-			return;
-		}
-		
-		NamedTag rootTag;
-		CompoundTag rootValue;
-		try {
-			rootTag = NBTUtil.read(file);
-			if (rootTag.getTag() instanceof CompoundTag)
-				rootValue = (CompoundTag) rootTag.getTag();
-			else
-				throw new IOException();
-		} catch (IOException e) {
-			JOptionPane.showMessageDialog(frame, "'" + file.getName() + "' isn't a valid NBT file!", "Error", JOptionPane.ERROR_MESSAGE);
-			return;
-		}
-		
-		int dataVersion;
-		if (rootValue.containsKey("DataVersion") && rootValue.get("DataVersion") instanceof IntTag)
-			dataVersion = rootValue.getInt("DataVersion");
-		else {
-			String dataVersionStr = JOptionPane.showInputDialog(frame, "Enter data version:", "Add Entry", JOptionPane.QUESTION_MESSAGE);
-			if (dataVersionStr == null)
+			
+			if (JOptionPane.showConfirmDialog(frame, panel, "Add Entry", JOptionPane.OK_CANCEL_OPTION) != JOptionPane.OK_OPTION)
 				return;
+			
+			File file = selectFileField.get();
+			if (file == null) {
+				JOptionPane.showMessageDialog(frame, "You must select a file!", "Error", JOptionPane.ERROR_MESSAGE);
+				return;
+			}
+			if (!file.exists()) {
+				JOptionPane.showMessageDialog(frame, "'" + file.getName() + "' doesn't exist!", "Error", JOptionPane.ERROR_MESSAGE);
+				return;
+			}
+			
+			NamedTag rootTag;
+			CompoundTag rootValue;
 			try {
-				dataVersion = new DataVersionInput().parse(dataVersionStr);
+				rootTag = NBTUtil.read(file);
+				if (rootTag.getTag() instanceof CompoundTag)
+					rootValue = (CompoundTag) rootTag.getTag();
+				else
+					throw new IOException();
+			} catch (IOException e) {
+				JOptionPane.showMessageDialog(frame, "'" + file.getName() + "' isn't a valid NBT file!", "Error", JOptionPane.ERROR_MESSAGE);
+				return;
+			}
+			
+			int dataVersion;
+			if (rootValue.containsKey("DataVersion") && rootValue.get("DataVersion") instanceof IntTag)
+				dataVersion = rootValue.getInt("DataVersion");
+			else {
+				String dataVersionStr = JOptionPane.showInputDialog(frame, "Enter data version:", "Add Entry", JOptionPane.QUESTION_MESSAGE);
+				if (dataVersionStr == null)
+					return;
+				try {
+					dataVersion = new DataVersionInput().parse(dataVersionStr);
+				} catch (CommandParseException e) {
+					JOptionPane.showMessageDialog(frame, e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+					return;
+				}
+			}
+			
+			UUID authorUuid;
+			try {
+				authorUuid = new UUIDInput().parse(authorUuidField.getText());
 			} catch (CommandParseException e) {
 				JOptionPane.showMessageDialog(frame, e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
 				return;
 			}
-		}
-		
-		UUID authorUuid;
-		try {
-			authorUuid = new UUIDInput().parse(authorUuidField.getText());
-		} catch (CommandParseException e) {
-			JOptionPane.showMessageDialog(frame, e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-			return;
-		}
-		
-		byte[] nbt;
-		try {
-			nbt = new NBTSerializer(true).toBytes(rootTag);
-		} catch (IOException e) {
-			// Impossible
-			throw new RuntimeException("Failed to serialize NBT", e);
-		}
-		gui.whenComplete(gui.getConnection().addEntry(nameField.getText(), nbt, dataVersion,
-				authorUuid, authorUsernameField.getText(), verifiedField.isSelected()), id -> {
-			gui.whenComplete(gui.getConnection().getEntry(id), entry -> {
-				addEntry(entry);
-				entries.revalidate();
-				entries.repaint();
+			
+			byte[] nbt;
+			try {
+				nbt = new NBTSerializer(true).toBytes(rootTag);
+			} catch (IOException e) {
+				// Impossible
+				throw new RuntimeException("Failed to serialize NBT", e);
+			}
+			gui.whenComplete(gui.getConnection().addEntry(nameField.getText(), nbt, dataVersion,
+					authorUuid, authorUsernameField.getText(), verifiedField.isSelected()), id -> {
+				gui.whenComplete(CompletableFuture.allOf(tagFields.entrySet().stream()
+						.filter(entry -> entry.getValue().isSelected())
+						.map(entry -> gui.getConnection().addTagToEntry(id, entry.getKey()))
+						.toArray(CompletableFuture[]::new)), v -> refresh());
 			});
 		});
+	}
+	
+	private void detailsEntryBtn(NBTEntry entry) {
+		JPanel panel = new JPanel();
+		panel.setLayout(new BoxLayout(panel, BoxLayout.X_AXIS));
+		
+		JPanel column1 = new JPanel(new GridLayout(0, 1, 0, 4));
+		panel.add(column1);
+		
+		panel.add(Box.createHorizontalStrut(4));
+		
+		JPanel column2 = new JPanel(new GridLayout(0, 1, 0, 4));
+		panel.add(column2);
+		
+		column1.add(new JLabel("ID:"));
+		
+		column2.add(new JLabel(entry.id + ""));
+		
+		column1.add(new JLabel("Hash:"));
+		
+		column2.add(new JLabel(entry.hash));
+		
+		JOptionPane.showMessageDialog(frame, panel, "Entry Details: " + entry.name, JOptionPane.INFORMATION_MESSAGE);
 	}
 	
 	private void exportEntryBtn(String name, byte[] nbt) {
