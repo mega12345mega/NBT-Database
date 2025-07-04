@@ -10,8 +10,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.UUID;
 
-import javax.xml.bind.DatatypeConverter;
-
 public class NBTEntry {
 	
 	static NBTEntry fromDatabase(ResultSet row) throws SQLException {
@@ -50,12 +48,10 @@ public class NBTEntry {
 			
 			MessageDigest digest = MessageDigest.getInstance("SHA-256");
 			byte[] hash = digest.digest(buf.toByteArray());
-			String hashStr = DatatypeConverter.printHexBinary(hash).toLowerCase();
-			StringBuilder paddedHashStr = new StringBuilder();
-			for (int i = 0; i < 64 - hashStr.length(); i++)
-				paddedHashStr.append("0");
-			paddedHashStr.append(hashStr);
-			return paddedHashStr.toString();
+			StringBuilder hashStr = new StringBuilder();
+			for (byte b : hash)
+				hashStr.append(String.format("%02x", b));
+			return hashStr.toString();
 		} catch (IOException | NoSuchAlgorithmException e) {
 			throw new RuntimeException("Failed to generate hash", e);
 		}

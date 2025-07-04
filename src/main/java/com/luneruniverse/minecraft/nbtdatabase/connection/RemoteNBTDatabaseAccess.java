@@ -48,6 +48,11 @@ public class RemoteNBTDatabaseAccess implements NBTDatabaseAccess {
 		executor = Executors.newSingleThreadExecutor();
 	}
 	
+	@Override
+	public String getName() {
+		return "[Remote] " + client.getIp() + ":" + client.getPort();
+	}
+	
 	private <T, P> CompletableFuture<T> requestOptionalResponse(Packet packet, Class<P> responsePacketType, Function<P, Optional<T>> unpacker) {
 		return Util.supplyAsync(() -> {
 			try {

@@ -20,12 +20,15 @@ import com.luneruniverse.minecraft.nbtdatabase.connection.NBTDatabaseMetadata;
 
 public class NBTDatabase implements AutoCloseable {
 	
+	private final File file;
 	private final Connection connection;
 	private final NBTDatabaseConfig config;
 	
-	public NBTDatabase(File database) throws SQLException {
-		boolean createNew = !database.exists();
-		this.connection = DriverManager.getConnection("jdbc:sqlite:" + database.getAbsolutePath());
+	public NBTDatabase(File file) throws SQLException {
+		this.file = file;
+		
+		boolean createNew = !file.exists();
+		this.connection = DriverManager.getConnection("jdbc:sqlite:" + file.getAbsolutePath());
 		
 		if (createNew) {
 			try (Statement sql = connection.createStatement()) {
@@ -74,6 +77,10 @@ public class NBTDatabase implements AutoCloseable {
 		}
 		
 		this.config = new NBTDatabaseConfig(connection);
+	}
+	
+	public File getFile() {
+		return file;
 	}
 	
 	public NBTDatabaseConfig getConfig() {
@@ -197,7 +204,7 @@ public class NBTDatabase implements AutoCloseable {
 		try (PreparedStatement sql = connection.prepareStatement("INSERT INTO `tags` VALUES (?, ?)")) {
 			sql.setQueryTimeout(5);
 			sql.setString(1, name);
-			sql.setInt(2, color);
+			sql.setInt(2, color & 0xFFFFFF);
 			try {
 				sql.executeUpdate();
 			} catch (SQLiteException e) {

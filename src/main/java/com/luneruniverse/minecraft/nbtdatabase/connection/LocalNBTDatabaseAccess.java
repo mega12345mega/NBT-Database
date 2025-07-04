@@ -25,6 +25,11 @@ public class LocalNBTDatabaseAccess implements NBTDatabaseAccess {
 	}
 	
 	@Override
+	public String getName() {
+		return "[Local] " + database.getFile().getAbsolutePath();
+	}
+	
+	@Override
 	public CompletableFuture<NBTDatabaseMetadata> getMetadata() {
 		return CompletableFuture.completedFuture(database.getMetadata());
 	}

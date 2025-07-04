@@ -58,6 +58,10 @@ public class NBTDatabaseAccessServer implements AutoCloseable {
 		server.start();
 	}
 	
+	public int getPort() {
+		return server.getPort();
+	}
+	
 	private <T> void respond(Packet packet, Connection conn, CompletableFuture<T> request, Function<T, Packet> packer) {
 		request.whenComplete((value, e) -> {
 			try {

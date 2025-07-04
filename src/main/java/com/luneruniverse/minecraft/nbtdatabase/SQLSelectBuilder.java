@@ -30,6 +30,8 @@ public class SQLSelectBuilder {
 	private final List<String> groups;
 	private final List<String> groupFilters;
 	private final List<SQLParamSetterWithValue> params;
+	private final List<String> orders;
+	private Integer offset;
 	private Integer limit;
 	
 	/**
@@ -39,9 +41,10 @@ public class SQLSelectBuilder {
 		this.columnsAndTable = columnsAndTable;
 		this.joins = new ArrayList<>();
 		this.filters = new ArrayList<>();
-		this.params = new ArrayList<>();
 		this.groups = new ArrayList<>();
 		this.groupFilters = new ArrayList<>();
+		this.params = new ArrayList<>();
+		this.orders = new ArrayList<>();
 	}
 	
 	/**
@@ -103,6 +106,17 @@ public class SQLSelectBuilder {
 		params.add((sql, paramIndex) -> param.setParameter(sql, paramIndex, value));
 	}
 	
+	/**
+	 * @param order <code>`column` ASC</code>
+	 */
+	public void addOrder(String order) {
+		orders.add(order);
+	}
+	
+	public void setOffset(int offset) {
+		this.offset = offset;
+	}
+	
 	public void setLimit(int limit) {
 		this.limit = limit;
 	}
@@ -131,8 +145,15 @@ public class SQLSelectBuilder {
 			sql.append(groupFilters.get(i));
 		}
 		
-		if (limit != null)
+		for (int i = 0; i < orders.size(); i++) {
+			sql.append(i == 0 ? " ORDER BY " : ", ");
+			sql.append(orders.get(i));
+		}
+		
+		if (limit != null || offset != null)
 			sql.append(" LIMIT ?");
+		if (offset != null)
+			sql.append(" OFFSET ?");
 		
 		return sql.toString();
 	}
@@ -143,8 +164,10 @@ public class SQLSelectBuilder {
 		for (SQLParamSetterWithValue param : params)
 			param.setParameter(sql, ++paramIndex);
 		
-		if (limit != null)
-			sql.setInt(++paramIndex, limit);
+		if (limit != null || offset != null)
+			sql.setInt(++paramIndex, limit == null ? -1 : limit);
+		if (offset != null)
+			sql.setInt(++paramIndex, offset);
 	}
 	
 }

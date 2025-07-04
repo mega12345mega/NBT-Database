@@ -10,6 +10,7 @@ import com.luneruniverse.minecraft.nbtdatabase.Tag;
 import com.luneruniverse.minecraft.nbtdatabase.TagFilter;
 
 public interface NBTDatabaseAccess extends AutoCloseable {
+	public String getName();
 	public CompletableFuture<NBTDatabaseMetadata> getMetadata();
 	public CompletableFuture<Long> addEntry(String name, byte[] nbt, int dataVersion, UUID authorUuid, String authorUsername, boolean verified);
 	public CompletableFuture<Void> removeEntry(long id);
