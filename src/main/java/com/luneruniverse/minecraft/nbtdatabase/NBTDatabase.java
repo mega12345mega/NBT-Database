@@ -63,8 +63,8 @@ public class NBTDatabase implements AutoCloseable {
 				sql.executeUpdate("CREATE TABLE `entries_tags` ("
 						+ "`entry_id` INTEGER NOT NULL,"
 						+ "`tag` TEXT NOT NULL,"
-						+ "FOREIGN KEY (`entry_id`) REFERENCES `entries` (`id`) ON DELETE CASCADE,"
-						+ "FOREIGN KEY (`tag`) REFERENCES `tags` (`name`) ON DELETE CASCADE,"
+						+ "FOREIGN KEY (`entry_id`) REFERENCES `entries` (`id`) ON UPDATE CASCADE ON DELETE CASCADE,"
+						+ "FOREIGN KEY (`tag`) REFERENCES `tags` (`name`) ON UPDATE CASCADE ON DELETE CASCADE,"
 						+ "UNIQUE (`entry_id`, `tag`))");
 				sql.executeUpdate("CREATE INDEX `entries_tags-entry_id` ON `entries_tags` (`entry_id`)");
 				sql.executeUpdate("CREATE INDEX `entries_tags-tag` ON `entries_tags` (`tag`)");

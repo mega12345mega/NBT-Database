@@ -7,8 +7,11 @@ import java.awt.GridLayout;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -22,6 +25,8 @@ import javax.swing.JTextField;
 import javax.swing.border.CompoundBorder;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.TitledBorder;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 
 import com.luneruniverse.minecraft.nbtdatabase.DataVersion;
 import com.luneruniverse.minecraft.nbtdatabase.EntryFilter;
@@ -45,7 +50,7 @@ public class EntriesTab {
 	private final GUI gui;
 	private final JFrame frame;
 	private final JPanel entries;
-	private final EntryFilter filter;
+	private EntryFilter filter;
 	
 	public EntriesTab(GUI gui, JFrame frame, JPanel panel) {
 		this.gui = gui;
@@ -54,8 +59,40 @@ public class EntriesTab {
 		panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
 		panel.setBorder(new EmptyBorder(4, 4, 4, 4));
 		
+		JPanel options = new JPanel();
+		options.setLayout(new BoxLayout(options, BoxLayout.X_AXIS));
+		panel.add(options);
+		options.setAlignmentX(0);
+		
+		JTextField nameFilterField = new JTextField();
+		options.add(nameFilterField);
+		nameFilterField.setMaximumSize(new Dimension(nameFilterField.getMaximumSize().width, nameFilterField.getPreferredSize().height));
+		nameFilterField.getDocument().addDocumentListener(new DocumentListener() {
+			@Override
+			public void insertUpdate(DocumentEvent event) {
+				changedUpdate(event);
+			}
+			@Override
+			public void removeUpdate(DocumentEvent event) {
+				changedUpdate(event);
+			}
+			@Override
+			public void changedUpdate(DocumentEvent event) {
+				filter.filterByName(nameFilterField.getText().isEmpty() ? null : nameFilterField.getText());
+			}
+		});
+		nameFilterField.addActionListener(event -> refresh());
+		
+		options.add(Box.createRigidArea(new Dimension(4, 0)));
+		
+		JButton advancedSearchBtn = new JButton("Advanced Search");
+		options.add(advancedSearchBtn);
+		advancedSearchBtn.addActionListener(event -> advancedSearchBtn());
+		
+		options.add(Box.createRigidArea(new Dimension(4, 0)));
+		
 		JButton addEntryBtn = new JButton("Add Entry");
-		panel.add(addEntryBtn);
+		options.add(addEntryBtn);
 		addEntryBtn.addActionListener(event -> addEntryBtn());
 		
 		entries = new JPanel();
@@ -71,9 +108,11 @@ public class EntriesTab {
 		entries.add(panel);
 		panel.setAlignmentX(0);
 		
-		TitledBorder border = new TitledBorder(entry.name);
+		TitledBorder border = new TitledBorder(entry.name + (entry.verified ? " ✔️" : ""));
 		panel.setBorder(new CompoundBorder(new EmptyBorder(4, 0, 0, 0), border));
 		border.setTitleFont(border.getTitleFont().deriveFont(Font.BOLD));
+		if (entry.verified)
+			border.setTitleColor(new Color(0x008800));
 		
 		@SuppressWarnings("serial")
 		JPanel details = new JPanel() {
@@ -130,7 +169,7 @@ public class EntriesTab {
 		JLabel label = new JLabel(tag.name);
 		
 		label.setFont(label.getFont().deriveFont(Font.BOLD));
-		label.setForeground(color.getRed() + color.getGreen() + color.getBlue() > 128 * 3 ? Color.BLACK : Color.WHITE);
+		label.setForeground(Util.isColorBright(color) ? Color.BLACK : Color.WHITE);
 		
 		label.setOpaque(true);
 		label.setBackground(color);
@@ -160,6 +199,98 @@ public class EntriesTab {
 			
 			this.entries.revalidate();
 			this.entries.repaint();
+		});
+	}
+	
+	private void advancedSearchBtn() {
+		gui.whenComplete(gui.getConnection().getTags(new TagFilter()), tags -> {
+			JPanel panel = new JPanel(new GridLayout(0, 2, 4, 4));
+			
+			panel.add(new JLabel("Min Data Version:"));
+			
+			JTextField minDataVersionField = new JTextField();
+			panel.add(minDataVersionField);
+			if (filter.getMinDataVersion() != null)
+				minDataVersionField.setText(DataVersion.toString(filter.getMinDataVersion()));
+			
+			panel.add(new JLabel("Max Data Version:"));
+			
+			JTextField maxDataVersionField = new JTextField();
+			panel.add(maxDataVersionField);
+			if (filter.getMaxDataVersion() != null)
+				maxDataVersionField.setText(DataVersion.toString(filter.getMaxDataVersion()));
+			
+			panel.add(new JLabel("Author UUID:"));
+			
+			JTextField authorUuidField = new JTextField();
+			panel.add(authorUuidField);
+			if (filter.getAuthorUuid() != null)
+				authorUuidField.setText(filter.getAuthorUuid().toString());
+			
+			panel.add(new JLabel("Author Username:"));
+			
+			JTextField authorUsernameField = new JTextField();
+			panel.add(authorUsernameField);
+			if (filter.getAuthorName() != null)
+				authorUsernameField.setText(filter.getAuthorName());
+			
+			panel.add(new JLabel("Tags:"));
+			
+			Map<String, JCheckBox> tagFields = new HashMap<>();
+			if (tags.isEmpty()) {
+				panel.add(new JLabel("There are no tags"));
+			} else {
+				panel.add(new JLabel());
+				
+				for (Tag tag : tags) {
+					panel.add(createTag(tag));
+					
+					JCheckBox tagField = new JCheckBox();
+					tagFields.put(tag.name, tagField);
+					panel.add(tagField);
+					if (filter.getTags() != null && filter.getTags().contains(tag.name))
+						tagField.setSelected(true);
+				}
+			}
+			
+			if (JOptionPane.showConfirmDialog(frame, panel, "Advanced Search", JOptionPane.OK_CANCEL_OPTION) != JOptionPane.OK_OPTION)
+				return;
+			
+			String nameField = filter.getName();
+			filter = new EntryFilter();
+			filter.filterByName(nameField);
+			
+			if (!minDataVersionField.getText().isEmpty()) {
+				try {
+					filter.filterByMinDataVersion(new DataVersionInput().parse(minDataVersionField.getText()));
+				} catch (CommandParseException e) {
+					JOptionPane.showMessageDialog(frame, e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+				}
+			}
+			
+			if (!maxDataVersionField.getText().isEmpty()) {
+				try {
+					filter.filterByMaxDataVersion(new DataVersionInput().parse(maxDataVersionField.getText()));
+				} catch (CommandParseException e) {
+					JOptionPane.showMessageDialog(frame, e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+				}
+			}
+			
+			if (!authorUuidField.getText().isEmpty()) {
+				try {
+					filter.filterByAuthorUuid(new UUIDInput().parse(authorUuidField.getText()));
+				} catch (CommandParseException e) {
+					JOptionPane.showMessageDialog(frame, e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+				}
+			}
+			
+			if (!authorUsernameField.getText().isEmpty())
+				filter.filterByAuthorName(authorUsernameField.getText());
+			
+			filter.filterByTags(tagFields.entrySet().stream()
+					.filter(entry -> entry.getValue().isSelected()).map(Map.Entry::getKey).collect(Collectors.toSet()));
+			
+			refresh();
 		});
 	}
 	

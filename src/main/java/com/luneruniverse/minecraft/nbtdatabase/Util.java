@@ -1,5 +1,6 @@
 package com.luneruniverse.minecraft.nbtdatabase;
 
+import java.awt.Color;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -103,6 +104,19 @@ public class Util {
 	
 	public static String formatTimestamp(long utcMillis) {
 		return Instant.ofEpochMilli(utcMillis).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.RFC_1123_DATE_TIME);
+	}
+	
+	public static boolean isColorBright(Color color) {
+		float[] channels = new float[] {color.getRed(), color.getGreen(), color.getBlue()};
+		for (int i = 0; i < 3; i++) {
+			float channel = channels[i] / 255;
+			if (channel <= 0.04045)
+				channel /= 12.92;
+			else
+				channel = (float) Math.pow((channel + 0.055) / 1.055, 2.4);
+			channels[i] = channel;
+		}
+		return channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722 > 0.179;
 	}
 	
 }
