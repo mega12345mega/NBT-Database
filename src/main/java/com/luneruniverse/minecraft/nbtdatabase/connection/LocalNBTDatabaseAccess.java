@@ -1,6 +1,7 @@
 package com.luneruniverse.minecraft.nbtdatabase.connection;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -40,6 +41,12 @@ public class LocalNBTDatabaseAccess implements NBTDatabaseAccess {
 	}
 	
 	@Override
+	public CompletableFuture<Void> editEntry(long id, Optional<String> name, Optional<byte[]> nbt, Optional<Integer> dataVersion,
+			Optional<UUID> authorUuid, Optional<String> authorUsername, Optional<Boolean> verified) {
+		return Util.runAsync(() -> database.editEntry(id, name, nbt, dataVersion, authorUuid, authorUsername, verified), executor);
+	}
+	
+	@Override
 	public CompletableFuture<Void> removeEntry(long id) {
 		return Util.runAsync(() -> database.removeEntry(id), executor);
 	}
@@ -57,6 +64,11 @@ public class LocalNBTDatabaseAccess implements NBTDatabaseAccess {
 	@Override
 	public CompletableFuture<Void> addTag(String name, int color) {
 		return Util.runAsync(() -> database.addTag(name, color), executor);
+	}
+	
+	@Override
+	public CompletableFuture<Void> editTag(String currentName, Optional<String> name, Optional<Integer> color) {
+		return Util.runAsync(() -> database.editTag(currentName, name, color), executor);
 	}
 	
 	@Override

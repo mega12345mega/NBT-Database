@@ -10,6 +10,8 @@ import com.luneruniverse.minecraft.nbtdatabase.Util;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.AddEntryRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.AddTagRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.AddTagToEntryRequestPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.EditEntryRequestPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.EditTagRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.EntriesPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetEntriesRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetEntryRequestPacket;
@@ -45,10 +47,12 @@ public class NBTDatabaseAccessServer implements AutoCloseable {
 		server.addPacketListener(new TypedPacketListener()
 				.when(MetadataRequestPacket.class, this::metadataRequestPacket)
 				.when(AddEntryRequestPacket.class, this::addEntryRequestPacket)
+				.when(EditEntryRequestPacket.class, this::editEntryRequestPacket)
 				.when(RemoveEntryRequestPacket.class, this::removeEntryRequestPacket)
 				.when(GetEntryRequestPacket.class, this::getEntryRequestPacket)
 				.when(GetEntriesRequestPacket.class, this::getEntriesRequestPacket)
 				.when(AddTagRequestPacket.class, this::addTagRequestPacket)
+				.when(EditTagRequestPacket.class, this::editTagRequestPacket)
 				.when(RemoveTagRequestPacket.class, this::removeTagRequestPacket)
 				.when(GetTagRequestPacket.class, this::getTagRequestPacket)
 				.when(GetTagsRequestPacket.class, this::getTagsRequestPacket)
@@ -93,6 +97,11 @@ public class NBTDatabaseAccessServer implements AutoCloseable {
 				packet.getAuthorUuid(), packet.getAuthorUsername(), packet.isVerified()), PrimitivePacket::new);
 	}
 	
+	private void editEntryRequestPacket(EditEntryRequestPacket packet, Connection conn, WaitState wait) {
+		respondVoid(packet, conn, database.editEntry(packet.getId(), packet.getName(), packet.getNbt(),
+				packet.getDataVersion(), packet.getAuthorUuid(), packet.getAuthorUsername(), packet.isVerified()));
+	}
+	
 	private void removeEntryRequestPacket(RemoveEntryRequestPacket packet, Connection conn, WaitState wait) {
 		respondVoid(packet, conn, database.removeEntry(packet.getId()));
 	}
@@ -107,6 +116,10 @@ public class NBTDatabaseAccessServer implements AutoCloseable {
 	
 	private void addTagRequestPacket(AddTagRequestPacket packet, Connection conn, WaitState wait) {
 		respondVoid(packet, conn, database.addTag(packet.getName(), packet.getColor()));
+	}
+	
+	private void editTagRequestPacket(EditTagRequestPacket packet, Connection conn, WaitState wait) {
+		respondVoid(packet, conn, database.editTag(packet.getCurrentName(), packet.getName(), packet.getColor()));
 	}
 	
 	private void removeTagRequestPacket(RemoveTagRequestPacket packet, Connection conn, WaitState wait) {

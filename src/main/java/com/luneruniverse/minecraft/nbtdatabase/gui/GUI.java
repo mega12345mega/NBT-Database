@@ -44,8 +44,8 @@ public class GUI {
 	
 	private static JScrollPane createJScrollPane(JComponent component) {
 		JScrollPane scrollPane = new JScrollPane(component);
-		scrollPane.getHorizontalScrollBar().setUnitIncrement(5);
-		scrollPane.getVerticalScrollBar().setUnitIncrement(5);
+		scrollPane.getHorizontalScrollBar().setUnitIncrement(15);
+		scrollPane.getVerticalScrollBar().setUnitIncrement(15);
 		return scrollPane;
 	}
 	

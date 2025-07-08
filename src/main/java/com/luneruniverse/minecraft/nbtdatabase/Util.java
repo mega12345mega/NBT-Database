@@ -4,12 +4,14 @@ import java.awt.Color;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class Util {
 	
@@ -52,6 +54,23 @@ public class Util {
 			});
 		} catch (RejectedExecutionException e) {
 			future.completeExceptionally(e);
+		}
+		return future;
+	}
+	
+	public static CompletableFuture<Void> allOf(CompletableFuture<?>... futures) {
+		if (futures.length == 0)
+			return CompletableFuture.completedFuture(null);
+		
+		CompletableFuture<Void> future = new CompletableFuture<>();
+		AtomicInteger numCompleted = new AtomicInteger();
+		for (CompletableFuture<?> i : futures) {
+			i.whenComplete((value, e) -> {
+				if (e != null)
+					future.completeExceptionally(e);
+				else if (numCompleted.incrementAndGet() == futures.length)
+					future.complete(null);
+			});
 		}
 		return future;
 	}
@@ -117,6 +136,12 @@ public class Util {
 			channels[i] = channel;
 		}
 		return channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722 > 0.179;
+	}
+	
+	public static <T> Optional<T> edit(T originalValue, T newValue) {
+		if (newValue == null || originalValue.equals(newValue))
+			return Optional.empty();
+		return Optional.of(newValue);
 	}
 	
 }

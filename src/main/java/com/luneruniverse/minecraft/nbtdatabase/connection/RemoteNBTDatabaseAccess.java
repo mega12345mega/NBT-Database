@@ -18,6 +18,8 @@ import com.luneruniverse.minecraft.nbtdatabase.Util;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.AddEntryRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.AddTagRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.AddTagToEntryRequestPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.EditEntryRequestPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.EditTagRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.EntriesPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetEntriesRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetEntryRequestPacket;
@@ -95,6 +97,12 @@ public class RemoteNBTDatabaseAccess implements NBTDatabaseAccess {
 	}
 	
 	@Override
+	public CompletableFuture<Void> editEntry(long id, Optional<String> name, Optional<byte[]> nbt, Optional<Integer> dataVersion,
+			Optional<UUID> authorUuid, Optional<String> authorUsername, Optional<Boolean> verified) {
+		return requestVoid(new EditEntryRequestPacket(id, name, nbt, dataVersion, authorUuid, authorUsername, verified));
+	}
+	
+	@Override
 	public CompletableFuture<Void> removeEntry(long id) {
 		return requestVoid(new RemoveEntryRequestPacket(id));
 	}
@@ -112,6 +120,11 @@ public class RemoteNBTDatabaseAccess implements NBTDatabaseAccess {
 	@Override
 	public CompletableFuture<Void> addTag(String name, int color) {
 		return requestVoid(new AddTagRequestPacket(name, color));
+	}
+	
+	@Override
+	public CompletableFuture<Void> editTag(String currentName, Optional<String> name, Optional<Integer> color) {
+		return requestVoid(new EditTagRequestPacket(currentName, name, color));
 	}
 	
 	@Override

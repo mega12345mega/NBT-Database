@@ -9,10 +9,12 @@ public class Packets {
 		// Client -> Server
 		PACKETS.registerPacket(MetadataRequestPacket.class);
 		PACKETS.registerPacket(AddEntryRequestPacket.class);
+		PACKETS.registerPacket(EditEntryRequestPacket.class);
 		PACKETS.registerPacket(RemoveEntryRequestPacket.class);
 		PACKETS.registerPacket(GetEntryRequestPacket.class);
 		PACKETS.registerPacket(GetEntriesRequestPacket.class);
 		PACKETS.registerPacket(AddTagRequestPacket.class);
+		PACKETS.registerPacket(EditTagRequestPacket.class);
 		PACKETS.registerPacket(RemoveTagRequestPacket.class);
 		PACKETS.registerPacket(GetTagRequestPacket.class);
 		PACKETS.registerPacket(GetTagsRequestPacket.class);

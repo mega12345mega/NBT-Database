@@ -5,33 +5,30 @@ import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.util.function.Consumer;
 
 import javax.swing.JColorChooser;
 import javax.swing.JComponent;
 
 @SuppressWarnings("serial")
-public class ColorButton extends JComponent {
+public class JColorField extends JComponent {
 	
 	private int color;
 	
-	public ColorButton(int color, Consumer<Integer> onColorChange) {
-		this.color = color;
-		
+	public JColorField() {
 		addMouseListener(new MouseAdapter() {
 			@Override
 			public void mouseClicked(MouseEvent e) {
-				Color newColor = JColorChooser.showDialog(ColorButton.this, "", new Color(color));
+				Color newColor = JColorChooser.showDialog(JColorField.this, "", new Color(color));
 				if (newColor != null) {
-					ColorButton.this.color = newColor.getRGB() & 0xFFFFFF;
-					onColorChange.accept(ColorButton.this.color);
+					JColorField.this.color = newColor.getRGB() & 0xFFFFFF;
 					repaint();
 				}
 			}
 		});
 	}
-	public ColorButton(int color) {
-		this(color, newColor -> {});
+	
+	public void setColor(int color) {
+		this.color = color;
 	}
 	
 	public int getColor() {

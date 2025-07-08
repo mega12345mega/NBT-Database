@@ -3,12 +3,15 @@ package com.luneruniverse.minecraft.nbtdatabase.gui;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
-import java.awt.GridLayout;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicReference;
@@ -26,8 +29,6 @@ import javax.swing.JTextField;
 import javax.swing.border.CompoundBorder;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.TitledBorder;
-import javax.swing.event.DocumentEvent;
-import javax.swing.event.DocumentListener;
 
 import com.luneruniverse.minecraft.nbtdatabase.DataVersion;
 import com.luneruniverse.minecraft.nbtdatabase.EntryFilter;
@@ -68,20 +69,7 @@ public class EntriesTab {
 		JTextField nameFilterField = new JTextField();
 		options.add(nameFilterField);
 		nameFilterField.setMaximumSize(new Dimension(nameFilterField.getMaximumSize().width, nameFilterField.getPreferredSize().height));
-		nameFilterField.getDocument().addDocumentListener(new DocumentListener() {
-			@Override
-			public void insertUpdate(DocumentEvent event) {
-				changedUpdate(event);
-			}
-			@Override
-			public void removeUpdate(DocumentEvent event) {
-				changedUpdate(event);
-			}
-			@Override
-			public void changedUpdate(DocumentEvent event) {
-				filter.filterByName(nameFilterField.getText().isEmpty() ? null : nameFilterField.getText());
-			}
-		});
+		GUIUtil.addTextFieldChangeListener(nameFilterField, text -> filter.filterByName(text.isEmpty() ? null : text));
 		nameFilterField.addActionListener(event -> refresh());
 		
 		options.add(Box.createRigidArea(new Dimension(4, 0)));
@@ -94,7 +82,7 @@ public class EntriesTab {
 		
 		JButton addEntryBtn = new JButton("Add Entry");
 		options.add(addEntryBtn);
-		addEntryBtn.addActionListener(event -> addEntryBtn());
+		addEntryBtn.addActionListener(event -> editEntryBtn(null, null));
 		
 		entries = new JPanel();
 		entries.setLayout(new BoxLayout(entries, BoxLayout.Y_AXIS));
@@ -159,28 +147,18 @@ public class EntriesTab {
 		options.add(exportEntryBtn);
 		exportEntryBtn.addActionListener(event -> exportEntryBtn(entry.name, entry.nbt));
 		
-		options.add(new JButton("Edit"));
+		JButton editEntryBtn = new JButton("Edit");
+		options.add(editEntryBtn);
+		editEntryBtn.addActionListener(event -> {
+			gui.whenComplete(gui.getConnection().getTags(new TagFilter().filterByEntryId(entry.id)),
+					previousTags -> editEntryBtn(entry, previousTags.stream().map(tag -> tag.name).collect(Collectors.toSet())));
+		});
 		
 		JButton removeEntryBtn = new JButton("-");
 		options.add(removeEntryBtn);
 		removeEntryBtn.addActionListener(event -> removeEntryBtn(entry.id, entry.name, panel));
 		
 		return tags;
-	}
-	
-	private JLabel createTag(Tag tag) {
-		Color color = new Color(tag.color);
-		
-		JLabel label = new JLabel(tag.name);
-		
-		label.setFont(label.getFont().deriveFont(Font.BOLD));
-		label.setForeground(Util.isColorBright(color) ? Color.BLACK : Color.WHITE);
-		
-		label.setOpaque(true);
-		label.setBackground(color);
-		label.setBorder(new EmptyBorder(4, 4, 4, 4));
-		
-		return label;
 	}
 	
 	public void refresh() {
@@ -196,7 +174,7 @@ public class EntriesTab {
 							tagsPanel.setBorder(new EmptyBorder(0, 0, 4, 0));
 						else
 							tagsPanel.add(Box.createRigidArea(new Dimension(4, 0)));
-						tagsPanel.add(createTag(tag));
+						tagsPanel.add(GUIUtil.createTag(tag));
 					}
 					
 					tagsPanel.revalidate();
@@ -211,12 +189,13 @@ public class EntriesTab {
 	
 	private void advancedSearchBtn() {
 		gui.whenComplete(gui.getConnection().getTags(new TagFilter()), tags -> {
-			JPanel panel = new JPanel(new GridLayout(0, 2, 4, 4));
+			JPanel panel = new JPanel(TableLayout.ofColumns(2, 4));
 			
 			panel.add(new JLabel("Min Data Version:"));
 			
 			JTextField minDataVersionField = new JTextField();
 			panel.add(minDataVersionField);
+			minDataVersionField.setPreferredSize(new Dimension(200, minDataVersionField.getPreferredSize().height));
 			if (filter.getMinDataVersion() != null)
 				minDataVersionField.setText(DataVersion.toString(filter.getMinDataVersion()));
 			
@@ -250,7 +229,7 @@ public class EntriesTab {
 				panel.add(new JLabel());
 				
 				for (Tag tag : tags) {
-					panel.add(createTag(tag));
+					panel.add(GUIUtil.createTag(tag));
 					
 					JCheckBox tagField = new JCheckBox();
 					tagFields.put(tag.name, tagField);
@@ -301,14 +280,15 @@ public class EntriesTab {
 		});
 	}
 	
-	private void addEntryBtn() {
+	private void editEntryBtn(NBTEntry previousEntry, Set<String> previousTags) {
 		gui.whenComplete(gui.getConnection().getTags(new TagFilter()), tags -> {
-			JPanel panel = new JPanel(new GridLayout(0, 2, 4, 4));
+			JPanel panel = new JPanel(TableLayout.ofColumns(2, 4));
 			
 			panel.add(new JLabel("Name:"));
 			
 			JTextField nameField = new JTextField();
 			panel.add(nameField);
+			nameField.setPreferredSize(new Dimension(200, nameField.getPreferredSize().height));
 			
 			panel.add(new JLabel("File:"));
 			
@@ -356,7 +336,7 @@ public class EntriesTab {
 				panel.add(new JLabel());
 				
 				for (Tag tag : tags) {
-					panel.add(createTag(tag));
+					panel.add(GUIUtil.createTag(tag));
 					
 					JCheckBox tagField = new JCheckBox();
 					tagFields.put(tag.name, tagField);
@@ -364,44 +344,70 @@ public class EntriesTab {
 				}
 			}
 			
-			if (JOptionPane.showConfirmDialog(frame, panel, "Add Entry", JOptionPane.OK_CANCEL_OPTION) != JOptionPane.OK_OPTION)
+			if (previousEntry != null) {
+				nameField.setText(previousEntry.name);
+				authorUuidField.setText(previousEntry.authorUuid.toString());
+				authorUsernameField.setText(previousEntry.authorUsername);
+				verifiedField.setSelected(previousEntry.verified);
+				for (String tag : previousTags)
+					tagFields.get(tag).setSelected(true);
+			}
+			
+			if (JOptionPane.showConfirmDialog(frame, panel,
+					previousEntry == null ? "Add Entry" : "Edit Entry: " + previousEntry.name,
+					JOptionPane.OK_CANCEL_OPTION) != JOptionPane.OK_OPTION) {
 				return;
+			}
 			
 			File file = selectFileField.get();
+			Integer dataVersion;
+			byte[] nbt;
 			if (file == null) {
-				JOptionPane.showMessageDialog(frame, "You must select a file!", "Error", JOptionPane.ERROR_MESSAGE);
-				return;
-			}
-			if (!file.exists()) {
-				JOptionPane.showMessageDialog(frame, "'" + file.getName() + "' doesn't exist!", "Error", JOptionPane.ERROR_MESSAGE);
-				return;
-			}
-			
-			NamedTag rootTag;
-			CompoundTag rootValue;
-			try {
-				rootTag = NBTUtil.read(file);
-				if (rootTag.getTag() instanceof CompoundTag)
-					rootValue = (CompoundTag) rootTag.getTag();
-				else
-					throw new IOException();
-			} catch (IOException e) {
-				JOptionPane.showMessageDialog(frame, "'" + file.getName() + "' isn't a valid NBT file!", "Error", JOptionPane.ERROR_MESSAGE);
-				return;
-			}
-			
-			int dataVersion;
-			if (rootValue.containsKey("DataVersion") && rootValue.get("DataVersion") instanceof IntTag)
-				dataVersion = rootValue.getInt("DataVersion");
-			else {
-				String dataVersionStr = JOptionPane.showInputDialog(frame, "Enter data version:", "Add Entry", JOptionPane.QUESTION_MESSAGE);
-				if (dataVersionStr == null)
+				if (previousEntry == null) {
+					JOptionPane.showMessageDialog(frame, "You must select a file!", "Error", JOptionPane.ERROR_MESSAGE);
 					return;
+				} else {
+					dataVersion = null;
+					nbt = null;
+				}
+			} else {
+				if (!file.exists()) {
+					JOptionPane.showMessageDialog(frame, "'" + file.getName() + "' doesn't exist!", "Error", JOptionPane.ERROR_MESSAGE);
+					return;
+				}
+				
+				NamedTag rootTag;
+				CompoundTag rootValue;
 				try {
-					dataVersion = new DataVersionInput().parse(dataVersionStr);
-				} catch (CommandParseException e) {
-					JOptionPane.showMessageDialog(frame, e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+					rootTag = NBTUtil.read(file);
+					if (rootTag.getTag() instanceof CompoundTag)
+						rootValue = (CompoundTag) rootTag.getTag();
+					else
+						throw new IOException();
+				} catch (IOException e) {
+					JOptionPane.showMessageDialog(frame, "'" + file.getName() + "' isn't a valid NBT file!", "Error", JOptionPane.ERROR_MESSAGE);
 					return;
+				}
+				
+				if (rootValue.containsKey("DataVersion") && rootValue.get("DataVersion") instanceof IntTag)
+					dataVersion = rootValue.getInt("DataVersion");
+				else {
+					String dataVersionStr = JOptionPane.showInputDialog(frame, "Enter data version:", "Add Entry", JOptionPane.QUESTION_MESSAGE);
+					if (dataVersionStr == null)
+						return;
+					try {
+						dataVersion = new DataVersionInput().parse(dataVersionStr);
+					} catch (CommandParseException e) {
+						JOptionPane.showMessageDialog(frame, e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+						return;
+					}
+				}
+				
+				try {
+					nbt = new NBTSerializer(true).toBytes(rootTag);
+				} catch (IOException e) {
+					// Impossible
+					throw new RuntimeException("Failed to serialize NBT", e);
 				}
 			}
 			
@@ -413,42 +419,54 @@ public class EntriesTab {
 				return;
 			}
 			
-			byte[] nbt;
-			try {
-				nbt = new NBTSerializer(true).toBytes(rootTag);
-			} catch (IOException e) {
-				// Impossible
-				throw new RuntimeException("Failed to serialize NBT", e);
+			if (previousEntry == null) {
+				gui.whenComplete(gui.getConnection().addEntry(nameField.getText(), nbt, dataVersion,
+						authorUuid, authorUsernameField.getText(), verifiedField.isSelected()), id -> {
+					gui.whenComplete(Util.allOf(tagFields.entrySet().stream()
+							.filter(entry -> entry.getValue().isSelected())
+							.map(entry -> gui.getConnection().addTagToEntry(id, entry.getKey()))
+							.toArray(CompletableFuture[]::new)), v -> refresh());
+				});
+			} else {
+				Runnable editTags = () -> {
+					List<CompletableFuture<Void>> tagFutures = new ArrayList<>();
+					for (Map.Entry<String, JCheckBox> tag : tagFields.entrySet()) {
+						if (previousTags.contains(tag.getKey()) != tag.getValue().isSelected()) {
+							if (tag.getValue().isSelected())
+								tagFutures.add(gui.getConnection().addTagToEntry(previousEntry.id, tag.getKey()));
+							else
+								tagFutures.add(gui.getConnection().removeTagFromEntry(previousEntry.id, tag.getKey()));
+						}
+					}
+					gui.whenComplete(Util.allOf(tagFutures.toArray(new CompletableFuture[tagFutures.size()])), v2 -> refresh());
+				};
+				Optional<String> nameEdit = Util.edit(previousEntry.name, nameField.getText());
+				Optional<byte[]> nbtEdit = Util.edit(previousEntry.nbt, nbt);
+				Optional<Integer> dataVersionEdit = Util.edit(previousEntry.dataVersion, dataVersion);
+				Optional<UUID> authorUuidEdit = Util.edit(previousEntry.authorUuid, authorUuid);
+				Optional<String> authorUsernameEdit = Util.edit(previousEntry.authorUsername, authorUsernameField.getText());
+				Optional<Boolean> verifiedEdit = Util.edit(previousEntry.verified, verifiedField.isSelected());
+				if (nameEdit.isPresent() || nbtEdit.isPresent() || dataVersionEdit.isPresent() ||
+						authorUuidEdit.isPresent() || authorUsernameEdit.isPresent() || verifiedEdit.isPresent()) {
+					gui.whenComplete(gui.getConnection().editEntry(previousEntry.id, nameEdit, nbtEdit, dataVersionEdit,
+							authorUuidEdit, authorUsernameEdit, verifiedEdit), v -> editTags.run());
+				} else {
+					editTags.run();
+				}
 			}
-			gui.whenComplete(gui.getConnection().addEntry(nameField.getText(), nbt, dataVersion,
-					authorUuid, authorUsernameField.getText(), verifiedField.isSelected()), id -> {
-				gui.whenComplete(CompletableFuture.allOf(tagFields.entrySet().stream()
-						.filter(entry -> entry.getValue().isSelected())
-						.map(entry -> gui.getConnection().addTagToEntry(id, entry.getKey()))
-						.toArray(CompletableFuture[]::new)), v -> refresh());
-			});
 		});
 	}
 	
 	private void detailsEntryBtn(NBTEntry entry) {
-		JPanel panel = new JPanel();
-		panel.setLayout(new BoxLayout(panel, BoxLayout.X_AXIS));
+		JPanel panel = new JPanel(TableLayout.ofColumns(2, 4));
 		
-		JPanel column1 = new JPanel(new GridLayout(0, 1, 0, 4));
-		panel.add(column1);
+		panel.add(new JLabel("ID:"));
 		
-		panel.add(Box.createHorizontalStrut(4));
+		panel.add(new JLabel(entry.id + ""));
 		
-		JPanel column2 = new JPanel(new GridLayout(0, 1, 0, 4));
-		panel.add(column2);
+		panel.add(new JLabel("Hash:"));
 		
-		column1.add(new JLabel("ID:"));
-		
-		column2.add(new JLabel(entry.id + ""));
-		
-		column1.add(new JLabel("Hash:"));
-		
-		column2.add(new JLabel(entry.hash));
+		panel.add(new JLabel(entry.hash));
 		
 		JOptionPane.showMessageDialog(frame, panel, "Entry Details: " + entry.name, JOptionPane.INFORMATION_MESSAGE);
 	}

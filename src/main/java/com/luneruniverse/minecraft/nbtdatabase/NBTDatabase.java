@@ -10,6 +10,7 @@ import java.sql.Statement;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
 
@@ -17,6 +18,8 @@ import org.sqlite.SQLiteErrorCode;
 import org.sqlite.SQLiteException;
 
 import com.luneruniverse.minecraft.nbtdatabase.connection.NBTDatabaseMetadata;
+import com.luneruniverse.minecraft.nbtdatabase.sqlbuilder.SQLSelectBuilder;
+import com.luneruniverse.minecraft.nbtdatabase.sqlbuilder.SQLUpdateBuilder;
 
 public class NBTDatabase implements AutoCloseable {
 	
@@ -136,6 +139,50 @@ public class NBTDatabase implements AutoCloseable {
 		return id;
 	}
 	
+	public void editEntry(long id, Optional<String> name, Optional<byte[]> nbt, Optional<Integer> dataVersion,
+			Optional<UUID> authorUuid, Optional<String> authorUsername, Optional<Boolean> verified) throws IllegalRequestException, SQLException {
+		SQLUpdateBuilder update = new SQLUpdateBuilder("`entries`");
+		if (name.isPresent()) {
+			if (name.get().length() > 256)
+				throw new IllegalRequestException("name must be <= 256 characters long");
+			update.addColumn("`name`=?", PreparedStatement::setString, name.get());
+		}
+		if (nbt.isPresent()) {
+			if (nbt.get().length > config.getMaxNbtSize())
+				throw new IllegalRequestException("nbt must be <= " + config.getMaxNbtSize() + " bytes long");
+			update.addColumn("`nbt`=?", PreparedStatement::setBytes, nbt.get());
+		}
+		if (dataVersion.isPresent())
+			update.addColumn("`data_version`=?", PreparedStatement::setInt, dataVersion.get());
+		if (authorUuid.isPresent())
+			update.addColumn("`author_uuid`=?", PreparedStatement::setString, authorUuid.get().toString());
+		if (authorUsername.isPresent()) {
+			if (authorUsername.get().length() > 16)
+				throw new IllegalRequestException("authorUsername must be <= 16 characters long");
+			update.addColumn("`author_username`=?", PreparedStatement::setString, authorUsername.get());
+		}
+		if (verified.isPresent())
+			update.addColumn("`verified`=?", PreparedStatement::setBoolean, verified.get());
+		if (!update.isValid())
+			throw new IllegalRequestException("Nothing requested to be updated for entry with id " + id);
+		long modified = Instant.now().toEpochMilli();
+		update.addColumn("`modified`=?", PreparedStatement::setLong, modified);
+		NBTEntry oldEntry = getEntry(id);
+		if (oldEntry == null)
+			throw new IllegalRequestException("Entry doesn't exist: " + id);
+		update.addColumn("`hash`=?", PreparedStatement::setString,
+				NBTEntry.genHash(name.orElse(oldEntry.name), nbt.orElse(oldEntry.nbt), dataVersion.orElse(oldEntry.dataVersion),
+						authorUuid.orElse(oldEntry.authorUuid), oldEntry.created, modified));
+		update.addFilter("`id`=?", PreparedStatement::setLong, id);
+		
+		try (PreparedStatement sql = connection.prepareStatement(update.toSQL())) {
+			sql.setQueryTimeout(5);
+			update.setParams(sql);
+			if (sql.executeUpdate() == 0)
+				throw new IllegalRequestException("Entry doesn't exist: " + id);
+		}
+	}
+	
 	public void removeEntry(long id) throws IllegalRequestException, SQLException {
 		try (PreparedStatement sql = connection.prepareStatement("DELETE FROM `entries` WHERE `id`=?")) {
 			sql.setQueryTimeout(5);
@@ -201,6 +248,9 @@ public class NBTDatabase implements AutoCloseable {
 	}
 	
 	public void addTag(String name, int color) throws IllegalRequestException, SQLException {
+		if (name.length() > 256)
+			throw new IllegalRequestException("name must be <= 256 characters long");
+		
 		try (PreparedStatement sql = connection.prepareStatement("INSERT INTO `tags` VALUES (?, ?)")) {
 			sql.setQueryTimeout(5);
 			sql.setString(1, name);
@@ -210,6 +260,34 @@ public class NBTDatabase implements AutoCloseable {
 			} catch (SQLiteException e) {
 				if (e.getResultCode() == SQLiteErrorCode.SQLITE_CONSTRAINT_UNIQUE)
 					throw new IllegalRequestException("Tag already exists: " + name);
+				else
+					throw e;
+			}
+		}
+	}
+	
+	public void editTag(String currentName, Optional<String> name, Optional<Integer> color) throws IllegalRequestException, SQLException {
+		SQLUpdateBuilder update = new SQLUpdateBuilder("`tags`");
+		if (name.isPresent()) {
+			if (name.get().length() > 256)
+				throw new IllegalRequestException("name must be <= 256 characters long");
+			update.addColumn("`name`=?", PreparedStatement::setString, name.get());
+		}
+		if (color.isPresent())
+			update.addColumn("`color`=?", PreparedStatement::setInt, color.get());
+		if (!update.isValid())
+			throw new IllegalRequestException("Nothing requested to be updated for tag: " + currentName);
+		update.addFilter("`name`=?", PreparedStatement::setString, currentName);
+		
+		try (PreparedStatement sql = connection.prepareStatement(update.toSQL())) {
+			sql.setQueryTimeout(5);
+			update.setParams(sql);
+			try {
+				if (sql.executeUpdate() == 0)
+					throw new IllegalRequestException("Tag doesn't exist: " + currentName);
+			} catch (SQLiteException e) {
+				if (e.getResultCode() == SQLiteErrorCode.SQLITE_CONSTRAINT_UNIQUE)
+					throw new IllegalRequestException("Tag already exists: " + name.get());
 				else
 					throw e;
 			}
@@ -245,6 +323,7 @@ public class NBTDatabase implements AutoCloseable {
 			select.addJoin("JOIN `entries_tags` ON `entries_tags`.`tag`=`tags`.`name`");
 			select.addFilter("`entries_tags`.`entry_id`=?", PreparedStatement::setLong, filter.getEntryId());
 		}
+		select.addOrder("`tags`.`name` ASC");
 		
 		try (PreparedStatement sql = connection.prepareStatement(select.toSQL())) {
 			sql.setQueryTimeout(5);

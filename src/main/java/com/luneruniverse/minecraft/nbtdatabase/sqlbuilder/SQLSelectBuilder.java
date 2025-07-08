@@ -1,4 +1,4 @@
-package com.luneruniverse.minecraft.nbtdatabase;
+package com.luneruniverse.minecraft.nbtdatabase.sqlbuilder;
 
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
@@ -15,13 +15,6 @@ public class SQLSelectBuilder {
 			output.append(", ?");
 		output.append(')');
 		return output.toString();
-	}
-	
-	public interface SQLParamSetter<T> {
-		public void setParameter(PreparedStatement sql, int parameterIndex, T x) throws SQLException;
-	}
-	private interface SQLParamSetterWithValue {
-		public void setParameter(PreparedStatement sql, int parameterIndex) throws SQLException;
 	}
 	
 	private final String columnsAndTable;
@@ -103,7 +96,7 @@ public class SQLSelectBuilder {
 	 * @param value <code>"str"</code>
 	 */
 	public <T> void addParam(SQLParamSetter<T> param, T value) {
-		params.add((sql, paramIndex) -> param.setParameter(sql, paramIndex, value));
+		params.add(param.bindValue(value));
 	}
 	
 	/**

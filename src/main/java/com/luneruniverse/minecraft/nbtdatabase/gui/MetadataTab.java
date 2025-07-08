@@ -1,7 +1,6 @@
 package com.luneruniverse.minecraft.nbtdatabase.gui;
 
 import java.awt.FlowLayout;
-import java.awt.GridLayout;
 
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -18,7 +17,7 @@ public class MetadataTab {
 		
 		panel.setLayout(new FlowLayout(FlowLayout.LEFT));
 		
-		JPanel table = new JPanel(new GridLayout(0, 2, 4, 4));
+		JPanel table = new JPanel(TableLayout.ofColumns(2, 4));
 		panel.add(table);
 		
 		table.add(new JLabel("Max NBT Size:"));
