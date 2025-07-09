@@ -163,6 +163,13 @@ public class CLI extends Thread {
 				.addCommand(new SingleCommand("add", inputs -> tagAddCmd(
 						inputs.getArgument("name", String.class), inputs.getArgument("color", Integer.class)))
 						.addArgument("name", new StringInput()).addArgument("color", new ColorInput()))
+				.addCommand(new SingleCommand("edit", inputs -> tagEditCmd(
+						inputs.getArgument("currentName", String.class),
+						inputs.getFlagOptional("name", String.class),
+						inputs.getFlagOptional("color", Integer.class)))
+						.addArgument("currentName", new StringInput())
+						.addFlag("name", "n", new StringInput())
+						.addFlag("color", "c", new ColorInput()))
 				.addCommand(new SingleCommand("remove", inputs -> tagRemoveCmd(
 						inputs.getArgument("name", String.class)))
 						.addArgument("name", new StringInput()))
@@ -468,6 +475,14 @@ public class CLI extends Thread {
 		
 		whenComplete(connection.addTag(name, color),
 				v -> System.out.println("Added tag: " + name + " (#" + ColorInput.toString(color) + ")"));
+	}
+	
+	private void tagEditCmd(String currentName, Optional<String> name, Optional<Integer> color) {
+		if (checkConnectionExists())
+			return;
+		
+		whenComplete(connection.editTag(currentName, name, color),
+				v -> System.out.println("Edited tag: " + currentName + name.map(value -> " (now '" + value + "')").orElse("")));
 	}
 	
 	private void tagRemoveCmd(String name) {
