@@ -134,8 +134,8 @@ public class CLI extends Thread {
 							}
 							if (inputs.hasFlag("author_uuid"))
 								filter.filterByAuthorUuid(inputs.getFlag("author_uuid", UUID.class));
-							if (inputs.hasFlag("author_name"))
-								filter.filterByAuthorName(inputs.getFlag("author_name", String.class));
+							if (inputs.hasFlag("author_username"))
+								filter.filterByAuthorUsername(inputs.getFlag("author_username", String.class));
 							if (inputs.hasFlag("tags"))
 								filter.filterByTags(new HashSet<>(Arrays.asList(inputs.getFlag("tags", String.class).split(","))));
 							EntryView view = new EntryView();
@@ -152,7 +152,7 @@ public class CLI extends Thread {
 						.addFlag("data_version_min", "dmin", new DataVersionInput())
 						.addFlag("data_version_max", "dmax", new DataVersionInput())
 						.addFlag("author_uuid", "au", new UUIDInput())
-						.addFlag("author_name", "an", new StringInput())
+						.addFlag("author_username", "an", new StringInput())
 						.addFlag("tags", "t", new StringInput())
 						.addFlag("order", "o", StringKeyInput.forEnum(EntryView.Order.class, true))
 						.addFlag("reversed_order", "r")

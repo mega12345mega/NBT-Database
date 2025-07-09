@@ -258,8 +258,8 @@ public class EntriesTab {
 			
 			JTextField authorUsernameField = new JTextField();
 			panel.add(authorUsernameField);
-			if (filter.getAuthorName() != null)
-				authorUsernameField.setText(filter.getAuthorName());
+			if (filter.getAuthorUsername() != null)
+				authorUsernameField.setText(filter.getAuthorUsername());
 			
 			panel.add(new JLabel("Tags:"));
 			
@@ -314,7 +314,7 @@ public class EntriesTab {
 			}
 			
 			if (!authorUsernameField.getText().isEmpty())
-				filter.filterByAuthorName(authorUsernameField.getText());
+				filter.filterByAuthorUsername(authorUsernameField.getText());
 			
 			filter.filterByTags(tagFields.entrySet().stream()
 					.filter(entry -> entry.getValue().isSelected()).map(Map.Entry::getKey).collect(Collectors.toSet()));

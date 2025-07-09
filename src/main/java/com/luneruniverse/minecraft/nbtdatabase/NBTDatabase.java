@@ -226,8 +226,8 @@ public class NBTDatabase implements AutoCloseable {
 		}
 		if (filter.getAuthorUuid() != null)
 			select.addFilter("`entries`.`author_uuid`=?", PreparedStatement::setString, filter.getAuthorUuid().toString());
-		if (filter.getAuthorName() != null)
-			select.addFilter("`entries`.`author_username` LIKE ? ESCAPE \"\\\"", PreparedStatement::setString, "%" + escapeQuery(filter.getAuthorName()) + "%");
+		if (filter.getAuthorUsername() != null)
+			select.addFilter("`entries`.`author_username` LIKE ? ESCAPE \"\\\"", PreparedStatement::setString, "%" + escapeQuery(filter.getAuthorUsername()) + "%");
 		if (filter.getTags() != null) {
 			select.addJoin("JOIN `entries_tags` ON `entries_tags`.`entry_id`=`entries`.`id`");
 			select.addFilter("`entries_tags`.`tag` IN " + SQLSelectBuilder.genParamList(filter.getTags().size()));

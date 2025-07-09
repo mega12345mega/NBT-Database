@@ -10,16 +10,16 @@ public class EntryFilter {
 	private Integer minDataVersion;
 	private Integer maxDataVersion;
 	private UUID authorUuid;
-	private String authorName;
+	private String authorUsername;
 	private Set<String> tags;
 	
 	public EntryFilter() {}
-	public EntryFilter(String name, Integer minDataVersion, Integer maxDataVersion, UUID authorUuid, String authorName, Set<String> tags) {
+	public EntryFilter(String name, Integer minDataVersion, Integer maxDataVersion, UUID authorUuid, String authorUsername, Set<String> tags) {
 		this.name = name;
 		this.minDataVersion = minDataVersion;
 		this.maxDataVersion = maxDataVersion;
 		this.authorUuid = authorUuid;
-		this.authorName = authorName;
+		this.authorUsername = authorUsername;
 		this.tags = (tags == null || tags.isEmpty() ? null : tags);
 	}
 	
@@ -44,8 +44,8 @@ public class EntryFilter {
 		authorUuid = query;
 		return this;
 	}
-	public EntryFilter filterByAuthorName(String query) {
-		authorName = query;
+	public EntryFilter filterByAuthorUsername(String query) {
+		authorUsername = query;
 		return this;
 	}
 	public EntryFilter filterByTags(Set<String> query) {
@@ -75,8 +75,8 @@ public class EntryFilter {
 	public UUID getAuthorUuid() {
 		return authorUuid;
 	}
-	public String getAuthorName() {
-		return authorName;
+	public String getAuthorUsername() {
+		return authorUsername;
 	}
 	public Set<String> getTags() {
 		return tags;

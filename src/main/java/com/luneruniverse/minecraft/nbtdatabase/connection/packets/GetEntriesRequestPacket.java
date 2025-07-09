@@ -59,9 +59,9 @@ public class GetEntriesRequestPacket extends Packet {
 			out.writeLong(filter.getAuthorUuid().getLeastSignificantBits());
 		}
 		
-		out.writeBoolean(filter.getAuthorName() != null);
-		if (filter.getAuthorName() != null)
-			out.writeUTF(filter.getAuthorName());
+		out.writeBoolean(filter.getAuthorUsername() != null);
+		if (filter.getAuthorUsername() != null)
+			out.writeUTF(filter.getAuthorUsername());
 		
 		out.writeInt(filter.getTags() == null ? 0 : filter.getTags().size());
 		if (filter.getTags() != null) {
