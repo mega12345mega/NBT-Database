@@ -35,6 +35,7 @@ import com.luneruniverse.simplecli.commands.GroupCommand;
 import com.luneruniverse.simplecli.commands.SingleCommand;
 import com.luneruniverse.simplecli.inputs.IntegerInput;
 import com.luneruniverse.simplecli.inputs.StringInput;
+import com.luneruniverse.simplecli.inputs.StringKeyInput;
 
 public class CLI extends Thread {
 	
@@ -120,7 +121,14 @@ public class CLI extends Thread {
 								filter.filterByAuthorName(inputs.getFlag("author_name", String.class));
 							if (inputs.hasFlag("tags"))
 								filter.filterByTags(new HashSet<>(Arrays.asList(inputs.getFlag("tags", String.class).split(","))));
-							entryListCmd(filter, inputs.hasFlag("verbose"));
+							EntryView view = new EntryView();
+							if (inputs.hasFlag("order"))
+								view.setOrder(inputs.getFlag("order", EntryView.Order.class));
+							if (inputs.hasFlag("reversed_order"))
+								view.setReversedOrder(true);
+							if (inputs.hasFlag("offset"))
+								view.setOffset(inputs.getFlag("offset", Integer.class));
+							entryListCmd(filter, view, inputs.hasFlag("verbose"));
 						})
 						.addFlag("name", "n", new StringInput())
 						.addFlag("data_version", "d", new DataVersionInput())
@@ -129,6 +137,9 @@ public class CLI extends Thread {
 						.addFlag("author_uuid", "au", new UUIDInput())
 						.addFlag("author_name", "an", new StringInput())
 						.addFlag("tags", "t", new StringInput())
+						.addFlag("order", "o", StringKeyInput.forEnum(EntryView.Order.class, true))
+						.addFlag("reversed_order", "r")
+						.addFlag("offset", "f", new IntegerInput().min(0))
 						.addFlag("verbose", "v")));
 		
 		root.addCommand(new GroupCommand("tag")
@@ -404,11 +415,11 @@ public class CLI extends Thread {
 		});
 	}
 	
-	private void entryListCmd(EntryFilter filter, boolean verbose) {
+	private void entryListCmd(EntryFilter filter, EntryView view, boolean verbose) {
 		if (checkConnectionExists())
 			return;
 		
-		whenComplete(connection.getEntries(filter, new EntryView()), entries -> {
+		whenComplete(connection.getEntries(filter, view), entries -> {
 			results = entries;
 			resultsCmd(verbose);
 		});
