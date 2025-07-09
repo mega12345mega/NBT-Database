@@ -15,6 +15,7 @@ import java.util.function.Consumer;
 
 import com.luneruniverse.minecraft.nbtdatabase.DataVersion;
 import com.luneruniverse.minecraft.nbtdatabase.EntryFilter;
+import com.luneruniverse.minecraft.nbtdatabase.EntryView;
 import com.luneruniverse.minecraft.nbtdatabase.IllegalRequestException;
 import com.luneruniverse.minecraft.nbtdatabase.NBTDatabase;
 import com.luneruniverse.minecraft.nbtdatabase.NBTEntry;
@@ -42,7 +43,7 @@ public class CLI extends Thread {
 	private NBTDatabase localDatabase;
 	private NBTDatabaseAccess connection;
 	private NBTDatabaseAccessServer server;
-	private List<NBTEntry> result;
+	private List<NBTEntry> results;
 	
 	public CLI() {
 		DataVersion.loadVersions();
@@ -89,10 +90,17 @@ public class CLI extends Thread {
 						.addFlag("unverified", "uv"))
 				.addCommand(new SingleCommand("remove", inputs -> entryRemoveCmd(
 						inputs.getArgument("id", Long.class)))
-						.addArgument("id", new LongInput()))
+						.addArgument("id", new EntryIdInput(this::getResults)))
 				.addCommand(new SingleCommand("get", inputs -> entryGetCmd(
 						inputs.getArgument("id", Long.class), inputs.hasFlag("verbose")))
-						.addArgument("id", new LongInput()).addFlag("verbose", "v"))
+						.addArgument("id", new EntryIdInput(this::getResults)).addFlag("verbose", "v"))
+				.addCommand(new SingleCommand("export", inputs -> entryExportCmd(
+						inputs.getArgument("id", Long.class),
+						new File(inputs.getArgument("file", String.class)),
+						inputs.hasFlag("overwrite")))
+						.addArgument("id", new EntryIdInput(this::getResults))
+						.addArgument("file", new StringInput())
+						.addFlag("overwrite", "o"))
 				.addCommand(new SingleCommand("list",
 						inputs -> {
 							EntryFilter filter = new EntryFilter();
@@ -142,42 +150,17 @@ public class CLI extends Thread {
 								filter.filterByEntryId(inputs.getFlag("entry_id", Long.class));
 							tagListCmd(filter);
 						})
-						.addFlag("name", "n", new StringInput()).addFlag("entry_id", "e", new LongInput()))
+						.addFlag("name", "n", new StringInput()).addFlag("entry_id", "e", new EntryIdInput(this::getResults)))
 				.addCommand(new SingleCommand("attach", inputs -> tagAttachCmd(
 						inputs.getArgument("entry", Long.class), inputs.getArgument("tag", String.class)))
-						.addArgument("entry", new LongInput()).addArgument("tag", new StringInput()))
+						.addArgument("entry", new EntryIdInput(this::getResults)).addArgument("tag", new StringInput()))
 				.addCommand(new SingleCommand("detach", inputs -> tagDetachCmd(
 						inputs.getArgument("entry", Long.class), inputs.getArgument("tag", String.class)))
-						.addArgument("entry", new LongInput()).addArgument("tag", new StringInput())));
+						.addArgument("entry", new EntryIdInput(this::getResults)).addArgument("tag", new StringInput())));
 		
-		root.addCommand(new GroupCommand("result")
-				.addCommand(new SingleCommand("export", inputs -> resultExportCmd(
-						inputs.getArgument("index", Integer.class),
-						new File(inputs.getArgument("file", String.class)),
-						inputs.hasFlag("overwrite")))
-						.addArgument("index", new IntegerInput().min(0))
-						.addArgument("file", new StringInput())
-						.addFlag("overwrite", "o"))
-				.addCommand(new SingleCommand("remove", inputs -> resultRemoveCmd(
-						inputs.getArgument("index", Integer.class)))
-						.addArgument("index", new IntegerInput().min(0)))
-				.addCommand(new SingleCommand("list", inputs -> resultListCmd(
-						inputs.hasFlag("verbose")))
-						.addFlag("verbose", "v"))
-				.addCommand(new SingleCommand("tags",
-						inputs -> {
-							TagFilter filter = new TagFilter();
-							if (inputs.hasFlag("name"))
-								filter.filterByName(inputs.getFlag("name", String.class));
-							resultTagsCmd(inputs.getArgument("index", Integer.class), filter);
-						})
-						.addArgument("index", new IntegerInput().min(0)).addFlag("name", "n", new StringInput()))
-				.addCommand(new SingleCommand("attach", inputs -> resultAttachCmd(
-						inputs.getArgument("index", Integer.class), inputs.getArgument("tag", String.class)))
-						.addArgument("index", new IntegerInput().min(0)).addArgument("tag", new StringInput()))
-				.addCommand(new SingleCommand("detach", inputs -> resultDetachCmd(
-						inputs.getArgument("index", Integer.class), inputs.getArgument("tag", String.class)))
-						.addArgument("index", new IntegerInput().min(0)).addArgument("tag", new StringInput())));
+		root.addCommand(new SingleCommand("results", inputs -> resultsCmd(
+				inputs.hasFlag("verbose")))
+				.addFlag("verbose", "v"));
 	}
 	
 	private <T> void whenComplete(CompletableFuture<T> future, Consumer<T> consumer) {
@@ -200,7 +183,7 @@ public class CLI extends Thread {
 		});
 	}
 	
-	private boolean checkFileDoesntExist(File file, boolean overwrite) {
+	private boolean checkFileDoesntExist(File file, boolean overwrite, boolean deleteIfOverwriting) {
 		if (file.exists()) {
 			if (!overwrite) {
 				System.err.println("File already exists: " + file.getAbsolutePath());
@@ -212,7 +195,8 @@ public class CLI extends Thread {
 				return true;
 			}
 			
-			file.delete();
+			if (deleteIfOverwriting)
+				file.delete();
 		}
 		
 		file.getAbsoluteFile().getParentFile().mkdirs();
@@ -252,20 +236,8 @@ public class CLI extends Thread {
 	}
 	
 	private boolean checkResultsExist() {
-		if (result == null) {
+		if (results == null) {
 			System.err.println("There are no saved results");
-			return true;
-		}
-		
-		return false;
-	}
-	
-	private boolean checkResultExists(int index) {
-		if (checkResultsExist())
-			return true;
-		
-		if (index >= result.size()) {
-			System.err.println("Invalid result index: " + index);
 			return true;
 		}
 		
@@ -306,7 +278,7 @@ public class CLI extends Thread {
 	}
 	
 	private void createCmd(File file, boolean overwrite) {
-		if (checkFileDoesntExist(file, overwrite))
+		if (checkFileDoesntExist(file, overwrite, true))
 			return;
 		
 		closeConnection(true);
@@ -412,8 +384,22 @@ public class CLI extends Thread {
 			if (entry == null)
 				System.err.println("Entry doesn't exist: " + id);
 			else {
-				result = Arrays.asList(entry);
-				resultListCmd(verbose);
+				results = Arrays.asList(entry);
+				resultsCmd(verbose);
+			}
+		});
+	}
+	
+	private void entryExportCmd(long id, File file, boolean overwrite) {
+		if (checkFileDoesntExist(file, overwrite, false))
+			return;
+		
+		whenComplete(connection.getEntry(id), entry -> {
+			try {
+				Files.write(file.toPath(), entry.nbt);
+				System.out.println("Exported " + entry.id + " to: " + file.getAbsolutePath());
+			} catch (IOException e) {
+				e.printStackTrace();
 			}
 		});
 	}
@@ -422,9 +408,9 @@ public class CLI extends Thread {
 		if (checkConnectionExists())
 			return;
 		
-		whenComplete(connection.getEntries(filter), entries -> {
-			result = entries;
-			resultListCmd(verbose);
+		whenComplete(connection.getEntries(filter, new EntryView()), entries -> {
+			results = entries;
+			resultsCmd(verbose);
 		});
 	}
 	
@@ -485,38 +471,17 @@ public class CLI extends Thread {
 				v -> System.out.println("Detached tag '" + tag + "' from entry with id " + entry));
 	}
 	
-	private void resultExportCmd(int index, File file, boolean overwrite) {
-		if (checkResultExists(index) || checkFileDoesntExist(file, overwrite))
-			return;
-		
-		NBTEntry entry = result.get(index);
-		try {
-			Files.write(file.toPath(), entry.nbt);
-			System.out.println("Exported " + entry.id + " to: " + file.getAbsolutePath());
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
-	
-	private void resultRemoveCmd(int index) {
-		if (checkConnectionExists() || checkResultExists(index))
-			return;
-		
-		long id = result.get(index).id;
-		whenComplete(connection.removeEntry(id), v -> System.out.println("Removed entry with id " + id));
-	}
-	
-	private void resultListCmd(boolean verbose) {
+	private void resultsCmd(boolean verbose) {
 		if (checkResultsExist())
 			return;
 		
-		if (result.isEmpty()) {
+		if (results.isEmpty()) {
 			System.out.println("There are no entries");
 			return;
 		}
 		
-		for (int i = 0; i < result.size(); i++) {
-			NBTEntry entry = result.get(i);
+		for (int i = 0; i < results.size(); i++) {
+			NBTEntry entry = results.get(i);
 			
 			if (i != 0)
 				System.out.println();
@@ -534,45 +499,16 @@ public class CLI extends Thread {
 		}
 	}
 	
-	private void resultTagsCmd(int index, TagFilter filter) {
-		if (checkConnectionExists() || checkResultExists(index))
-			return;
-		
-		filter.filterByEntryId(result.get(index).id);
-		whenComplete(connection.getTags(filter), tags -> {
-			if (tags.isEmpty())
-				System.out.println("There are no tags");
-			else {
-				for (Tag tag : tags)
-					System.out.println(tag.name + " (#" + ColorInput.toString(tag.color) + ")");
-			}
-		});
-	}
-	
-	private void resultAttachCmd(int index, String tag) {
-		if (checkConnectionExists() || checkResultExists(index))
-			return;
-		
-		long id = result.get(index).id;
-		whenComplete(connection.addTagToEntry(id, tag),
-				v -> System.out.println("Attached tag '" + tag + "' to entry with id " + id));
-	}
-	
-	private void resultDetachCmd(int index, String tag) {
-		if (checkConnectionExists() || checkResultExists(index))
-			return;
-		
-		long id = result.get(index).id;
-		whenComplete(connection.removeTagFromEntry(id, tag),
-				v -> System.out.println("Detached tag '" + tag + "' from entry with id " + id));
-	}
-	
 	public void exec(String cmd) {
 		try {
 			root.parse(CommandStream.parse(cmd));
 		} catch (CommandParseException | CommandSyntaxException e) {
 			System.err.println(e.getMessage());
 		}
+	}
+	
+	public List<NBTEntry> getResults() {
+		return results;
 	}
 	
 	@Override

@@ -11,6 +11,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
 import com.luneruniverse.minecraft.nbtdatabase.EntryFilter;
+import com.luneruniverse.minecraft.nbtdatabase.EntryView;
 import com.luneruniverse.minecraft.nbtdatabase.NBTEntry;
 import com.luneruniverse.minecraft.nbtdatabase.Tag;
 import com.luneruniverse.minecraft.nbtdatabase.TagFilter;
@@ -113,8 +114,8 @@ public class RemoteNBTDatabaseAccess implements NBTDatabaseAccess {
 	}
 	
 	@Override
-	public CompletableFuture<List<NBTEntry>> getEntries(EntryFilter filter) {
-		return request(new GetEntriesRequestPacket(filter), EntriesPacket.class, EntriesPacket::getEntriesList);
+	public CompletableFuture<List<NBTEntry>> getEntries(EntryFilter filter, EntryView view) {
+		return request(new GetEntriesRequestPacket(filter, view), EntriesPacket.class, EntriesPacket::getEntriesList);
 	}
 	
 	@Override

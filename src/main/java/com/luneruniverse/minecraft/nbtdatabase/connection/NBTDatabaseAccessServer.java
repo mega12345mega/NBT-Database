@@ -111,7 +111,7 @@ public class NBTDatabaseAccessServer implements AutoCloseable {
 	}
 	
 	private void getEntriesRequestPacket(GetEntriesRequestPacket packet, Connection conn, WaitState wait) {
-		respond(packet, conn, database.getEntries(packet.getFilter()), EntriesPacket::new);
+		respond(packet, conn, database.getEntries(packet.getFilter(), packet.getView()), EntriesPacket::new);
 	}
 	
 	private void addTagRequestPacket(AddTagRequestPacket packet, Connection conn, WaitState wait) {

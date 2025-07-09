@@ -21,17 +21,19 @@ import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
+import javax.swing.JComboBox;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JSeparator;
 import javax.swing.JTextField;
-import javax.swing.border.CompoundBorder;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.TitledBorder;
 
 import com.luneruniverse.minecraft.nbtdatabase.DataVersion;
 import com.luneruniverse.minecraft.nbtdatabase.EntryFilter;
+import com.luneruniverse.minecraft.nbtdatabase.EntryView;
 import com.luneruniverse.minecraft.nbtdatabase.NBTEntry;
 import com.luneruniverse.minecraft.nbtdatabase.Tag;
 import com.luneruniverse.minecraft.nbtdatabase.TagFilter;
@@ -53,6 +55,7 @@ public class EntriesTab {
 	private final JFrame frame;
 	private final JPanel entries;
 	private EntryFilter filter;
+	private EntryView view;
 	
 	public EntriesTab(GUI gui, JFrame frame, JPanel panel) {
 		this.gui = gui;
@@ -89,16 +92,17 @@ public class EntriesTab {
 		panel.add(entries);
 		
 		filter = new EntryFilter();
+		view = new EntryView();
 	}
 	
-	private JPanel addEntry(NBTEntry entry) {
+	private void addEntry(NBTEntry entry) {
 		JPanel panel = new JPanel();
 		panel.setLayout(new BoxLayout(panel, BoxLayout.X_AXIS));
 		entries.add(panel);
 		panel.setAlignmentX(0);
 		
 		TitledBorder border = new TitledBorder(entry.name + (entry.verified ? " ✔️" : ""));
-		panel.setBorder(new CompoundBorder(new EmptyBorder(4, 0, 0, 0), border));
+		panel.setBorder(border);
 		border.setTitleFont(border.getTitleFont().deriveFont(Font.BOLD));
 		if (entry.verified)
 			border.setTitleColor(new Color(0x008800));
@@ -118,6 +122,17 @@ public class EntriesTab {
 		tags.setLayout(new BoxLayout(tags, BoxLayout.X_AXIS));
 		details.add(tags);
 		tags.setAlignmentX(0);
+		gui.whenComplete(gui.getConnection().getTags(new TagFilter().filterByEntryId(entry.id)), tags2 -> {
+			for (Tag tag : tags2) {
+				if (tags.getComponentCount() == 0)
+					tags.setBorder(new EmptyBorder(0, 0, 4, 0));
+				else
+					tags.add(Box.createRigidArea(new Dimension(4, 0)));
+				tags.add(GUIUtil.createTag(tag));
+			}
+			tags.revalidate();
+			tags.repaint();
+		});
 		
 		JLabel author = new JLabel("Author: " + entry.authorUsername);
 		author.setToolTipText("UUID: " + entry.authorUuid);
@@ -157,30 +172,40 @@ public class EntriesTab {
 		JButton removeEntryBtn = new JButton("-");
 		options.add(removeEntryBtn);
 		removeEntryBtn.addActionListener(event -> removeEntryBtn(entry.id, entry.name, panel));
-		
-		return tags;
 	}
 	
 	public void refresh() {
-		gui.whenComplete(gui.getConnection().getEntries(filter), entries -> {
+		view.setOffset(0);
+		
+		gui.whenComplete(gui.getConnection().getEntries(filter, view), entries -> {
 			this.entries.removeAll();
 			
-			for (NBTEntry entry : entries) {
-				JPanel tagsPanel = addEntry(entry);
-				
-				gui.whenComplete(gui.getConnection().getTags(new TagFilter().filterByEntryId(entry.id)), tags -> {
-					for (Tag tag : tags) {
-						if (tagsPanel.getComponentCount() == 0)
-							tagsPanel.setBorder(new EmptyBorder(0, 0, 4, 0));
-						else
-							tagsPanel.add(Box.createRigidArea(new Dimension(4, 0)));
-						tagsPanel.add(GUIUtil.createTag(tag));
+			for (NBTEntry entry : entries)
+				addEntry(entry);
+			
+			view.setOffset(entries.size());
+			
+			JButton loadMoreBtn = new JButton("Load More");
+			this.entries.add(loadMoreBtn);
+			loadMoreBtn.addActionListener(event -> {
+				gui.whenComplete(gui.getConnection().getEntries(filter, view), entries2 -> {
+					if (entries2.isEmpty()) {
+						JOptionPane.showMessageDialog(frame, "There are no more entries", "Load More", JOptionPane.INFORMATION_MESSAGE);
+						return;
 					}
 					
-					tagsPanel.revalidate();
-					tagsPanel.repaint();
+					for (NBTEntry entry : entries2)
+						addEntry(entry);
+					
+					view.setOffset(view.getOffset() + entries2.size());
+					
+					// Move to end
+					this.entries.add(loadMoreBtn);
+					
+					this.entries.revalidate();
+					this.entries.repaint();
 				});
-			}
+			});
 			
 			this.entries.revalidate();
 			this.entries.repaint();
@@ -190,6 +215,22 @@ public class EntriesTab {
 	private void advancedSearchBtn() {
 		gui.whenComplete(gui.getConnection().getTags(new TagFilter()), tags -> {
 			JPanel panel = new JPanel(TableLayout.ofColumns(2, 4));
+			
+			panel.add(new JLabel("Order:"));
+			
+			JComboBox<EntryView.Order> orderField = new JComboBox<>(EntryView.Order.values());
+			panel.add(orderField);
+			orderField.setSelectedItem(view.getOrder());
+			
+			panel.add(new JLabel("Reversed Order:"));
+			
+			JCheckBox reversedOrderField = new JCheckBox();
+			panel.add(reversedOrderField);
+			reversedOrderField.setSelected(view.isReversedOrder());
+			
+			panel.add(new JSeparator());
+			
+			panel.add(new JSeparator());
 			
 			panel.add(new JLabel("Min Data Version:"));
 			
@@ -241,6 +282,8 @@ public class EntriesTab {
 			
 			if (JOptionPane.showConfirmDialog(frame, panel, "Advanced Search", JOptionPane.OK_CANCEL_OPTION) != JOptionPane.OK_OPTION)
 				return;
+			
+			view.setOrder((EntryView.Order) orderField.getSelectedItem()).setReversedOrder(reversedOrderField.isSelected());
 			
 			String nameField = filter.getName();
 			filter = new EntryFilter();

@@ -6,6 +6,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 import com.luneruniverse.minecraft.nbtdatabase.EntryFilter;
+import com.luneruniverse.minecraft.nbtdatabase.EntryView;
 import com.luneruniverse.minecraft.nbtdatabase.NBTEntry;
 import com.luneruniverse.minecraft.nbtdatabase.Tag;
 import com.luneruniverse.minecraft.nbtdatabase.TagFilter;
@@ -18,7 +19,7 @@ public interface NBTDatabaseAccess extends AutoCloseable {
 			Optional<UUID> authorUuid, Optional<String> authorUsername, Optional<Boolean> verified);
 	public CompletableFuture<Void> removeEntry(long id);
 	public CompletableFuture<NBTEntry> getEntry(long id);
-	public CompletableFuture<List<NBTEntry>> getEntries(EntryFilter filter);
+	public CompletableFuture<List<NBTEntry>> getEntries(EntryFilter filter, EntryView view);
 	public CompletableFuture<Void> addTag(String name, int color);
 	public CompletableFuture<Void> editTag(String currentName, Optional<String> name, Optional<Integer> color);
 	public CompletableFuture<Void> removeTag(String name);

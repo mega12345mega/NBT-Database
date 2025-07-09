@@ -204,7 +204,10 @@ public class NBTDatabase implements AutoCloseable {
 		}
 	}
 	
-	public List<NBTEntry> getEntries(EntryFilter filter) throws SQLException {
+	public List<NBTEntry> getEntries(EntryFilter filter, EntryView view) throws IllegalRequestException, SQLException {
+		if (view.getOffset() < 0)
+			throw new IllegalRequestException("offset must be >= 0");
+		
 		SQLSelectBuilder select = new SQLSelectBuilder("`entries`.* FROM `entries`");
 		if (filter.getName() != null)
 			select.addFilter("`entries`.`name` LIKE ? ESCAPE \"\\\"", PreparedStatement::setString, "%" + escapeQuery(filter.getName()) + "%");
@@ -233,7 +236,11 @@ public class NBTDatabase implements AutoCloseable {
 			select.addGroup("`entries`.`id`");
 			select.addGroupFilter("COUNT(*)=?", PreparedStatement::setInt, filter.getTags().size());
 		}
+		select.addOrder(view.getOrder().getColumn() + (view.getOrder().isDefaultDesc() == view.isReversedOrder() ? " ASC" : " DESC"));
+		if (view.getOrder() != EntryView.Order.CREATED)
+			select.addOrder("`created` DESC");
 		select.setLimit(config.getMaxNumResults());
+		select.setOffset(view.getOffset());
 		
 		try (PreparedStatement sql = connection.prepareStatement(select.toSQL())) {
 			sql.setQueryTimeout(5);

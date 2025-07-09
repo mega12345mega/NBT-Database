@@ -9,6 +9,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import com.luneruniverse.minecraft.nbtdatabase.EntryFilter;
+import com.luneruniverse.minecraft.nbtdatabase.EntryView;
 import com.luneruniverse.minecraft.nbtdatabase.NBTDatabase;
 import com.luneruniverse.minecraft.nbtdatabase.NBTEntry;
 import com.luneruniverse.minecraft.nbtdatabase.Tag;
@@ -57,8 +58,8 @@ public class LocalNBTDatabaseAccess implements NBTDatabaseAccess {
 	}
 	
 	@Override
-	public CompletableFuture<List<NBTEntry>> getEntries(EntryFilter filter) {
-		return Util.supplyAsync(() -> database.getEntries(filter), executor);
+	public CompletableFuture<List<NBTEntry>> getEntries(EntryFilter filter, EntryView view) {
+		return Util.supplyAsync(() -> database.getEntries(filter, view), executor);
 	}
 	
 	@Override
