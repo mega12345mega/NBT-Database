@@ -9,6 +9,7 @@ import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
@@ -33,6 +34,7 @@ import com.luneruniverse.simplecli.CommandStream;
 import com.luneruniverse.simplecli.CommandSyntaxException;
 import com.luneruniverse.simplecli.commands.GroupCommand;
 import com.luneruniverse.simplecli.commands.SingleCommand;
+import com.luneruniverse.simplecli.inputs.BooleanInput;
 import com.luneruniverse.simplecli.inputs.IntegerInput;
 import com.luneruniverse.simplecli.inputs.StringInput;
 import com.luneruniverse.simplecli.inputs.StringKeyInput;
@@ -89,6 +91,21 @@ public class CLI extends Thread {
 						.addArgument("author_uuid", new UUIDInput())
 						.addArgument("author_username", new StringInput())
 						.addFlag("unverified", "uv"))
+				.addCommand(new SingleCommand("edit", inputs -> entryEditCmd(
+						inputs.getArgument("id", Long.class),
+						inputs.getFlagOptional("name", String.class),
+						inputs.getFlagOptional("file", String.class).map(File::new),
+						inputs.getFlagOptional("data_version", Integer.class),
+						inputs.getFlagOptional("author_uuid", UUID.class),
+						inputs.getFlagOptional("author_username", String.class),
+						inputs.getFlagOptional("verified", Boolean.class)))
+						.addArgument("id", new EntryIdInput(this::getResults))
+						.addFlag("name", "n", new StringInput())
+						.addFlag("file", "f", new StringInput())
+						.addFlag("data_version", "d", new DataVersionInput())
+						.addFlag("author_uuid", "au", new UUIDInput())
+						.addFlag("author_username", "an", new StringInput())
+						.addFlag("verified", "v", new BooleanInput()))
 				.addCommand(new SingleCommand("remove", inputs -> entryRemoveCmd(
 						inputs.getArgument("id", Long.class)))
 						.addArgument("id", new EntryIdInput(this::getResults)))
@@ -378,6 +395,26 @@ public class CLI extends Thread {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+	}
+	
+	private void entryEditCmd(long id, Optional<String> name, Optional<File> file, Optional<Integer> dataVersion,
+			Optional<UUID> authorUuid, Optional<String> authorUsername, Optional<Boolean> verified) {
+		if (checkConnectionExists() || file.isPresent() && checkFileExists(file.get()))
+			return;
+		
+		Optional<byte[]> nbt;
+		if (file.isPresent()) {
+			try {
+				nbt = Optional.of(Files.readAllBytes(file.get().toPath()));
+			} catch (IOException e) {
+				e.printStackTrace();
+				return;
+			}
+		} else
+			nbt = Optional.empty();
+		
+		whenComplete(connection.editEntry(id, name, nbt, dataVersion, authorUuid, authorUsername, verified),
+				v -> System.out.println("Edited entry with id " + id));
 	}
 	
 	private void entryRemoveCmd(long id) {
