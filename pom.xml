@@ -28,9 +28,9 @@
 			<version>2.0.13</version>
 		</dependency>
 		<dependency>
-			<groupId>com.luneruniverse.simplecli</groupId>
-			<artifactId>simplecli</artifactId>
-			<version>0.0.1</version>
+			<groupId>com.github.mega12345mega</groupId>
+			<artifactId>Simple-CLI</artifactId>
+			<version>0.0.2</version>
 		</dependency>
 		<dependency>
 			<groupId>com.google.code.gson</groupId>

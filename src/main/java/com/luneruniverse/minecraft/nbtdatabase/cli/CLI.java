@@ -564,8 +564,8 @@ public class CLI extends Thread {
 	
 	public void exec(String cmd) {
 		try {
-			root.parse(CommandStream.parse(cmd));
-		} catch (CommandParseException | CommandSyntaxException e) {
+			root.parse(new CommandStream(cmd));
+		} catch (CommandSyntaxException | CommandParseException e) {
 			System.err.println(e.getMessage());
 		}
 	}
