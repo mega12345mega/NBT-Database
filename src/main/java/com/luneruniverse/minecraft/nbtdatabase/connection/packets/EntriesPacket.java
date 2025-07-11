@@ -30,8 +30,7 @@ public class EntriesPacket extends Packet {
 		for (int i = 0; i < entries.length; i++) {
 			long id = in.readLong();
 			String name = in.readUTF();
-			byte[] nbt = new byte[in.readInt()];
-			in.readFully(nbt);
+			int nbtLength = in.readInt();
 			int dataVersion = in.readInt();
 			UUID authorUuid = new UUID(in.readLong(), in.readLong());
 			String authorUsername = in.readUTF();
@@ -39,7 +38,7 @@ public class EntriesPacket extends Packet {
 			long modified = in.readLong();
 			String hash = in.readUTF();
 			boolean verified = in.readBoolean();
-			this.entries[i] = new NBTEntry(id, name, nbt, dataVersion, authorUuid, authorUsername, created, modified, hash, verified);
+			this.entries[i] = new NBTEntry(id, name, nbtLength, dataVersion, authorUuid, authorUsername, created, modified, hash, verified);
 		}
 	}
 	
@@ -68,8 +67,7 @@ public class EntriesPacket extends Packet {
 		for (NBTEntry entry : entries) {
 			out.writeLong(entry.id);
 			out.writeUTF(entry.name);
-			out.writeInt(entry.nbt.length);
-			out.write(entry.nbt);
+			out.writeInt(entry.nbtLength);
 			out.writeInt(entry.dataVersion);
 			out.writeLong(entry.authorUuid.getMostSignificantBits());
 			out.writeLong(entry.authorUuid.getLeastSignificantBits());

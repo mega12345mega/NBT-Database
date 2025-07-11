@@ -467,10 +467,10 @@ public class CLI extends Thread {
 		if (checkFileDoesntExist(file, overwrite, false))
 			return;
 		
-		whenComplete(connection.getEntry(id), entry -> {
+		whenComplete(connection.getEntryNBT(id), nbt -> {
 			try {
-				Files.write(file.toPath(), entry.nbt);
-				System.out.println("Exported " + entry.id + " to: " + file.getAbsolutePath());
+				Files.write(file.toPath(), nbt);
+				System.out.println("Exported " + id + " to: " + file.getAbsolutePath());
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
@@ -571,7 +571,7 @@ public class CLI extends Thread {
 			System.out.println("  Author: " + entry.authorUsername + " (" + entry.authorUuid + ")");
 			System.out.println("  Data Version: " + DataVersion.toString(entry.dataVersion));
 			if (verbose) {
-				System.out.println("  Bytes: " + entry.nbt.length);
+				System.out.println("  Bytes: " + entry.nbtLength);
 				System.out.println("  Created: " + Util.formatTimestamp(entry.created));
 				System.out.println("  Modified: " + Util.formatTimestamp(entry.modified));
 				System.out.println("  Hash: " + entry.hash);

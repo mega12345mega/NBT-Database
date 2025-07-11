@@ -165,8 +165,14 @@ public class NBTDatabase implements AutoCloseable {
 		NBTEntry oldEntry = getEntry(id);
 		if (oldEntry == null)
 			throw new IllegalRequestException("Entry doesn't exist: " + id);
+		byte[] oldEntryNBT = null;
+		if (!nbt.isPresent()) {
+			oldEntryNBT = getEntryNBT(id);
+			if (oldEntryNBT == null)
+				throw new IllegalRequestException("Entry doesn't exist: " + id);
+		}
 		update.addColumn("`hash`=?", PreparedStatement::setString,
-				NBTEntry.genHash(name.orElse(oldEntry.name), nbt.orElse(oldEntry.nbt), dataVersion.orElse(oldEntry.dataVersion),
+				NBTEntry.genHash(name.orElse(oldEntry.name), nbt.orElse(oldEntryNBT), dataVersion.orElse(oldEntry.dataVersion),
 						authorUuid.orElse(oldEntry.authorUuid), oldEntry.created, modified));
 		update.addFilter("`id`=?", PreparedStatement::setLong, id);
 		
@@ -188,7 +194,7 @@ public class NBTDatabase implements AutoCloseable {
 	}
 	
 	public NBTEntry getEntry(long id) throws SQLException {
-		try (PreparedStatement sql = connection.prepareStatement("SELECT * FROM `entries` WHERE `id`=?")) {
+		try (PreparedStatement sql = connection.prepareStatement("SELECT " + NBTEntry.DATABASE_COLUMNS + " FROM `entries` WHERE `id`=?")) {
 			sql.setQueryTimeout(5);
 			sql.setLong(1, id);
 			ResultSet result = sql.executeQuery();
@@ -199,11 +205,23 @@ public class NBTDatabase implements AutoCloseable {
 		}
 	}
 	
+	public byte[] getEntryNBT(long id) throws SQLException {
+		try (PreparedStatement sql = connection.prepareStatement("SELECT `nbt` FROM `entries` WHERE `id`=?")) {
+			sql.setQueryTimeout(5);
+			sql.setLong(1, id);
+			ResultSet result = sql.executeQuery();
+			
+			if (!result.isBeforeFirst())
+				return null;
+			return result.getBytes("nbt");
+		}
+	}
+	
 	public List<NBTEntry> getEntries(EntryFilter filter, EntryView view) throws IllegalRequestException, SQLException {
 		if (view.getOffset() < 0)
 			throw new IllegalRequestException("offset must be >= 0");
 		
-		SQLSelectBuilder select = new SQLSelectBuilder("`entries`.* FROM `entries`");
+		SQLSelectBuilder select = new SQLSelectBuilder(NBTEntry.DATABASE_COLUMNS + " FROM `entries`");
 		if (filter.getName() != null)
 			select.addFilter("`entries`.`name` LIKE ? ESCAPE \"\\\"", PreparedStatement::setString, "%" + escapeQuery(filter.getName()) + "%");
 		if (filter.getMinDataVersion() != null || filter.getMaxDataVersion() != null) {

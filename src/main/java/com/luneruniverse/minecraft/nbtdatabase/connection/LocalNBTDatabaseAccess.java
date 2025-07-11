@@ -64,6 +64,11 @@ public class LocalNBTDatabaseAccess implements NBTDatabaseAccess {
 	}
 	
 	@Override
+	public CompletableFuture<byte[]> getEntryNBT(long id) {
+		return Util.supplyAsync(() -> database.getEntryNBT(id), executor);
+	}
+	
+	@Override
 	public CompletableFuture<List<NBTEntry>> getEntries(EntryFilter filter, EntryView view) {
 		return Util.supplyAsync(() -> database.getEntries(filter, view), executor);
 	}

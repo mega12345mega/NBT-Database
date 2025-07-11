@@ -21,6 +21,7 @@ public interface NBTDatabaseAccess extends AutoCloseable {
 			Optional<UUID> authorUuid, Optional<String> authorUsername, Optional<Boolean> verified);
 	public CompletableFuture<Void> removeEntry(long id);
 	public CompletableFuture<NBTEntry> getEntry(long id);
+	public CompletableFuture<byte[]> getEntryNBT(long id);
 	public CompletableFuture<List<NBTEntry>> getEntries(EntryFilter filter, EntryView view);
 	public CompletableFuture<Void> addTag(String name, int color);
 	public CompletableFuture<Void> editTag(String currentName, Optional<String> name, Optional<Integer> color);

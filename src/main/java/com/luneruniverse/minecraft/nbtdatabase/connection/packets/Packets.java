@@ -12,6 +12,7 @@ public class Packets {
 		PACKETS.registerPacket(EditEntryRequestPacket.class);
 		PACKETS.registerPacket(RemoveEntryRequestPacket.class);
 		PACKETS.registerPacket(GetEntryRequestPacket.class);
+		PACKETS.registerPacket(GetEntryNBTRequestPacket.class);
 		PACKETS.registerPacket(GetEntriesRequestPacket.class);
 		PACKETS.registerPacket(AddTagRequestPacket.class);
 		PACKETS.registerPacket(EditTagRequestPacket.class);
@@ -24,6 +25,7 @@ public class Packets {
 		// Server -> Client
 		PACKETS.registerPacket(ConfigPacket.class);
 		PACKETS.registerPacket(EntriesPacket.class);
+		PACKETS.registerPacket(EntryNBTPacket.class);
 		PACKETS.registerPacket(TagsPacket.class);
 	}
 	

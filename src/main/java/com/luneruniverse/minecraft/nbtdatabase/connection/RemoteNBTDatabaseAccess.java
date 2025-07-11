@@ -24,8 +24,10 @@ import com.luneruniverse.minecraft.nbtdatabase.connection.packets.ConfigPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.EditEntryRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.EditTagRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.EntriesPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.EntryNBTPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetConfigRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetEntriesRequestPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetEntryNBTRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetEntryRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetTagRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetTagsRequestPacket;
@@ -117,6 +119,11 @@ public class RemoteNBTDatabaseAccess implements NBTDatabaseAccess {
 	@Override
 	public CompletableFuture<NBTEntry> getEntry(long id) {
 		return request(new GetEntryRequestPacket(id), EntriesPacket.class, EntriesPacket::getEntryNullable);
+	}
+	
+	@Override
+	public CompletableFuture<byte[]> getEntryNBT(long id) {
+		return request(new GetEntryNBTRequestPacket(id), EntryNBTPacket.class, EntryNBTPacket::getNBT);
 	}
 	
 	@Override

@@ -14,8 +14,10 @@ import com.luneruniverse.minecraft.nbtdatabase.connection.packets.ConfigPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.EditEntryRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.EditTagRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.EntriesPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.EntryNBTPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetConfigRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetEntriesRequestPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetEntryNBTRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetEntryRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetTagRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetTagsRequestPacket;
@@ -51,6 +53,7 @@ public class NBTDatabaseAccessServer implements AutoCloseable {
 				.when(EditEntryRequestPacket.class, this::editEntryRequestPacket)
 				.when(RemoveEntryRequestPacket.class, this::removeEntryRequestPacket)
 				.when(GetEntryRequestPacket.class, this::getEntryRequestPacket)
+				.when(GetEntryNBTRequestPacket.class, this::getEntryNBTRequestPacket)
 				.when(GetEntriesRequestPacket.class, this::getEntriesRequestPacket)
 				.when(AddTagRequestPacket.class, this::addTagRequestPacket)
 				.when(EditTagRequestPacket.class, this::editTagRequestPacket)
@@ -113,6 +116,10 @@ public class NBTDatabaseAccessServer implements AutoCloseable {
 	
 	private void getEntryRequestPacket(GetEntryRequestPacket packet, Connection conn, WaitState wait) {
 		respond(packet, conn, database.getEntry(packet.getId()), EntriesPacket::new);
+	}
+	
+	private void getEntryNBTRequestPacket(GetEntryNBTRequestPacket packet, Connection conn, WaitState wait) {
+		respond(packet, conn, database.getEntryNBT(packet.getId()), EntryNBTPacket::new);
 	}
 	
 	private void getEntriesRequestPacket(GetEntriesRequestPacket packet, Connection conn, WaitState wait) {

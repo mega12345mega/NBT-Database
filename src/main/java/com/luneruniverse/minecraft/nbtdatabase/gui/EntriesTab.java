@@ -140,7 +140,7 @@ public class EntriesTab {
 		
 		details.add(new JLabel("Data Version: " + DataVersion.toString(entry.dataVersion)));
 		
-		details.add(new JLabel("Bytes: " + String.format("%,d", entry.nbt.length)));
+		details.add(new JLabel("Bytes: " + String.format("%,d", entry.nbtLength)));
 		
 		JLabel created = new JLabel("Created: " + Util.formatTimestamp(entry.created));
 		if (entry.created == entry.modified)
@@ -160,7 +160,7 @@ public class EntriesTab {
 		
 		JButton exportEntryBtn = new JButton("Export");
 		options.add(exportEntryBtn);
-		exportEntryBtn.addActionListener(event -> exportEntryBtn(entry.name, entry.nbt));
+		exportEntryBtn.addActionListener(event -> exportEntryBtn(entry.id, entry.name));
 		
 		JButton editEntryBtn = new JButton("Edit");
 		options.add(editEntryBtn);
@@ -484,7 +484,7 @@ public class EntriesTab {
 					gui.whenComplete(Util.allOf(tagFutures.toArray(new CompletableFuture[tagFutures.size()])), v2 -> refresh());
 				};
 				Optional<String> nameEdit = Util.edit(previousEntry.name, nameField.getText());
-				Optional<byte[]> nbtEdit = Util.edit(previousEntry.nbt, nbt);
+				Optional<byte[]> nbtEdit = Optional.ofNullable(nbt);
 				Optional<Integer> dataVersionEdit = Util.edit(previousEntry.dataVersion, dataVersion);
 				Optional<UUID> authorUuidEdit = Util.edit(previousEntry.authorUuid, authorUuid);
 				Optional<String> authorUsernameEdit = Util.edit(previousEntry.authorUsername, authorUsernameField.getText());
@@ -514,29 +514,31 @@ public class EntriesTab {
 		JOptionPane.showMessageDialog(frame, panel, "Entry Details: " + entry.name, JOptionPane.INFORMATION_MESSAGE);
 	}
 	
-	private void exportEntryBtn(String name, byte[] nbt) {
-		JnaFileChooser chooser = new JnaFileChooser(".");
-		chooser.setTitle("Export NBT Entry");
-		chooser.setDefaultFileName(name + ".nbt");
-		chooser.addFilter("Named Binary Tag (*.nbt)", "nbt");
-		chooser.addFilter("All Files (*.*)", "*");
-		if (!chooser.showSaveDialog(frame))
-			return;
-		File file = chooser.getSelectedFile();
-		
-		if (file.exists()) {
-			if (JOptionPane.showConfirmDialog(frame, "'" + file.getName() + "' already exists. Overwrite?",
-					"Export NBT Entry", JOptionPane.OK_CANCEL_OPTION) != JOptionPane.OK_OPTION) {
+	private void exportEntryBtn(long id, String name) {
+		gui.whenComplete(gui.getConnection().getEntryNBT(id), nbt -> {
+			JnaFileChooser chooser = new JnaFileChooser(".");
+			chooser.setTitle("Export NBT Entry");
+			chooser.setDefaultFileName(name + ".nbt");
+			chooser.addFilter("Named Binary Tag (*.nbt)", "nbt");
+			chooser.addFilter("All Files (*.*)", "*");
+			if (!chooser.showSaveDialog(frame))
 				return;
+			File file = chooser.getSelectedFile();
+			
+			if (file.exists()) {
+				if (JOptionPane.showConfirmDialog(frame, "'" + file.getName() + "' already exists. Overwrite?",
+						"Export NBT Entry", JOptionPane.OK_CANCEL_OPTION) != JOptionPane.OK_OPTION) {
+					return;
+				}
 			}
-		}
-		
-		try {
-			Files.write(file.toPath(), nbt);
-		} catch (IOException e) {
-			e.printStackTrace();
-			JOptionPane.showMessageDialog(frame, "Failed to export to '" + file.getName() + "'", "Error", JOptionPane.ERROR_MESSAGE);
-		}
+			
+			try {
+				Files.write(file.toPath(), nbt);
+			} catch (IOException e) {
+				e.printStackTrace();
+				JOptionPane.showMessageDialog(frame, "Failed to export to '" + file.getName() + "'", "Error", JOptionPane.ERROR_MESSAGE);
+			}
+		});
 	}
 	
 	private void removeEntryBtn(long id, String name, JPanel panel) {
