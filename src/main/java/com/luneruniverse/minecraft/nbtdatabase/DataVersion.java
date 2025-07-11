@@ -56,7 +56,11 @@ public class DataVersion {
 		});
 	}
 	
-	public static String toString(int dataVersion) {
+	public static String toParsableString(int dataVersion) {
+		return DATA_TO_MC.getOrDefault(dataVersion, "" + dataVersion);
+	}
+	
+	public static String toViewableString(int dataVersion) {
 		String mcVersion = DATA_TO_MC.get(dataVersion);
 		if (mcVersion == null)
 			return "" + dataVersion;

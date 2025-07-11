@@ -24,6 +24,8 @@ public class GetEntriesRequestPacket extends Packet {
 				in.readBoolean() ? in.readUTF() : null,
 				in.readBoolean() ? in.readInt() : null,
 				in.readBoolean() ? in.readInt() : null,
+				in.readBoolean() ? in.readInt() : null,
+				in.readBoolean() ? in.readInt() : null,
 				in.readBoolean() ? new UUID(in.readLong(), in.readLong()) : null,
 				in.readBoolean() ? in.readUTF() : null,
 				null);
@@ -44,6 +46,14 @@ public class GetEntriesRequestPacket extends Packet {
 		out.writeBoolean(filter.getName() != null);
 		if (filter.getName() != null)
 			out.writeUTF(filter.getName());
+		
+		out.writeBoolean(filter.getMinNbtLength() != null);
+		if (filter.getMinNbtLength() != null)
+			out.writeInt(filter.getMinNbtLength());
+		
+		out.writeBoolean(filter.getMaxNbtLength() != null);
+		if (filter.getMaxNbtLength() != null)
+			out.writeInt(filter.getMaxNbtLength());
 		
 		out.writeBoolean(filter.getMinDataVersion() != null);
 		if (filter.getMinDataVersion() != null)

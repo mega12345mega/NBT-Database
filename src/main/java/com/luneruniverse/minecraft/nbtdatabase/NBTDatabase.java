@@ -54,6 +54,7 @@ public class NBTDatabase implements AutoCloseable {
 						+ "`modified` INTEGER NOT NULL,"
 						+ "`hash` TEXT NOT NULL,"
 						+ "`verified` INTEGER NOT NULL)");
+				sql.executeUpdate("CREATE INDEX `entries-nbt_length` ON `entries` (length(`nbt`))");
 				sql.executeUpdate("CREATE INDEX `entries-data_version` ON `entries` (`data_version`)");
 				sql.executeUpdate("CREATE INDEX `entries-author_uuid` ON `entries` (`author_uuid`)");
 				
@@ -224,6 +225,19 @@ public class NBTDatabase implements AutoCloseable {
 		SQLSelectBuilder select = new SQLSelectBuilder(NBTEntry.DATABASE_COLUMNS + " FROM `entries`");
 		if (filter.getName() != null)
 			select.addFilter("`entries`.`name` LIKE ? ESCAPE \"\\\"", PreparedStatement::setString, "%" + escapeQuery(filter.getName()) + "%");
+		if (filter.getMinNbtLength() != null || filter.getMaxNbtLength() != null) {
+			if (filter.getMaxNbtLength() == null)
+				select.addFilter("`nbt_length`>=?", PreparedStatement::setInt, filter.getMinNbtLength());
+			else if (filter.getMinNbtLength() == null)
+				select.addFilter("`nbt_length`<=?", PreparedStatement::setInt, filter.getMaxNbtLength());
+			else if (filter.getMinNbtLength() == filter.getMaxNbtLength())
+				select.addFilter("`nbt_length`=?", PreparedStatement::setInt, filter.getMinNbtLength());
+			else {
+				select.addFilter("`nbt_length` BETWEEN ? AND ?");
+				select.addParam(PreparedStatement::setInt, filter.getMinNbtLength());
+				select.addParam(PreparedStatement::setInt, filter.getMaxNbtLength());
+			}
+		}
 		if (filter.getMinDataVersion() != null || filter.getMaxDataVersion() != null) {
 			if (filter.getMaxDataVersion() == null)
 				select.addFilter("`entries`.`data_version`>=?", PreparedStatement::setInt, filter.getMinDataVersion());

@@ -132,6 +132,14 @@ public class CLI extends Thread {
 							EntryFilter filter = new EntryFilter();
 							if (inputs.hasFlag("name"))
 								filter.filterByName(inputs.getFlag("name", String.class));
+							if (inputs.hasFlag("nbt_length"))
+								filter.filterByNbtLength(inputs.getFlag("nbt_length", Integer.class));
+							else {
+								if (inputs.hasFlag("nbt_length_min"))
+									filter.filterByMinNbtLength(inputs.getFlag("nbt_length_min", Integer.class));
+								if (inputs.hasFlag("nbt_length_max"))
+									filter.filterByMaxNbtLength(inputs.getFlag("nbt_length_max", Integer.class));
+							}
 							if (inputs.hasFlag("data_version"))
 								filter.filterByDataVersion(inputs.getFlag("data_version", Integer.class));
 							else {
@@ -156,6 +164,9 @@ public class CLI extends Thread {
 							entryListCmd(filter, view, inputs.hasFlag("verbose"));
 						})
 						.addFlag("name", "n", new StringInput())
+						.addFlag("nbt_length", "l", new IntegerInput().min(0))
+						.addFlag("nbt_length_min", "lmin", new IntegerInput().min(0))
+						.addFlag("nbt_length_max", "lmax", new IntegerInput().min(0))
 						.addFlag("data_version", "d", new DataVersionInput())
 						.addFlag("data_version_min", "dmin", new DataVersionInput())
 						.addFlag("data_version_max", "dmax", new DataVersionInput())
@@ -569,7 +580,7 @@ public class CLI extends Thread {
 			
 			System.out.println("#" + i + ": " + entry.id + ": " + entry.name);
 			System.out.println("  Author: " + entry.authorUsername + " (" + entry.authorUuid + ")");
-			System.out.println("  Data Version: " + DataVersion.toString(entry.dataVersion));
+			System.out.println("  Data Version: " + DataVersion.toViewableString(entry.dataVersion));
 			if (verbose) {
 				System.out.println("  Bytes: " + entry.nbtLength);
 				System.out.println("  Created: " + Util.formatTimestamp(entry.created));

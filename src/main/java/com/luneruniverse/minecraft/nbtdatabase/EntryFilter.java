@@ -7,6 +7,8 @@ import java.util.UUID;
 public class EntryFilter {
 	
 	private String name;
+	private Integer minNbtLength;
+	private Integer maxNbtLength;
 	private Integer minDataVersion;
 	private Integer maxDataVersion;
 	private UUID authorUuid;
@@ -14,8 +16,11 @@ public class EntryFilter {
 	private Set<String> tags;
 	
 	public EntryFilter() {}
-	public EntryFilter(String name, Integer minDataVersion, Integer maxDataVersion, UUID authorUuid, String authorUsername, Set<String> tags) {
+	public EntryFilter(String name, Integer minNbtLength, Integer maxNbtLength, Integer minDataVersion, Integer maxDataVersion,
+			UUID authorUuid, String authorUsername, Set<String> tags) {
 		this.name = name;
+		this.minNbtLength = minNbtLength;
+		this.maxNbtLength = maxNbtLength;
 		this.minDataVersion = minDataVersion;
 		this.maxDataVersion = maxDataVersion;
 		this.authorUuid = authorUuid;
@@ -25,6 +30,19 @@ public class EntryFilter {
 	
 	public EntryFilter filterByName(String query) {
 		name = query;
+		return this;
+	}
+	public EntryFilter filterByNbtLength(int query) {
+		minNbtLength = query;
+		maxNbtLength = query;
+		return this;
+	}
+	public EntryFilter filterByMinNbtLength(int query) {
+		minNbtLength = query;
+		return this;
+	}
+	public EntryFilter filterByMaxNbtLength(int query) {
+		maxNbtLength = query;
 		return this;
 	}
 	public EntryFilter filterByDataVersion(int query) {
@@ -65,6 +83,12 @@ public class EntryFilter {
 	
 	public String getName() {
 		return name;
+	}
+	public Integer getMinNbtLength() {
+		return minNbtLength;
+	}
+	public Integer getMaxNbtLength() {
+		return maxNbtLength;
 	}
 	public Integer getMinDataVersion() {
 		return minDataVersion;

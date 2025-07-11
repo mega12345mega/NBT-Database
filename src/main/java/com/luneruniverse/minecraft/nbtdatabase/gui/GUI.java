@@ -68,13 +68,13 @@ public class GUI {
 	public GUI() {
 		DataVersion.loadVersions();
 		
-		frame = new JFrame("NBT Database");
-		frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 		try {
 			UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
+		frame = new JFrame("NBT Database");
+		frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 		frame.addWindowListener(new WindowAdapter() {
 			@Override
 			public void windowClosing(WindowEvent e) {

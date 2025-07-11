@@ -4,6 +4,7 @@ public class EntryView {
 	
 	public enum Order {
 		NAME("Name (A -> Z)", "LOWER(`name`)", false),
+		NBT_LENGTH("Bytes (Small -> Large)", "length(`nbt`)", false),
 		DATA_VERSION("Data Version (Recent -> Old)", "`data_version`", true),
 		AUTHOR_UUID("Author UUID (0 -> F)", "`author_uuid`", false),
 		AUTHOR_USERNAME("Author Username (A -> Z)", "LOWER(`author_username`)", false),

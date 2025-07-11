@@ -27,7 +27,9 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JSeparator;
+import javax.swing.JSpinner;
 import javax.swing.JTextField;
+import javax.swing.SpinnerNumberModel;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.TitledBorder;
 
@@ -101,7 +103,7 @@ public class EntriesTab {
 		entries.add(panel);
 		panel.setAlignmentX(0);
 		
-		TitledBorder border = new TitledBorder(entry.name + (entry.verified ? " ✔️" : ""));
+		TitledBorder border = new TitledBorder(entry.name + (entry.verified ? " ✔" : ""));
 		panel.setBorder(border);
 		border.setTitleFont(border.getTitleFont().deriveFont(Font.BOLD));
 		if (entry.verified)
@@ -138,7 +140,7 @@ public class EntriesTab {
 		author.setToolTipText("UUID: " + entry.authorUuid);
 		details.add(author);
 		
-		details.add(new JLabel("Data Version: " + DataVersion.toString(entry.dataVersion)));
+		details.add(new JLabel("Data Version: " + DataVersion.toViewableString(entry.dataVersion)));
 		
 		details.add(new JLabel("Bytes: " + String.format("%,d", entry.nbtLength)));
 		
@@ -232,20 +234,40 @@ public class EntriesTab {
 			
 			panel.add(new JSeparator());
 			
+			panel.add(new JLabel("Min Bytes:"));
+			
+			JSpinner minNbtLengthField = new JSpinner();
+			panel.add(minNbtLengthField);
+			minNbtLengthField.setPreferredSize(new Dimension(200, minNbtLengthField.getPreferredSize().height));
+			((SpinnerNumberModel) minNbtLengthField.getModel()).setMinimum(0);
+			if (filter.getMinNbtLength() == null)
+				minNbtLengthField.setValue(0);
+			else
+				minNbtLengthField.setValue(filter.getMinNbtLength());
+			
+			panel.add(new JLabel("Max Bytes:"));
+			
+			JSpinner maxNbtLengthField = new JSpinner();
+			panel.add(maxNbtLengthField);
+			((SpinnerNumberModel) maxNbtLengthField.getModel()).setMinimum(0);
+			if (filter.getMaxNbtLength() == null)
+				maxNbtLengthField.setValue(Integer.MAX_VALUE);
+			else
+				maxNbtLengthField.setValue(filter.getMaxNbtLength());
+			
 			panel.add(new JLabel("Min Data Version:"));
 			
 			JTextField minDataVersionField = new JTextField();
 			panel.add(minDataVersionField);
-			minDataVersionField.setPreferredSize(new Dimension(200, minDataVersionField.getPreferredSize().height));
 			if (filter.getMinDataVersion() != null)
-				minDataVersionField.setText(DataVersion.toString(filter.getMinDataVersion()));
+				minDataVersionField.setText(DataVersion.toParsableString(filter.getMinDataVersion()));
 			
 			panel.add(new JLabel("Max Data Version:"));
 			
 			JTextField maxDataVersionField = new JTextField();
 			panel.add(maxDataVersionField);
 			if (filter.getMaxDataVersion() != null)
-				maxDataVersionField.setText(DataVersion.toString(filter.getMaxDataVersion()));
+				maxDataVersionField.setText(DataVersion.toParsableString(filter.getMaxDataVersion()));
 			
 			panel.add(new JLabel("Author UUID:"));
 			
@@ -288,6 +310,12 @@ public class EntriesTab {
 			String nameField = filter.getName();
 			filter = new EntryFilter();
 			filter.filterByName(nameField);
+			
+			if ((int) minNbtLengthField.getValue() > 0)
+				filter.filterByMinNbtLength((int) minNbtLengthField.getValue());
+			
+			if ((int) maxNbtLengthField.getValue() < Integer.MAX_VALUE)
+				filter.filterByMaxNbtLength((int) maxNbtLengthField.getValue());
 			
 			if (!minDataVersionField.getText().isEmpty()) {
 				try {
