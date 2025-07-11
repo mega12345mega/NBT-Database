@@ -17,7 +17,6 @@ import java.util.UUID;
 import org.sqlite.SQLiteErrorCode;
 import org.sqlite.SQLiteException;
 
-import com.luneruniverse.minecraft.nbtdatabase.connection.NBTDatabaseMetadata;
 import com.luneruniverse.minecraft.nbtdatabase.sqlbuilder.SQLSelectBuilder;
 import com.luneruniverse.minecraft.nbtdatabase.sqlbuilder.SQLUpdateBuilder;
 
@@ -25,7 +24,7 @@ public class NBTDatabase implements AutoCloseable {
 	
 	private final File file;
 	private final Connection connection;
-	private final NBTDatabaseConfig config;
+	private final ConfigManager config;
 	
 	public NBTDatabase(File file) throws SQLException {
 		this.file = file;
@@ -79,19 +78,15 @@ public class NBTDatabase implements AutoCloseable {
 			sql.executeUpdate("PRAGMA foreign_keys = ON");
 		}
 		
-		this.config = new NBTDatabaseConfig(connection);
+		this.config = new ConfigManager(connection);
 	}
 	
 	public File getFile() {
 		return file;
 	}
 	
-	public NBTDatabaseConfig getConfig() {
+	public ConfigManager getConfigManager() {
 		return config;
-	}
-	
-	public NBTDatabaseMetadata getMetadata() {
-		return new NBTDatabaseMetadata(config.getMaxNbtSize(), config.getMaxNumResults());
 	}
 	
 	public long addEntry(String name, byte[] nbt, int dataVersion, UUID authorUuid, String authorUsername, boolean verified) throws IllegalRequestException, SQLException {

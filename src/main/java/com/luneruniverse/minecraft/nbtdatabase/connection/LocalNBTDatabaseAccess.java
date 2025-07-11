@@ -8,6 +8,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
+import com.luneruniverse.minecraft.nbtdatabase.Config;
 import com.luneruniverse.minecraft.nbtdatabase.EntryFilter;
 import com.luneruniverse.minecraft.nbtdatabase.EntryView;
 import com.luneruniverse.minecraft.nbtdatabase.NBTDatabase;
@@ -32,8 +33,13 @@ public class LocalNBTDatabaseAccess implements NBTDatabaseAccess {
 	}
 	
 	@Override
-	public CompletableFuture<NBTDatabaseMetadata> getMetadata() {
-		return CompletableFuture.completedFuture(database.getMetadata());
+	public CompletableFuture<Void> setConfig(Config config) {
+		return Util.runAsync(() -> database.getConfigManager().setConfig(config), executor);
+	}
+	
+	@Override
+	public CompletableFuture<Config> getConfig() {
+		return CompletableFuture.completedFuture(database.getConfigManager().getConfig());
 	}
 	
 	@Override

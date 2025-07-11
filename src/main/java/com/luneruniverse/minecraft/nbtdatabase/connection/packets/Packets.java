@@ -7,7 +7,7 @@ public class Packets {
 	public static final PacketRegistry PACKETS = new PacketRegistry();
 	static {
 		// Client -> Server
-		PACKETS.registerPacket(MetadataRequestPacket.class);
+		PACKETS.registerPacket(GetConfigRequestPacket.class);
 		PACKETS.registerPacket(AddEntryRequestPacket.class);
 		PACKETS.registerPacket(EditEntryRequestPacket.class);
 		PACKETS.registerPacket(RemoveEntryRequestPacket.class);
@@ -22,7 +22,7 @@ public class Packets {
 		PACKETS.registerPacket(RemoveTagFromEntryRequestPacket.class);
 		
 		// Server -> Client
-		PACKETS.registerPacket(MetadataPacket.class);
+		PACKETS.registerPacket(ConfigPacket.class);
 		PACKETS.registerPacket(EntriesPacket.class);
 		PACKETS.registerPacket(TagsPacket.class);
 	}

@@ -10,15 +10,15 @@ import com.luneruniverse.minecraft.nbtdatabase.Util;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.AddEntryRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.AddTagRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.AddTagToEntryRequestPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.ConfigPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.EditEntryRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.EditTagRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.EntriesPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetConfigRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetEntriesRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetEntryRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetTagRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetTagsRequestPacket;
-import com.luneruniverse.minecraft.nbtdatabase.connection.packets.MetadataPacket;
-import com.luneruniverse.minecraft.nbtdatabase.connection.packets.MetadataRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.Packets;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.RemoveEntryRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.RemoveTagFromEntryRequestPacket;
@@ -45,7 +45,8 @@ public class NBTDatabaseAccessServer implements AutoCloseable {
 		server.registerPackets(Packets.PACKETS);
 		
 		server.addPacketListener(new TypedPacketListener()
-				.when(MetadataRequestPacket.class, this::metadataRequestPacket)
+				.when(ConfigPacket.class, this::configPacket)
+				.when(GetConfigRequestPacket.class, this::getConfigRequestPacket)
 				.when(AddEntryRequestPacket.class, this::addEntryRequestPacket)
 				.when(EditEntryRequestPacket.class, this::editEntryRequestPacket)
 				.when(RemoveEntryRequestPacket.class, this::removeEntryRequestPacket)
@@ -88,8 +89,12 @@ public class NBTDatabaseAccessServer implements AutoCloseable {
 		respond(packet, conn, request, v -> new PrimitivePacket(true));
 	}
 	
-	private void metadataRequestPacket(MetadataRequestPacket packet, Connection conn, WaitState wait) {
-		respond(packet, conn, database.getMetadata(), MetadataPacket::new);
+	private void configPacket(ConfigPacket packet, Connection conn, WaitState wait) {
+		respondVoid(packet, conn, database.setConfig(packet.getConfig()));
+	}
+	
+	private void getConfigRequestPacket(GetConfigRequestPacket packet, Connection conn, WaitState wait) {
+		respond(packet, conn, database.getConfig(), ConfigPacket::new);
 	}
 	
 	private void addEntryRequestPacket(AddEntryRequestPacket packet, Connection conn, WaitState wait) {

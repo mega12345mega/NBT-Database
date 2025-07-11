@@ -3,6 +3,7 @@ package com.luneruniverse.minecraft.nbtdatabase.gui;
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
 import java.awt.Dimension;
+import java.awt.EventQueue;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.File;
@@ -24,7 +25,9 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSeparator;
+import javax.swing.JSpinner;
 import javax.swing.JTabbedPane;
+import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingConstants;
 import javax.swing.UIManager;
 
@@ -54,7 +57,6 @@ public class GUI {
 	private final JLabel serverLabel;
 	private final JPanel mainPanel;
 	private final JTabbedPane tabs;
-	private final MetadataTab metadataTab;
 	private final EntriesTab entriesTab;
 	private final TagsTab tagsTab;
 	private final JButton refreshBtn;
@@ -101,6 +103,10 @@ public class GUI {
 		databaseMenu.add(connectToRemoteDatabaseMenuItem);
 		connectToRemoteDatabaseMenuItem.addActionListener(event -> connectToRemoteDatabaseMenuItem());
 		
+		JMenuItem configDatabaseMenuItem = new JMenuItem("Config", 'g');
+		databaseMenu.add(configDatabaseMenuItem);
+		configDatabaseMenuItem.addActionListener(event -> configDatabaseMenuItem());
+		
 		JMenuItem closeDatabaseMenuItem = new JMenuItem("Close", 'C');
 		databaseMenu.add(closeDatabaseMenuItem);
 		closeDatabaseMenuItem.addActionListener(event -> closeDatabaseMenuItem());
@@ -134,10 +140,6 @@ public class GUI {
 		
 		tabs = new JTabbedPane();
 		mainPanel.add(tabs);
-		
-		JPanel metadataTab = new JPanel();
-		tabs.addTab("Metadata", createJScrollPane(metadataTab));
-		this.metadataTab = new MetadataTab(this, frame, metadataTab);
 		
 		JPanel entriesTab = new JPanel();
 		tabs.addTab("Entries", createJScrollPane(entriesTab));
@@ -198,7 +200,6 @@ public class GUI {
 	
 	private void onConnectionOpen() {
 		((CardLayout) mainPanel.getLayout()).last(mainPanel);
-		metadataTab.refresh();
 		entriesTab.refresh();
 		tagsTab.refresh();
 	}
@@ -214,7 +215,7 @@ public class GUI {
 	public <T> void whenComplete(CompletableFuture<T> future, Consumer<T> consumer) {
 		future.whenComplete((value, e) -> {
 			if (e == null)
-				consumer.accept(value);
+				EventQueue.invokeLater(() -> consumer.accept(value));
 			else {
 				if (e instanceof IllegalRequestException || e instanceof RequestFailedException) {
 					if (e instanceof IllegalRequestException) {
@@ -376,6 +377,37 @@ public class GUI {
 		updateConnectionInfo();
 	}
 	
+	private void configDatabaseMenuItem() {
+		if (checkConnectionExists())
+			return;
+		
+		whenComplete(connection.getConfig(), config -> {
+			JPanel panel = new JPanel(TableLayout.ofColumns(2, 4));
+			
+			panel.add(new JLabel("max_nbt_size"));
+			
+			JSpinner maxNbtSizeField = new JSpinner();
+			panel.add(maxNbtSizeField);
+			((SpinnerNumberModel) maxNbtSizeField.getModel()).setMinimum(0);
+			maxNbtSizeField.setValue(config.getMaxNbtSize());
+			
+			panel.add(new JLabel("max_num_results"));
+			
+			JSpinner maxNumResultsField = new JSpinner();
+			panel.add(maxNumResultsField);
+			((SpinnerNumberModel) maxNumResultsField.getModel()).setMinimum(0);
+			maxNumResultsField.setValue(config.getMaxNumResults());
+			
+			if (JOptionPane.showConfirmDialog(frame, panel, "Config", JOptionPane.OK_CANCEL_OPTION) != JOptionPane.OK_OPTION)
+				return;
+			
+			config.setMaxNbtSize((int) maxNbtSizeField.getValue());
+			config.setMaxNumResults((int) maxNumResultsField.getValue());
+			
+			whenComplete(connection.setConfig(config), v -> {});
+		});
+	}
+	
 	private void closeDatabaseMenuItem() {
 		if (checkConnectionExists())
 			return;
@@ -442,12 +474,9 @@ public class GUI {
 	private void refreshBtn() {
 		switch (tabs.getSelectedIndex()) {
 			case 0:
-				metadataTab.refresh();
-				break;
-			case 1:
 				entriesTab.refresh();
 				break;
-			case 2:
+			case 1:
 				tagsTab.refresh();
 				break;
 		}

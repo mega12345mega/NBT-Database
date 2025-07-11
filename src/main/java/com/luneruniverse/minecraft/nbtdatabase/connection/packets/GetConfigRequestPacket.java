@@ -6,10 +6,10 @@ import java.io.IOException;
 
 import com.luneruniverse.simplepacketlibrary.packets.Packet;
 
-public class MetadataRequestPacket extends Packet {
+public class GetConfigRequestPacket extends Packet {
 	
-	public MetadataRequestPacket() {}
-	public MetadataRequestPacket(DataInputStream in) {}
+	public GetConfigRequestPacket() {}
+	public GetConfigRequestPacket(DataInputStream in) {}
 	
 	@Override
 	public void write(DataOutputStream out) throws IOException {}

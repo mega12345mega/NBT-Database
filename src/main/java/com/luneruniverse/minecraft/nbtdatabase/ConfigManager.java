@@ -6,13 +6,13 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
-public class NBTDatabaseConfig {
+public class ConfigManager {
 	
 	private final Connection connection;
 	private int maxNbtSize;
 	private int maxNumResults;
 	
-	public NBTDatabaseConfig(Connection connection) throws SQLException {
+	public ConfigManager(Connection connection) throws SQLException {
 		this.connection = connection;
 		
 		try (Statement sql = connection.createStatement()) {
@@ -57,7 +57,10 @@ public class NBTDatabaseConfig {
 	public int getMaxNbtSize() {
 		return maxNbtSize;
 	}
-	public void setMaxNbtSize(int maxNbtSize) throws SQLException {
+	public void setMaxNbtSize(int maxNbtSize) throws IllegalRequestException, SQLException {
+		if (maxNbtSize < 0)
+			throw new IllegalRequestException("maxNbtSize must be >= 0");
+		
 		this.maxNbtSize = maxNbtSize;
 		set("max_nbt_size", PreparedStatement::setInt, maxNbtSize);
 	}
@@ -65,9 +68,20 @@ public class NBTDatabaseConfig {
 	public int getMaxNumResults() {
 		return maxNumResults;
 	}
-	public void setMaxNumResults(int maxNumResults) throws SQLException {
+	public void setMaxNumResults(int maxNumResults) throws IllegalRequestException, SQLException {
+		if (maxNumResults < 0)
+			throw new IllegalRequestException("maxNumResults must be >= 0");
+		
 		this.maxNumResults = maxNumResults;
 		set("max_num_results", PreparedStatement::setInt, maxNumResults);
+	}
+	
+	public Config getConfig() {
+		return new Config(maxNbtSize, maxNumResults);
+	}
+	public void setConfig(Config config) throws IllegalRequestException, SQLException {
+		setMaxNbtSize(config.getMaxNbtSize());
+		setMaxNumResults(config.getMaxNumResults());
 	}
 	
 }

@@ -14,6 +14,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
+import com.luneruniverse.minecraft.nbtdatabase.Config;
 import com.luneruniverse.minecraft.nbtdatabase.DataVersion;
 import com.luneruniverse.minecraft.nbtdatabase.EntryFilter;
 import com.luneruniverse.minecraft.nbtdatabase.EntryView;
@@ -75,7 +76,14 @@ public class CLI extends Thread {
 						.addArgument("port", new IntegerInput()))
 				.addCommand(new SingleCommand("stop", this::serverStopCmd)));
 		
-		root.addCommand(new SingleCommand("metadata", this::metadataCmd));
+		root.addCommand(new GroupCommand("config")
+				.addCommand(new SingleCommand("list", this::configListCmd))
+				.addCommand(new SingleCommand("max_nbt_size", inputs -> configEditCmd(
+						config -> config.setMaxNbtSize(inputs.getArgument("value", Integer.class))))
+						.addArgument("value", new IntegerInput().min(0)))
+				.addCommand(new SingleCommand("max_num_results", inputs -> configEditCmd(
+						config -> config.setMaxNumResults(inputs.getArgument("value", Integer.class))))
+						.addArgument("value", new IntegerInput().min(0))));
 		
 		root.addCommand(new GroupCommand("entry")
 				.addCommand(new SingleCommand("add", inputs -> entryAddCmd(
@@ -381,13 +389,23 @@ public class CLI extends Thread {
 		closeServer(false);
 	}
 	
-	private void metadataCmd() {
+	private void configListCmd() {
 		if (checkConnectionExists())
 			return;
 		
-		whenComplete(connection.getMetadata(), metadata -> {
-			System.out.println("max_nbt_size: " + metadata.getMaxNbtSize());
-			System.out.println("max_num_results: " + metadata.getMaxNumResults());
+		whenComplete(connection.getConfig(), config -> {
+			System.out.println("max_nbt_size: " + config.getMaxNbtSize());
+			System.out.println("max_num_results: " + config.getMaxNumResults());
+		});
+	}
+	
+	private void configEditCmd(Consumer<Config> edit) {
+		if (checkConnectionExists())
+			return;
+		
+		whenComplete(connection.getConfig(), config -> {
+			edit.accept(config);
+			whenComplete(connection.setConfig(config), v -> System.out.println("Edited config"));
 		});
 	}
 	

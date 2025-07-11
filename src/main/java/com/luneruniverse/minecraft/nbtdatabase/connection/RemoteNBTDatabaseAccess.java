@@ -10,6 +10,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
+import com.luneruniverse.minecraft.nbtdatabase.Config;
 import com.luneruniverse.minecraft.nbtdatabase.EntryFilter;
 import com.luneruniverse.minecraft.nbtdatabase.EntryView;
 import com.luneruniverse.minecraft.nbtdatabase.NBTEntry;
@@ -19,15 +20,15 @@ import com.luneruniverse.minecraft.nbtdatabase.Util;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.AddEntryRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.AddTagRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.AddTagToEntryRequestPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.ConfigPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.EditEntryRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.EditTagRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.EntriesPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetConfigRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetEntriesRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetEntryRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetTagRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetTagsRequestPacket;
-import com.luneruniverse.minecraft.nbtdatabase.connection.packets.MetadataPacket;
-import com.luneruniverse.minecraft.nbtdatabase.connection.packets.MetadataRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.Packets;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.RemoveEntryRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.RemoveTagFromEntryRequestPacket;
@@ -87,8 +88,13 @@ public class RemoteNBTDatabaseAccess implements NBTDatabaseAccess {
 	}
 	
 	@Override
-	public CompletableFuture<NBTDatabaseMetadata> getMetadata() {
-		return request(new MetadataRequestPacket(), MetadataPacket.class, MetadataPacket::getMetadata);
+	public CompletableFuture<Void> setConfig(Config config) {
+		return requestVoid(new ConfigPacket(config));
+	}
+	
+	@Override
+	public CompletableFuture<Config> getConfig() {
+		return request(new GetConfigRequestPacket(), ConfigPacket.class, ConfigPacket::getConfig);
 	}
 	
 	@Override
