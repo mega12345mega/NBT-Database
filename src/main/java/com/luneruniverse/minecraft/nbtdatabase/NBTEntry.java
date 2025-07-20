@@ -10,7 +10,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.UUID;
 
-public class NBTEntry {
+import com.esotericsoftware.kryo.kryo5.serializers.FieldSerializer.NotNull;
+
+public final class NBTEntry {
 	
 	static final String DATABASE_COLUMNS = "`entries`.`id`, `entries`.`name`, length(`entries`.`nbt`) AS `nbt_length`, "
 			+ "`entries`.`data_version`, `entries`.`author_uuid`, `entries`.`author_username`, "
@@ -60,16 +62,16 @@ public class NBTEntry {
 		}
 	}
 	
-	public final long id;
-	public final String name;
-	public final int nbtLength;
-	public final int dataVersion;
-	public final UUID authorUuid;
-	public final String authorUsername;
-	public final long created;
-	public final long modified;
-	public final String hash;
-	public final boolean verified;
+	private long id;
+	private @NotNull String name;
+	private int nbtLength;
+	private int dataVersion;
+	private @NotNull UUID authorUuid;
+	private @NotNull String authorUsername;
+	private long created;
+	private long modified;
+	private @NotNull String hash;
+	private boolean verified;
 	
 	public NBTEntry(long id, String name, int nbtLength, int dataVersion, UUID authorUuid, String authorUsername,
 			long created, long modified, String hash, boolean verified) {
@@ -83,6 +85,40 @@ public class NBTEntry {
 		this.modified = modified;
 		this.hash = hash;
 		this.verified = verified;
+	}
+	NBTEntry() {
+		// Deserialization
+	}
+	
+	public long getId() {
+		return id;
+	}
+	public String getName() {
+		return name;
+	}
+	public int getNbtLength() {
+		return nbtLength;
+	}
+	public int getDataVersion() {
+		return dataVersion;
+	}
+	public UUID getAuthorUuid() {
+		return authorUuid;
+	}
+	public String getAuthorUsername() {
+		return authorUsername;
+	}
+	public long getCreated() {
+		return created;
+	}
+	public long getModified() {
+		return modified;
+	}
+	public String getHash() {
+		return hash;
+	}
+	public boolean isVerified() {
+		return verified;
 	}
 	
 	@Override

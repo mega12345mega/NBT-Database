@@ -173,8 +173,8 @@ public class NBTDatabase implements AutoCloseable {
 				throw new IllegalRequestException("Entry doesn't exist: " + id);
 		}
 		update.addColumn("`hash`=?", PreparedStatement::setString,
-				NBTEntry.genHash(name.orElse(oldEntry.name), nbt.orElse(oldEntryNBT), dataVersion.orElse(oldEntry.dataVersion),
-						authorUuid.orElse(oldEntry.authorUuid), oldEntry.created, modified));
+				NBTEntry.genHash(name.orElse(oldEntry.getName()), nbt.orElse(oldEntryNBT), dataVersion.orElse(oldEntry.getDataVersion()),
+						authorUuid.orElse(oldEntry.getAuthorUuid()), oldEntry.getCreated(), modified));
 		update.addFilter("`id`=?", PreparedStatement::setLong, id);
 		
 		try (PreparedStatement sql = connection.prepareStatement(update.toSQL())) {

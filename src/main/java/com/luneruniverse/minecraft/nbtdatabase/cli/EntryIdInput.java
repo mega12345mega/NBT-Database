@@ -26,7 +26,7 @@ public class EntryIdInput extends ArgumentOrFlagImpl<Long> {
 				int resultIndex = Integer.parseInt(str.substring(1));
 				if (resultIndex < 0 || resultIndex >= results.size())
 					throw new CommandParseException("Invalid result index: " + resultIndex);
-				return results.get(resultIndex).id;
+				return results.get(resultIndex).getId();
 			}
 			
 			return Long.parseLong(str);

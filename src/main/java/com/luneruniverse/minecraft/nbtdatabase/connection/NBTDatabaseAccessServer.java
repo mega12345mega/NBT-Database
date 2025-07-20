@@ -14,6 +14,7 @@ import com.luneruniverse.minecraft.nbtdatabase.connection.packets.ConfigPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.EditEntryRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.EditTagRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.EntriesPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.EntryIdPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.EntryNBTPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetConfigRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetEntriesRequestPacket;
@@ -21,32 +22,43 @@ import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetEntryNBTReq
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetEntryRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetTagRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetTagsRequestPacket;
-import com.luneruniverse.minecraft.nbtdatabase.connection.packets.Packets;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.Packet;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.RemoveEntryRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.RemoveTagFromEntryRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.RemoveTagRequestPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.ServerExceptionPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.SuccessPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.TagsPacket;
-import com.luneruniverse.simplepacketlibrary.Connection;
-import com.luneruniverse.simplepacketlibrary.Server;
-import com.luneruniverse.simplepacketlibrary.listeners.TypedPacketListener;
-import com.luneruniverse.simplepacketlibrary.listeners.WaitState;
-import com.luneruniverse.simplepacketlibrary.packets.Packet;
-import com.luneruniverse.simplepacketlibrary.packets.PrimitivePacket;
+import com.luneruniverse.nettymux.byteprotocol.HttpByteProtocol;
+import com.luneruniverse.nettymux.byteprotocol.MagicByteProtocol;
+import com.luneruniverse.nettymux.byteprotocol.NettyByteMultiplexer;
+import com.luneruniverse.nettymux.messageprotocol.NettyMessageMultiplexer;
+import com.luneruniverse.nettymux.messageprotocol.WebSocketHttpMessageProtocol;
+
+import io.netty.bootstrap.ServerBootstrap;
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelInitializer;
+import io.netty.channel.EventLoopGroup;
+import io.netty.channel.MultiThreadIoEventLoopGroup;
+import io.netty.channel.nio.NioIoHandler;
+import io.netty.channel.socket.SocketChannel;
+import io.netty.channel.socket.nio.NioServerSocketChannel;
+import io.netty.handler.codec.http.FullHttpRequest;
+import io.netty.handler.codec.http.HttpObjectAggregator;
+import io.netty.handler.codec.http.HttpServerCodec;
 
 public class NBTDatabaseAccessServer implements AutoCloseable {
 	
 	private final NBTDatabaseAccess database;
-	private final Server server;
+	private final int port;
+	private final Channel server;
 	
-	public NBTDatabaseAccessServer(NBTDatabaseAccess database, int port) throws IOException {
+	public NBTDatabaseAccessServer(NBTDatabaseAccess database, int port) throws IOException, InterruptedException {
 		this.database = database;
+		this.port = port;
 		
-		server = new Server(port);
-		server.addServerErrorHandler((e, server, context) -> e.printStackTrace());
-		server.addConnectionErrorHandler((e, conn, context) -> e.printStackTrace());
-		server.registerPackets(Packets.PACKETS);
-		
-		server.addPacketListener(new TypedPacketListener()
+		TypedPacketHandler nbtHandler = new TypedPacketHandler()
 				.when(ConfigPacket.class, this::configPacket)
 				.when(GetConfigRequestPacket.class, this::getConfigRequestPacket)
 				.when(AddEntryRequestPacket.class, this::addEntryRequestPacket)
@@ -61,97 +73,119 @@ public class NBTDatabaseAccessServer implements AutoCloseable {
 				.when(GetTagRequestPacket.class, this::getTagRequestPacket)
 				.when(GetTagsRequestPacket.class, this::getTagsRequestPacket)
 				.when(AddTagToEntryRequestPacket.class, this::addTagToEntryRequestPacket)
-				.when(RemoveTagFromEntryRequestPacket.class, this::removeTagFromEntryRequestPacket));
+				.when(RemoveTagFromEntryRequestPacket.class, this::removeTagFromEntryRequestPacket);
 		
-		server.start();
+		EventLoopGroup group = new MultiThreadIoEventLoopGroup(3, NioIoHandler.newFactory());
+		ChannelFuture serverFuture = new ServerBootstrap()
+				.group(group)
+				.channel(NioServerSocketChannel.class)
+				.childHandler(new ChannelInitializer<SocketChannel>() {
+					protected void initChannel(SocketChannel channel) throws Exception {
+						channel.pipeline().addLast(NettyByteMultiplexer.builder()
+								.addProtocol(new MagicByteProtocol("nbt", NBTProtocol.MAGIC, true, ctx -> {
+									ctx.pipeline().addAfter(NBTProtocol.bind(ctx).name(), "nbt#handler", nbtHandler);
+								}))
+								.addProtocol(new HttpByteProtocol(ctx -> {
+									ctx.pipeline().addAfter(ctx.name(), "http#codec", new HttpServerCodec());
+									ctx.pipeline().addAfter("http#codec", "http#aggregator", new HttpObjectAggregator(65536));
+									ctx.pipeline().addAfter("http#aggregator", null,
+											NettyMessageMultiplexer.builder(FullHttpRequest.class)
+											.addProtocol(new WebSocketHttpMessageProtocol(ctx2 -> {
+												ctx2.pipeline().addAfter(
+														WebSocketNBTProtocol.bind(ctx2).name(), "nbt#handler", nbtHandler);
+											}))
+											.build());
+								}))
+								.build());
+						channel.pipeline().addLast(new ErrorHandler());
+					}
+				})
+				.bind(port);
+		server = Util.addGroupShutdown(serverFuture, group);
 	}
 	
 	public int getPort() {
-		return server.getPort();
+		return port;
 	}
 	
-	private <T> void respond(Packet packet, Connection conn, CompletableFuture<T> request, Function<T, Packet> packer) {
+	private <T> void respond(Packet packet, Channel channel, CompletableFuture<T> request, Function<T, Packet> packer) {
 		request.whenComplete((value, e) -> {
-			try {
-				if (e != null) {
-					if (e instanceof IllegalRequestException)
-						conn.reply(packet, new PrimitivePacket(e.getMessage()));
-					else {
-						e.printStackTrace();
-						conn.reply(packet, new PrimitivePacket("An internal server error occurred"));
-					}
-				} else
-					conn.reply(packet, packer.apply(value));
-			} catch (IOException e2) {
-				e2.printStackTrace();
-			}
+			if (e != null) {
+				if (e instanceof IllegalRequestException)
+					NBTProtocol.reply(channel, packet, new ServerExceptionPacket(e.getMessage()));
+				else {
+					e.printStackTrace();
+					NBTProtocol.reply(channel, packet, new ServerExceptionPacket("An internal server error occurred"));
+				}
+			} else
+				NBTProtocol.reply(channel, packet, packer.apply(value));
 		});
 	}
 	
-	private void respondVoid(Packet packet, Connection conn, CompletableFuture<Void> request) {
-		respond(packet, conn, request, v -> new PrimitivePacket(true));
+	private void respondVoid(Packet packet, Channel channel, CompletableFuture<Void> request) {
+		respond(packet, channel, request, v -> new SuccessPacket());
 	}
 	
-	private void configPacket(ConfigPacket packet, Connection conn, WaitState wait) {
-		respondVoid(packet, conn, database.setConfig(packet.getConfig()));
+	private void configPacket(ConfigPacket packet, Channel channel) {
+		respondVoid(packet, channel, database.setConfig(packet.getConfig()));
 	}
 	
-	private void getConfigRequestPacket(GetConfigRequestPacket packet, Connection conn, WaitState wait) {
-		respond(packet, conn, database.getConfig(), ConfigPacket::new);
+	private void getConfigRequestPacket(GetConfigRequestPacket packet, Channel channel) {
+		respond(packet, channel, database.getConfig(), ConfigPacket::new);
 	}
 	
-	private void addEntryRequestPacket(AddEntryRequestPacket packet, Connection conn, WaitState wait) {
-		respond(packet, conn, database.addEntry(packet.getName(), packet.getNbt(), packet.getDataVersion(),
-				packet.getAuthorUuid(), packet.getAuthorUsername(), packet.isVerified()), PrimitivePacket::new);
+	private void addEntryRequestPacket(AddEntryRequestPacket packet, Channel channel) {
+		respond(packet, channel, database.addEntry(packet.getName(), packet.getNbt(), packet.getDataVersion(),
+				packet.getAuthorUuid(), packet.getAuthorUsername(), packet.isVerified()), EntryIdPacket::new);
 	}
 	
-	private void editEntryRequestPacket(EditEntryRequestPacket packet, Connection conn, WaitState wait) {
-		respondVoid(packet, conn, database.editEntry(packet.getId(), packet.getName(), packet.getNbt(),
+	private void editEntryRequestPacket(EditEntryRequestPacket packet, Channel channel) {
+		respondVoid(packet, channel, database.editEntry(packet.getId(), packet.getName(), packet.getNbt(),
 				packet.getDataVersion(), packet.getAuthorUuid(), packet.getAuthorUsername(), packet.isVerified()));
 	}
 	
-	private void removeEntryRequestPacket(RemoveEntryRequestPacket packet, Connection conn, WaitState wait) {
-		respondVoid(packet, conn, database.removeEntry(packet.getId()));
+	private void removeEntryRequestPacket(RemoveEntryRequestPacket packet, Channel channel) {
+		respondVoid(packet, channel, database.removeEntry(packet.getId()));
 	}
 	
-	private void getEntryRequestPacket(GetEntryRequestPacket packet, Connection conn, WaitState wait) {
-		respond(packet, conn, database.getEntry(packet.getId()), EntriesPacket::new);
+	private void getEntryRequestPacket(GetEntryRequestPacket packet, Channel channel) {
+		respond(packet, channel, database.getEntry(packet.getId()), EntriesPacket::new);
 	}
 	
-	private void getEntryNBTRequestPacket(GetEntryNBTRequestPacket packet, Connection conn, WaitState wait) {
-		respond(packet, conn, database.getEntryNBT(packet.getId()), EntryNBTPacket::new);
+	private void getEntryNBTRequestPacket(GetEntryNBTRequestPacket packet, Channel channel) {
+		respond(packet, channel, database.getEntryNBT(packet.getId()), EntryNBTPacket::new);
 	}
 	
-	private void getEntriesRequestPacket(GetEntriesRequestPacket packet, Connection conn, WaitState wait) {
-		respond(packet, conn, database.getEntries(packet.getFilter(), packet.getView()), EntriesPacket::new);
+	private void getEntriesRequestPacket(GetEntriesRequestPacket packet, Channel channel) {
+		respond(packet, channel, database.getEntries(packet.getFilter(), packet.getView()), EntriesPacket::new);
 	}
 	
-	private void addTagRequestPacket(AddTagRequestPacket packet, Connection conn, WaitState wait) {
-		respondVoid(packet, conn, database.addTag(packet.getName(), packet.getColor()));
+	private void addTagRequestPacket(AddTagRequestPacket packet, Channel channel) {
+		respondVoid(packet, channel, database.addTag(packet.getName(), packet.getColor()));
 	}
 	
-	private void editTagRequestPacket(EditTagRequestPacket packet, Connection conn, WaitState wait) {
-		respondVoid(packet, conn, database.editTag(packet.getCurrentName(), packet.getName(), packet.getColor()));
+	private void editTagRequestPacket(EditTagRequestPacket packet, Channel channel) {
+		respondVoid(packet, channel, database.editTag(packet.getCurrentName(), packet.getName(), packet.getColor()));
 	}
 	
-	private void removeTagRequestPacket(RemoveTagRequestPacket packet, Connection conn, WaitState wait) {
-		respondVoid(packet, conn, database.removeTag(packet.getName()));
+	private void removeTagRequestPacket(RemoveTagRequestPacket packet, Channel channel) {
+		respondVoid(packet, channel, database.removeTag(packet.getName()));
 	}
 	
-	private void getTagRequestPacket(GetTagRequestPacket packet, Connection conn, WaitState wait) {
-		respond(packet, conn, database.getTag(packet.getName()), TagsPacket::new);
+	private void getTagRequestPacket(GetTagRequestPacket packet, Channel channel) {
+		respond(packet, channel, database.getTag(packet.getName()), TagsPacket::new);
 	}
 	
-	private void getTagsRequestPacket(GetTagsRequestPacket packet, Connection conn, WaitState wait) {
-		respond(packet, conn, database.getTags(packet.getFilter()), TagsPacket::new);
+	private void getTagsRequestPacket(GetTagsRequestPacket packet, Channel channel) {
+		respond(packet, channel, database.getTags(packet.getFilter()), TagsPacket::new);
 	}
 	
-	private void addTagToEntryRequestPacket(AddTagToEntryRequestPacket packet, Connection conn, WaitState wait) {
-		respondVoid(packet, conn, database.addTagToEntry(packet.getEntry(), packet.getTag()));
+	private void addTagToEntryRequestPacket(AddTagToEntryRequestPacket packet, Channel channel) {
+		respondVoid(packet, channel, database.addTagToEntry(packet.getEntry(), packet.getTag()));
 	}
 	
-	private void removeTagFromEntryRequestPacket(RemoveTagFromEntryRequestPacket packet, Connection conn, WaitState wait) {
-		respondVoid(packet, conn, database.removeTagFromEntry(packet.getEntry(), packet.getTag()));
+	private void removeTagFromEntryRequestPacket(RemoveTagFromEntryRequestPacket packet, Channel channel) {
+		respondVoid(packet, channel, database.removeTagFromEntry(packet.getEntry(), packet.getTag()));
 	}
 	
 	public CompletableFuture<Void> closeAsync() {

@@ -369,7 +369,7 @@ public class GUI {
 		try {
 			connection = new RemoteNBTDatabaseAccess(ip, port);
 			onConnectionOpen();
-		} catch (IOException e) {
+		} catch (IOException | InterruptedException e) {
 			e.printStackTrace();
 			JOptionPane.showMessageDialog(frame, "Failed to connect to '" + ip + ":" + port + "'", "Error", JOptionPane.ERROR_MESSAGE);
 		}
@@ -426,7 +426,7 @@ public class GUI {
 		try {
 			server = new NBTDatabaseAccessServer(connection, 25560);
 			onServerStart();
-		} catch (IOException e) {
+		} catch (IOException | InterruptedException e) {
 			e.printStackTrace();
 			JOptionPane.showMessageDialog(frame, "Failed to start server", "Error", JOptionPane.ERROR_MESSAGE);
 		}
@@ -454,7 +454,7 @@ public class GUI {
 		try {
 			server = new NBTDatabaseAccessServer(connection, port);
 			onServerStart();
-		} catch (IOException e) {
+		} catch (IOException | InterruptedException e) {
 			e.printStackTrace();
 			JOptionPane.showMessageDialog(frame, "Failed to start server on port '" + port + "'", "Error", JOptionPane.ERROR_MESSAGE);
 		}

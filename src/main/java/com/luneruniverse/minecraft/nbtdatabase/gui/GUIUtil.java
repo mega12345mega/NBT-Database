@@ -33,9 +33,9 @@ public class GUIUtil {
 	}
 	
 	public static JLabel createTag(Tag tag) {
-		Color color = new Color(tag.color);
+		Color color = new Color(tag.getColor());
 		
-		JLabel label = new JLabel(tag.name);
+		JLabel label = new JLabel(tag.getName());
 		
 		label.setFont(label.getFont().deriveFont(Font.BOLD));
 		label.setForeground(Util.isColorBright(color) ? Color.BLACK : Color.WHITE);

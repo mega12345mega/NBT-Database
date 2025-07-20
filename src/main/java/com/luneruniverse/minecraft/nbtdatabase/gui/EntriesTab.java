@@ -103,10 +103,10 @@ public class EntriesTab {
 		entries.add(panel);
 		panel.setAlignmentX(0);
 		
-		TitledBorder border = new TitledBorder(entry.name + (entry.verified ? " ✔" : ""));
+		TitledBorder border = new TitledBorder(entry.getName() + (entry.isVerified() ? " ✔" : ""));
 		panel.setBorder(border);
 		border.setTitleFont(border.getTitleFont().deriveFont(Font.BOLD));
-		if (entry.verified)
+		if (entry.isVerified())
 			border.setTitleColor(new Color(0x008800));
 		
 		@SuppressWarnings("serial")
@@ -124,7 +124,7 @@ public class EntriesTab {
 		tags.setLayout(new BoxLayout(tags, BoxLayout.X_AXIS));
 		details.add(tags);
 		tags.setAlignmentX(0);
-		gui.whenComplete(gui.getConnection().getTags(new TagFilter().filterByEntryId(entry.id)), tags2 -> {
+		gui.whenComplete(gui.getConnection().getTags(new TagFilter().filterByEntryId(entry.getId())), tags2 -> {
 			for (Tag tag : tags2) {
 				if (tags.getComponentCount() == 0)
 					tags.setBorder(new EmptyBorder(0, 0, 4, 0));
@@ -136,19 +136,19 @@ public class EntriesTab {
 			tags.repaint();
 		});
 		
-		JLabel author = new JLabel("Author: " + entry.authorUsername);
-		author.setToolTipText("UUID: " + entry.authorUuid);
+		JLabel author = new JLabel("Author: " + entry.getAuthorUsername());
+		author.setToolTipText("UUID: " + entry.getAuthorUuid());
 		details.add(author);
 		
-		details.add(new JLabel("Data Version: " + DataVersion.toViewableString(entry.dataVersion)));
+		details.add(new JLabel("Data Version: " + DataVersion.toViewableString(entry.getDataVersion())));
 		
-		details.add(new JLabel("Bytes: " + String.format("%,d", entry.nbtLength)));
+		details.add(new JLabel("Bytes: " + String.format("%,d", entry.getNbtLength())));
 		
-		JLabel created = new JLabel("Created: " + Util.formatTimestamp(entry.created));
-		if (entry.created == entry.modified)
+		JLabel created = new JLabel("Created: " + Util.formatTimestamp(entry.getCreated()));
+		if (entry.getCreated() == entry.getModified())
 			created.setToolTipText("Never Modified");
 		else
-			created.setToolTipText("Modified: " + Util.formatTimestamp(entry.modified));
+			created.setToolTipText("Modified: " + Util.formatTimestamp(entry.getModified()));
 		details.add(created);
 		
 		JPanel options = new JPanel();
@@ -162,18 +162,18 @@ public class EntriesTab {
 		
 		JButton exportEntryBtn = new JButton("Export");
 		options.add(exportEntryBtn);
-		exportEntryBtn.addActionListener(event -> exportEntryBtn(entry.id, entry.name));
+		exportEntryBtn.addActionListener(event -> exportEntryBtn(entry.getId(), entry.getName()));
 		
 		JButton editEntryBtn = new JButton("Edit");
 		options.add(editEntryBtn);
 		editEntryBtn.addActionListener(event -> {
-			gui.whenComplete(gui.getConnection().getTags(new TagFilter().filterByEntryId(entry.id)),
-					previousTags -> editEntryBtn(entry, previousTags.stream().map(tag -> tag.name).collect(Collectors.toSet())));
+			gui.whenComplete(gui.getConnection().getTags(new TagFilter().filterByEntryId(entry.getId())),
+					previousTags -> editEntryBtn(entry, previousTags.stream().map(Tag::getName).collect(Collectors.toSet())));
 		});
 		
 		JButton removeEntryBtn = new JButton("-");
 		options.add(removeEntryBtn);
-		removeEntryBtn.addActionListener(event -> removeEntryBtn(entry.id, entry.name, panel));
+		removeEntryBtn.addActionListener(event -> removeEntryBtn(entry.getId(), entry.getName(), panel));
 	}
 	
 	public void refresh() {
@@ -295,9 +295,9 @@ public class EntriesTab {
 					panel.add(GUIUtil.createTag(tag));
 					
 					JCheckBox tagField = new JCheckBox();
-					tagFields.put(tag.name, tagField);
+					tagFields.put(tag.getName(), tagField);
 					panel.add(tagField);
-					if (filter.getTags() != null && filter.getTags().contains(tag.name))
+					if (filter.getTags() != null && filter.getTags().contains(tag.getName()))
 						tagField.setSelected(true);
 				}
 			}
@@ -410,22 +410,22 @@ public class EntriesTab {
 					panel.add(GUIUtil.createTag(tag));
 					
 					JCheckBox tagField = new JCheckBox();
-					tagFields.put(tag.name, tagField);
+					tagFields.put(tag.getName(), tagField);
 					panel.add(tagField);
 				}
 			}
 			
 			if (previousEntry != null) {
-				nameField.setText(previousEntry.name);
-				authorUuidField.setText(previousEntry.authorUuid.toString());
-				authorUsernameField.setText(previousEntry.authorUsername);
-				verifiedField.setSelected(previousEntry.verified);
+				nameField.setText(previousEntry.getName());
+				authorUuidField.setText(previousEntry.getAuthorUuid().toString());
+				authorUsernameField.setText(previousEntry.getAuthorUsername());
+				verifiedField.setSelected(previousEntry.isVerified());
 				for (String tag : previousTags)
 					tagFields.get(tag).setSelected(true);
 			}
 			
 			if (JOptionPane.showConfirmDialog(frame, panel,
-					previousEntry == null ? "Add Entry" : "Edit Entry: " + previousEntry.name,
+					previousEntry == null ? "Add Entry" : "Edit Entry: " + previousEntry.getName(),
 					JOptionPane.OK_CANCEL_OPTION) != JOptionPane.OK_OPTION) {
 				return;
 			}
@@ -504,22 +504,22 @@ public class EntriesTab {
 					for (Map.Entry<String, JCheckBox> tag : tagFields.entrySet()) {
 						if (previousTags.contains(tag.getKey()) != tag.getValue().isSelected()) {
 							if (tag.getValue().isSelected())
-								tagFutures.add(gui.getConnection().addTagToEntry(previousEntry.id, tag.getKey()));
+								tagFutures.add(gui.getConnection().addTagToEntry(previousEntry.getId(), tag.getKey()));
 							else
-								tagFutures.add(gui.getConnection().removeTagFromEntry(previousEntry.id, tag.getKey()));
+								tagFutures.add(gui.getConnection().removeTagFromEntry(previousEntry.getId(), tag.getKey()));
 						}
 					}
 					gui.whenComplete(Util.allOf(tagFutures.toArray(new CompletableFuture[tagFutures.size()])), v2 -> refresh());
 				};
-				Optional<String> nameEdit = Util.edit(previousEntry.name, nameField.getText());
+				Optional<String> nameEdit = Util.edit(previousEntry.getName(), nameField.getText());
 				Optional<byte[]> nbtEdit = Optional.ofNullable(nbt);
-				Optional<Integer> dataVersionEdit = Util.edit(previousEntry.dataVersion, dataVersion);
-				Optional<UUID> authorUuidEdit = Util.edit(previousEntry.authorUuid, authorUuid);
-				Optional<String> authorUsernameEdit = Util.edit(previousEntry.authorUsername, authorUsernameField.getText());
-				Optional<Boolean> verifiedEdit = Util.edit(previousEntry.verified, verifiedField.isSelected());
+				Optional<Integer> dataVersionEdit = Util.edit(previousEntry.getDataVersion(), dataVersion);
+				Optional<UUID> authorUuidEdit = Util.edit(previousEntry.getAuthorUuid(), authorUuid);
+				Optional<String> authorUsernameEdit = Util.edit(previousEntry.getAuthorUsername(), authorUsernameField.getText());
+				Optional<Boolean> verifiedEdit = Util.edit(previousEntry.isVerified(), verifiedField.isSelected());
 				if (nameEdit.isPresent() || nbtEdit.isPresent() || dataVersionEdit.isPresent() ||
 						authorUuidEdit.isPresent() || authorUsernameEdit.isPresent() || verifiedEdit.isPresent()) {
-					gui.whenComplete(gui.getConnection().editEntry(previousEntry.id, nameEdit, nbtEdit, dataVersionEdit,
+					gui.whenComplete(gui.getConnection().editEntry(previousEntry.getId(), nameEdit, nbtEdit, dataVersionEdit,
 							authorUuidEdit, authorUsernameEdit, verifiedEdit), v -> editTags.run());
 				} else {
 					editTags.run();
@@ -533,13 +533,13 @@ public class EntriesTab {
 		
 		panel.add(new JLabel("ID:"));
 		
-		panel.add(new JLabel(entry.id + ""));
+		panel.add(new JLabel(entry.getId() + ""));
 		
 		panel.add(new JLabel("Hash:"));
 		
-		panel.add(new JLabel(entry.hash));
+		panel.add(new JLabel(entry.getHash()));
 		
-		JOptionPane.showMessageDialog(frame, panel, "Entry Details: " + entry.name, JOptionPane.INFORMATION_MESSAGE);
+		JOptionPane.showMessageDialog(frame, panel, "Entry Details: " + entry.getName(), JOptionPane.INFORMATION_MESSAGE);
 	}
 	
 	private void exportEntryBtn(long id, String name) {

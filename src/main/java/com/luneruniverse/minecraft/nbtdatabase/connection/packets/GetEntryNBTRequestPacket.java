@@ -1,29 +1,18 @@
 package com.luneruniverse.minecraft.nbtdatabase.connection.packets;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-
-import com.luneruniverse.simplepacketlibrary.packets.Packet;
-
 public class GetEntryNBTRequestPacket extends Packet {
 	
-	private final long id;
+	private long id;
 	
 	public GetEntryNBTRequestPacket(long id) {
 		this.id = id;
 	}
-	public GetEntryNBTRequestPacket(DataInputStream in) throws IOException {
-		this.id = in.readLong();
+	GetEntryNBTRequestPacket() {
+		// Deserialization
 	}
 	
 	public long getId() {
 		return id;
-	}
-	
-	@Override
-	public void write(DataOutputStream out) throws IOException {
-		out.writeLong(id);
 	}
 	
 }

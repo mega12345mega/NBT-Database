@@ -1,6 +1,8 @@
 package com.luneruniverse.minecraft.nbtdatabase;
 
-public class EntryView {
+import com.esotericsoftware.kryo.kryo5.serializers.FieldSerializer.NotNull;
+
+public final class EntryView {
 	
 	public enum Order {
 		NAME("Name (A -> Z)", "LOWER(`name`)", false),
@@ -34,7 +36,7 @@ public class EntryView {
 		}
 	}
 	
-	private Order order;
+	private @NotNull Order order;
 	private boolean reversedOrder;
 	private int offset;
 	

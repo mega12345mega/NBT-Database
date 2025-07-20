@@ -1,13 +1,13 @@
 package com.luneruniverse.minecraft.nbtdatabase.connection.packets;
 
-public class RemoveEntryRequestPacket extends Packet {
+public class EntryIdPacket extends Packet {
 	
 	private long id;
 	
-	public RemoveEntryRequestPacket(long id) {
+	public EntryIdPacket(long id) {
 		this.id = id;
 	}
-	RemoveEntryRequestPacket() {
+	EntryIdPacket() {
 		// Deserialization
 	}
 	

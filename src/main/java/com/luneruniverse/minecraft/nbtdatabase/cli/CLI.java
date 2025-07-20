@@ -367,7 +367,7 @@ public class CLI extends Thread {
 		try {
 			connection = new RemoteNBTDatabaseAccess(ip, port);
 			System.out.println("Opened: " + ip + ":" + port);
-		} catch (IOException e) {
+		} catch (IOException | InterruptedException e) {
 			e.printStackTrace();
 		}
 	}
@@ -388,7 +388,7 @@ public class CLI extends Thread {
 		try {
 			server = new NBTDatabaseAccessServer(connection, port);
 			System.out.println("Started server on port " + port);
-		} catch (IOException e) {
+		} catch (IOException | InterruptedException e) {
 			e.printStackTrace();
 		}
 	}
@@ -529,7 +529,7 @@ public class CLI extends Thread {
 			if (tag == null)
 				System.err.println("Tag doesn't exist: " + name);
 			else
-				System.out.println(tag.name + " (#" + ColorInput.toString(tag.color) + ")");
+				System.out.println(tag.getName() + " (#" + ColorInput.toString(tag.getColor()) + ")");
 		});
 	}
 	
@@ -542,7 +542,7 @@ public class CLI extends Thread {
 				System.out.println("There are no tags");
 			else {
 				for (Tag tag : tags)
-					System.out.println(tag.name + " (#" + ColorInput.toString(tag.color) + ")");
+					System.out.println(tag.getName() + " (#" + ColorInput.toString(tag.getColor()) + ")");
 			}
 		});
 	}
@@ -578,15 +578,15 @@ public class CLI extends Thread {
 			if (i != 0)
 				System.out.println();
 			
-			System.out.println("#" + i + ": " + entry.id + ": " + entry.name);
-			System.out.println("  Author: " + entry.authorUsername + " (" + entry.authorUuid + ")");
-			System.out.println("  Data Version: " + DataVersion.toViewableString(entry.dataVersion));
+			System.out.println("#" + i + ": " + entry.getId() + ": " + entry.getName());
+			System.out.println("  Author: " + entry.getAuthorUsername() + " (" + entry.getAuthorUuid() + ")");
+			System.out.println("  Data Version: " + DataVersion.toViewableString(entry.getDataVersion()));
 			if (verbose) {
-				System.out.println("  Bytes: " + entry.nbtLength);
-				System.out.println("  Created: " + Util.formatTimestamp(entry.created));
-				System.out.println("  Modified: " + Util.formatTimestamp(entry.modified));
-				System.out.println("  Hash: " + entry.hash);
-				System.out.println("  Verified: " + entry.verified);
+				System.out.println("  Bytes: " + entry.getNbtLength());
+				System.out.println("  Created: " + Util.formatTimestamp(entry.getCreated()));
+				System.out.println("  Modified: " + Util.formatTimestamp(entry.getModified()));
+				System.out.println("  Hash: " + entry.getHash());
+				System.out.println("  Verified: " + entry.isVerified());
 			}
 		}
 	}

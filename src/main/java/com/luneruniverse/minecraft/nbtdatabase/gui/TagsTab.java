@@ -64,7 +64,7 @@ public class TagsTab {
 		
 		JButton removeTagBtn = new JButton("-");
 		table.add(removeTagBtn);
-		removeTagBtn.addActionListener(event -> removeTagBtn(tag.name));
+		removeTagBtn.addActionListener(event -> removeTagBtn(tag.getName()));
 	}
 	
 	public void refresh() {
@@ -93,11 +93,11 @@ public class TagsTab {
 		panel.add(colorField);
 		
 		if (previousTag != null) {
-			nameField.setText(previousTag.name);
-			colorField.setColor(previousTag.color);
+			nameField.setText(previousTag.getName());
+			colorField.setColor(previousTag.getColor());
 		}
 		
-		if (JOptionPane.showConfirmDialog(frame, panel, previousTag == null ? "Add Tag" : "Edit Tag: " + previousTag.name,
+		if (JOptionPane.showConfirmDialog(frame, panel, previousTag == null ? "Add Tag" : "Edit Tag: " + previousTag.getName(),
 				JOptionPane.OK_CANCEL_OPTION) != JOptionPane.OK_OPTION) {
 			return;
 		}
@@ -105,10 +105,10 @@ public class TagsTab {
 		if (previousTag == null)
 			gui.whenComplete(gui.getConnection().addTag(nameField.getText(), colorField.getColor()), v -> refresh());
 		else {
-			Optional<String> nameEdit = Util.edit(previousTag.name, nameField.getText());
-			Optional<Integer> colorEdit = Util.edit(previousTag.color, colorField.getColor());
+			Optional<String> nameEdit = Util.edit(previousTag.getName(), nameField.getText());
+			Optional<Integer> colorEdit = Util.edit(previousTag.getColor(), colorField.getColor());
 			if (nameEdit.isPresent() || colorEdit.isPresent())
-				gui.whenComplete(gui.getConnection().editTag(previousTag.name, nameEdit, colorEdit), v -> refresh());
+				gui.whenComplete(gui.getConnection().editTag(previousTag.getName(), nameEdit, colorEdit), v -> refresh());
 		}
 	}
 	

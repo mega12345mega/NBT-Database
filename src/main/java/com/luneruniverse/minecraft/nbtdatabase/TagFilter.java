@@ -1,6 +1,6 @@
 package com.luneruniverse.minecraft.nbtdatabase;
 
-public class TagFilter {
+public final class TagFilter {
 	
 	private String name;
 	private Long entryId;

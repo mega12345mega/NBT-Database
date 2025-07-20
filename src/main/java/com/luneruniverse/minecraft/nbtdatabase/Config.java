@@ -1,6 +1,6 @@
 package com.luneruniverse.minecraft.nbtdatabase;
 
-public class Config {
+public final class Config {
 	
 	private int maxNbtSize;
 	private int maxNumResults;
@@ -8,6 +8,9 @@ public class Config {
 	public Config(int maxNbtSize, int maxNumResults) {
 		this.maxNbtSize = maxNbtSize;
 		this.maxNumResults = maxNumResults;
+	}
+	Config() {
+		// Deserialization
 	}
 	
 	public Config setMaxNbtSize(int maxNbtSize) {

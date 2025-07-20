@@ -4,7 +4,9 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 
-public class EntryFilter {
+import com.esotericsoftware.kryo.kryo5.serializers.CollectionSerializer.BindCollection;
+
+public final class EntryFilter {
 	
 	private String name;
 	private Integer minNbtLength;
@@ -13,7 +15,7 @@ public class EntryFilter {
 	private Integer maxDataVersion;
 	private UUID authorUuid;
 	private String authorUsername;
-	private Set<String> tags;
+	private @BindCollection(elementsCanBeNull = false) Set<String> tags;
 	
 	public EntryFilter() {}
 	public EntryFilter(String name, Integer minNbtLength, Integer maxNbtLength, Integer minDataVersion, Integer maxDataVersion,
