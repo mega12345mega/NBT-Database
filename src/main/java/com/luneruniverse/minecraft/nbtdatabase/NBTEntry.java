@@ -126,4 +126,9 @@ public final class NBTEntry {
 		return "NBTEntry[id=" + id + ", name=" + name + ", ...]";
 	}
 	
+	@Override
+	public int hashCode() {
+		return Long.hashCode(id);
+	}
+	
 }

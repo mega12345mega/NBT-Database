@@ -29,10 +29,12 @@ import com.luneruniverse.minecraft.nbtdatabase.connection.packets.RemoveTagReque
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.ServerExceptionPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.SuccessPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.TagsPacket;
+import com.luneruniverse.minecraft.nbtdatabase.website.WebsiteHandler;
 import com.luneruniverse.nettymux.byteprotocol.HttpByteProtocol;
 import com.luneruniverse.nettymux.byteprotocol.MagicByteProtocol;
 import com.luneruniverse.nettymux.byteprotocol.NettyByteMultiplexer;
 import com.luneruniverse.nettymux.messageprotocol.NettyMessageMultiplexer;
+import com.luneruniverse.nettymux.messageprotocol.NormalHttpMessageProtocol;
 import com.luneruniverse.nettymux.messageprotocol.WebSocketHttpMessageProtocol;
 
 import io.netty.bootstrap.ServerBootstrap;
@@ -90,6 +92,9 @@ public class NBTDatabaseAccessServer implements AutoCloseable {
 									ctx.pipeline().addAfter("http#codec", "http#aggregator", new HttpObjectAggregator(65536));
 									ctx.pipeline().addAfter("http#aggregator", null,
 											NettyMessageMultiplexer.builder(FullHttpRequest.class)
+											.addProtocol(new NormalHttpMessageProtocol(ctx2 -> {
+												ctx2.pipeline().addAfter(ctx2.name(), "website", new WebsiteHandler(database));
+											}))
 											.addProtocol(new WebSocketHttpMessageProtocol(ctx2 -> {
 												ctx2.pipeline().addAfter(
 														WebSocketNBTProtocol.bind(ctx2).name(), "nbt#handler", nbtHandler);

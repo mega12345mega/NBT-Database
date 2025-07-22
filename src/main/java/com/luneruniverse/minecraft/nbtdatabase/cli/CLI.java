@@ -479,11 +479,15 @@ public class CLI extends Thread {
 			return;
 		
 		whenComplete(connection.getEntryNBT(id), nbt -> {
-			try {
-				Files.write(file.toPath(), nbt);
-				System.out.println("Exported " + id + " to: " + file.getAbsolutePath());
-			} catch (IOException e) {
-				e.printStackTrace();
+			if (nbt == null)
+				System.err.println("Entry doesn't exist: " + id);
+			else {
+				try {
+					Files.write(file.toPath(), nbt);
+					System.out.println("Exported " + id + " to: " + file.getAbsolutePath());
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
 			}
 		});
 	}

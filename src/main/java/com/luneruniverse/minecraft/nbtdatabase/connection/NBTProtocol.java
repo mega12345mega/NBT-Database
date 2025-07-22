@@ -35,9 +35,7 @@ public class NBTProtocol extends ChannelDuplexHandler {
 		return ctx.pipeline().context("nbt#protocol");
 	}
 	public static void sendMagic(Channel channel) {
-		ByteBuf buf = Unpooled.buffer();
-		buf.writeBytes(MAGIC);
-		channel.writeAndFlush(buf).addListener(ChannelFutureListener.FIRE_EXCEPTION_ON_FAILURE);
+		channel.writeAndFlush(Unpooled.copiedBuffer(MAGIC)).addListener(ChannelFutureListener.FIRE_EXCEPTION_ON_FAILURE);
 	}
 	
 	public static void send(Channel channel, Packet packet) {

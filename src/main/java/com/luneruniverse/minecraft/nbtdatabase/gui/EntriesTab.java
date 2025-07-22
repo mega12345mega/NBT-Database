@@ -544,6 +544,11 @@ public class EntriesTab {
 	
 	private void exportEntryBtn(long id, String name) {
 		gui.whenComplete(gui.getConnection().getEntryNBT(id), nbt -> {
+			if (nbt == null) {
+				JOptionPane.showMessageDialog(frame, "Entry doesn't exist: " + id, "Error", JOptionPane.ERROR_MESSAGE);
+				return;
+			}
+			
 			JnaFileChooser chooser = new JnaFileChooser(".");
 			chooser.setTitle("Export NBT Entry");
 			chooser.setDefaultFileName(name + ".nbt");

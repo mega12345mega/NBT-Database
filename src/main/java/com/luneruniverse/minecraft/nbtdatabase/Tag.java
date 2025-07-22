@@ -34,4 +34,9 @@ public final class Tag {
 		return "Tag[name=" + name + ", color=" + color + "]";
 	}
 	
+	@Override
+	public int hashCode() {
+		return name.hashCode();
+	}
+	
 }

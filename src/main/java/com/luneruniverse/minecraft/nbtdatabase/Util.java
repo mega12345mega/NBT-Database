@@ -1,7 +1,10 @@
 package com.luneruniverse.minecraft.nbtdatabase;
 
 import java.awt.Color;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -113,6 +116,27 @@ public class Util {
 		return future;
 	}
 	
+	public static <I, O> CompletableFuture<O> thenCompose(CompletableFuture<I> input, ThrowableFunction<I, CompletableFuture<O>> function) {
+		CompletableFuture<O> future = new CompletableFuture<>();
+		input.whenComplete((value, e) -> {
+			if (e != null)
+				future.completeExceptionally(e);
+			else {
+				try {
+					function.apply(value).whenComplete((value2, e2) -> {
+						if (e2 != null)
+							future.completeExceptionally(e2);
+						else
+							future.complete(value2);
+					});
+				} catch (Throwable e2) {
+					future.completeExceptionally(e2);
+				}
+			}
+		});
+		return future;
+	}
+	
 	public static CompletableFuture<Void> shutdown(ExecutorService executor) {
 		CompletableFuture<Void> future = new CompletableFuture<>();
 		executor.shutdown();
@@ -174,6 +198,36 @@ public class Util {
 		for (byte b : bytes)
 			System.out.print(String.format("%02x ", b));
 		System.out.println();
+	}
+	
+	public static byte[] readAllBytes(InputStream in) throws IOException {
+		ByteArrayOutputStream out = new ByteArrayOutputStream();
+		byte[] buf = new byte[1024];
+		int numRead;
+		while ((numRead = in.read(buf)) != -1)
+			out.write(buf, 0, numRead);
+		return out.toByteArray();
+	}
+	public static byte[] readAllBytesAndClose(InputStream in) throws IOException {
+		try {
+			return readAllBytes(in);
+		} finally {
+			in.close();
+		}
+	}
+	public static byte[] readAllBytesAndCloseOrNull(InputStream in) {
+		try {
+			return readAllBytesAndClose(in);
+		} catch (IOException e) {
+			e.printStackTrace();
+			return null;
+		}
+	}
+	public static String readStringAndCloseOrNull(InputStream in) {
+		byte[] bytes = readAllBytesAndCloseOrNull(in);
+		if (bytes == null)
+			return null;
+		return new String(bytes, StandardCharsets.UTF_8);
 	}
 	
 }

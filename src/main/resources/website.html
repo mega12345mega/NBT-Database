@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+
+<html>
+	<head>
+		<title>NBT Database</title>
+		<style>
+			:root {
+				--theme-color-red: #df4949;
+				--theme-color-blue: #257789;
+				--theme-color-gray: #808080;
+				--theme-color-green: #008800;
+			}
+			
+			body {
+				font-family: monospace;
+				font-size: 1rem;
+				color: white;
+				background-color: black;
+			}
+			
+			hr {
+				border: none;
+				border-top: 0.25rem solid var(--theme-color-gray);
+			}
+			
+			input[type=checkbox] {
+				margin: 0;
+				vertical-align: middle;
+			}
+			
+			.nbtgradient {
+				width: fit-content;
+				background-image: linear-gradient(to right, var(--theme-color-red), var(--theme-color-blue));
+				color: transparent;
+				background-clip: text;
+			}
+			
+			.tag {
+				display: inline-block;
+				padding: 0.25rem;
+				border-radius: 0.25rem;
+			}
+			
+			#title {
+				margin: auto;
+				font-size: 4rem;
+				font-family: arial, helvetica;
+			}
+			
+			#search {
+				display: flex;
+				justify-content: center;
+				gap: 1rem;
+				margin-top: 1rem;
+			}
+			#advanced_search_toggle:not(:checked) + #advanced_search {
+				display: none;
+			}
+			#advanced_search {
+				width: fit-content;
+				margin: auto;
+				margin-top: 1rem;
+				padding: 0.25rem;
+				border: 0.25rem solid var(--theme-color-blue);
+				border-radius: 0.5rem;
+			}
+			#advanced_search > * {
+				display: block;
+			}
+			#advanced_search > *:not(:first-child) {
+				margin-top: 0.25rem;
+			}
+			
+			#entries {
+				display: flex;
+				flex-wrap: wrap;
+				justify-content: center;
+				gap: 1rem;
+				margin-top: 1rem;
+			}
+			.entry {
+				--entry-color: var(--theme-color-red);
+				padding: 0.25rem;
+				border: 0.25rem solid var(--entry-color);
+				border-radius: 0.5rem;
+				cursor: pointer;
+			}
+			.entry:nth-child(even) {
+				--entry-color: var(--theme-color-blue);
+			}
+			.entry:hover {
+				box-shadow: var(--entry-color) 0 0 0.5rem;
+			}
+			.entry > * {
+				display: block;
+			}
+			.entry_download {
+				float: right;
+			}
+			.entry_download img {
+				width: 1.5rem;
+				filter: invert();
+			}
+			.entry_name {
+				margin-bottom: 0.25rem;
+				font-size: 1.5rem;
+				font-weight: bold;
+				color: var(--entry-color);
+			}
+			.entry_verified .entry_name {
+				color: var(--theme-color-green);
+			}
+			.entry_tags text:not(:first-child) {
+				margin-left: 0.25rem;
+			}
+			
+			#load_more:not([hidden]) {
+				display: flex;
+				justify-content: center;
+				gap: 1rem;
+				margin-top: 1rem;
+			}
+		</style>
+	</head>
+	<body>
+		<h1 id="title" class="nbtgradient">NBT Database</h1>
+		<hr>
+		<form id="form" method="GET">
+			<div id="search">
+				<input type="text" name="name" size=40 placeholder="Name"{@name}>
+				<input type="button" value="Advanced" onclick="advanced_search_toggle.checked ^= 1">
+				<input type="submit" value="Search">
+			</div>
+			<input id="advanced_search_toggle" type="checkbox" hidden>
+			<div id="advanced_search">
+				<span>
+					Order:
+					<select name="order">
+						{@orders}
+					</select>
+				</span>
+				<span>
+					Reversed Order:
+					<input type="checkbox" name="reversed_order"{@reversed_order}>
+				</span>
+				<span>
+					Min Bytes:
+					<input type="number" name="nbt_length_min" min=0 max=2147483647{@nbt_length_min}>
+				</span>
+				<span>
+					Max Bytes:
+					<input type="number" name="nbt_length_max" min=0 max=2147483647{@nbt_length_max}>
+				</span>
+				<span>
+					Min Data Version:
+					<input type="text" name="data_version_min" size=12{@data_version_min}>
+				</span>
+				<span>
+					Max Data Version:
+					<input type="text" name="data_version_max" size=12{@data_version_max}>
+				</span>
+				<span>
+					Author UUID:
+					<input type="text" name="author_uuid"{@author_uuid}>
+				</span>
+				<span>
+					Author Username:
+					<input type="text" name="author_username"{@author_username}>
+				</span>
+				{@tags}
+			</div>
+		</form>
+		<div id="entries">
+			{@entries}
+		</div>
+		<div id="load_more"{@load_more}>
+			<button type="submit" form="form"{@back_to_first_results}>Back To First Results</button>
+			<button type="submit" form="form" name="offset" value="{@load_more_offset}">Load More</button>
+		</div>
+	</body>
+</html>
