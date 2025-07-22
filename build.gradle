@@ -19,20 +19,6 @@ subprojects {
 		}
 	}
 	
-	dependencies {
-		api libs.sqlite
-		api libs.slf4j.api
-		api libs.slf4j.simple
-		api libs.mega12345mega.nettymux
-		api libs.esotericsoftware.kryo
-		api libs.mega12345mega.simplecli
-		api libs.google.gson
-		api libs.steos.jnafilechooser
-		api libs.querz.nbt
-		api libs.owasp.encoder
-		api libs.apache.httpclient
-	}
-	
 	publishing {
 		publications {
 			maven(MavenPublication) {

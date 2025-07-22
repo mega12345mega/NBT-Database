@@ -1,3 +1,6 @@
 dependencies {
 	api project(":connection")
+	runtimeOnly libs.slf4j.simple
+	implementation libs.steos.jnafilechooser
+	implementation libs.querz.nbt
 }

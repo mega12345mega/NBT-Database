@@ -1,3 +1,4 @@
 dependencies {
 	api project(":connection")
+	runtimeOnly libs.slf4j.simple
 }

@@ -1,3 +1,8 @@
 dependencies {
 	api project(":file")
+	implementation libs.mega12345mega.nettymux
+	implementation libs.esotericsoftware.kryo
+	implementation libs.owasp.encoder
+	implementation libs.apache.httpclient
+	api libs.mega12345mega.simplecli
 }
