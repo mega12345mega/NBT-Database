@@ -34,12 +34,12 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.border.TitledBorder;
 
 import com.luneruniverse.minecraft.nbtdatabase.DataVersion;
-import com.luneruniverse.minecraft.nbtdatabase.EntryFilter;
-import com.luneruniverse.minecraft.nbtdatabase.EntryView;
 import com.luneruniverse.minecraft.nbtdatabase.NBTEntry;
 import com.luneruniverse.minecraft.nbtdatabase.Tag;
-import com.luneruniverse.minecraft.nbtdatabase.TagFilter;
-import com.luneruniverse.minecraft.nbtdatabase.connection.FutureUtil;
+import com.luneruniverse.minecraft.nbtdatabase.connection.util.FutureUtil;
+import com.luneruniverse.minecraft.nbtdatabase.request.EntryFilter;
+import com.luneruniverse.minecraft.nbtdatabase.request.EntryView;
+import com.luneruniverse.minecraft.nbtdatabase.request.TagFilter;
 import com.luneruniverse.minecraft.nbtdatabase.ui.DataVersionInput;
 import com.luneruniverse.minecraft.nbtdatabase.ui.UIUtil;
 import com.luneruniverse.minecraft.nbtdatabase.ui.UUIDInput;

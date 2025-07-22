@@ -1,4 +1,4 @@
-package com.luneruniverse.minecraft.nbtdatabase;
+package com.luneruniverse.minecraft.nbtdatabase.request;
 
 @SuppressWarnings("serial")
 public class IllegalRequestException extends Exception {

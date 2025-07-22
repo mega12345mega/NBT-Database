@@ -1,4 +1,4 @@
-package com.luneruniverse.minecraft.nbtdatabase.connection;
+package com.luneruniverse.minecraft.nbtdatabase.connection.access;
 
 import java.util.List;
 import java.util.Optional;
@@ -6,11 +6,11 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 import com.luneruniverse.minecraft.nbtdatabase.Config;
-import com.luneruniverse.minecraft.nbtdatabase.EntryFilter;
-import com.luneruniverse.minecraft.nbtdatabase.EntryView;
 import com.luneruniverse.minecraft.nbtdatabase.NBTEntry;
 import com.luneruniverse.minecraft.nbtdatabase.Tag;
-import com.luneruniverse.minecraft.nbtdatabase.TagFilter;
+import com.luneruniverse.minecraft.nbtdatabase.request.EntryFilter;
+import com.luneruniverse.minecraft.nbtdatabase.request.EntryView;
+import com.luneruniverse.minecraft.nbtdatabase.request.TagFilter;
 
 public interface NBTDatabaseAccess extends AutoCloseable {
 	public String getName();

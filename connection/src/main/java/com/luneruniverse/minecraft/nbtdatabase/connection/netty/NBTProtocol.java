@@ -1,4 +1,4 @@
-package com.luneruniverse.minecraft.nbtdatabase.connection;
+package com.luneruniverse.minecraft.nbtdatabase.connection.netty;
 
 import java.nio.charset.StandardCharsets;
 import java.util.AbstractMap;

@@ -6,6 +6,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
+import com.luneruniverse.minecraft.nbtdatabase.request.IllegalRequestException;
+
 public class ConfigManager {
 	
 	private final Connection connection;

@@ -5,7 +5,11 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ForkJoinPool;
 import java.util.function.Function;
 
-import com.luneruniverse.minecraft.nbtdatabase.IllegalRequestException;
+import com.luneruniverse.minecraft.nbtdatabase.connection.access.NBTDatabaseAccess;
+import com.luneruniverse.minecraft.nbtdatabase.connection.netty.ErrorHandler;
+import com.luneruniverse.minecraft.nbtdatabase.connection.netty.NBTProtocol;
+import com.luneruniverse.minecraft.nbtdatabase.connection.netty.TypedPacketHandler;
+import com.luneruniverse.minecraft.nbtdatabase.connection.netty.WebSocketNBTProtocol;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.AddEntryRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.AddTagRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.AddTagToEntryRequestPacket;
@@ -28,6 +32,9 @@ import com.luneruniverse.minecraft.nbtdatabase.connection.packets.RemoveTagReque
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.ServerExceptionPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.SuccessPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.TagsPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.util.FutureUtil;
+import com.luneruniverse.minecraft.nbtdatabase.connection.util.NettyUtil;
+import com.luneruniverse.minecraft.nbtdatabase.request.IllegalRequestException;
 import com.luneruniverse.minecraft.nbtdatabase.ui.website.WebsiteHandler;
 import com.luneruniverse.nettymux.byteprotocol.HttpByteProtocol;
 import com.luneruniverse.nettymux.byteprotocol.MagicByteProtocol;

@@ -1,8 +1,8 @@
 package com.luneruniverse.minecraft.nbtdatabase.connection.packets;
 
 import com.esotericsoftware.kryo.kryo5.serializers.FieldSerializer.NotNull;
-import com.luneruniverse.minecraft.nbtdatabase.EntryFilter;
-import com.luneruniverse.minecraft.nbtdatabase.EntryView;
+import com.luneruniverse.minecraft.nbtdatabase.request.EntryFilter;
+import com.luneruniverse.minecraft.nbtdatabase.request.EntryView;
 
 public class GetEntriesRequestPacket extends Packet {
 	

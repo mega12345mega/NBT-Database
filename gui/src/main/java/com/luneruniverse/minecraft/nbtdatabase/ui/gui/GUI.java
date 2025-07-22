@@ -32,14 +32,14 @@ import javax.swing.SwingConstants;
 import javax.swing.UIManager;
 
 import com.luneruniverse.minecraft.nbtdatabase.DataVersion;
-import com.luneruniverse.minecraft.nbtdatabase.IllegalRequestException;
 import com.luneruniverse.minecraft.nbtdatabase.NBTDatabase;
-import com.luneruniverse.minecraft.nbtdatabase.connection.LocalNBTDatabaseAccess;
-import com.luneruniverse.minecraft.nbtdatabase.connection.NBTDatabaseAccess;
 import com.luneruniverse.minecraft.nbtdatabase.connection.NBTDatabaseAccessServer;
-import com.luneruniverse.minecraft.nbtdatabase.connection.RemoteNBTDatabaseAccess;
 import com.luneruniverse.minecraft.nbtdatabase.connection.RequestFailedException;
 import com.luneruniverse.minecraft.nbtdatabase.connection.ServerException;
+import com.luneruniverse.minecraft.nbtdatabase.connection.access.LocalNBTDatabaseAccess;
+import com.luneruniverse.minecraft.nbtdatabase.connection.access.NBTDatabaseAccess;
+import com.luneruniverse.minecraft.nbtdatabase.connection.access.RemoteNBTDatabaseAccess;
+import com.luneruniverse.minecraft.nbtdatabase.request.IllegalRequestException;
 
 import jnafilechooser.api.JnaFileChooser;
 

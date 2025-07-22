@@ -1,4 +1,4 @@
-package com.luneruniverse.minecraft.nbtdatabase.connection;
+package com.luneruniverse.minecraft.nbtdatabase.connection.access;
 
 import java.io.IOException;
 import java.util.List;
@@ -11,11 +11,12 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
 import com.luneruniverse.minecraft.nbtdatabase.Config;
-import com.luneruniverse.minecraft.nbtdatabase.EntryFilter;
-import com.luneruniverse.minecraft.nbtdatabase.EntryView;
 import com.luneruniverse.minecraft.nbtdatabase.NBTEntry;
 import com.luneruniverse.minecraft.nbtdatabase.Tag;
-import com.luneruniverse.minecraft.nbtdatabase.TagFilter;
+import com.luneruniverse.minecraft.nbtdatabase.connection.RequestFailedException;
+import com.luneruniverse.minecraft.nbtdatabase.connection.ServerException;
+import com.luneruniverse.minecraft.nbtdatabase.connection.netty.ErrorHandler;
+import com.luneruniverse.minecraft.nbtdatabase.connection.netty.NBTProtocol;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.AddEntryRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.AddTagRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.AddTagToEntryRequestPacket;
@@ -38,6 +39,11 @@ import com.luneruniverse.minecraft.nbtdatabase.connection.packets.RemoveTagReque
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.ServerExceptionPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.SuccessPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.TagsPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.util.FutureUtil;
+import com.luneruniverse.minecraft.nbtdatabase.connection.util.NettyUtil;
+import com.luneruniverse.minecraft.nbtdatabase.request.EntryFilter;
+import com.luneruniverse.minecraft.nbtdatabase.request.EntryView;
+import com.luneruniverse.minecraft.nbtdatabase.request.TagFilter;
 
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;

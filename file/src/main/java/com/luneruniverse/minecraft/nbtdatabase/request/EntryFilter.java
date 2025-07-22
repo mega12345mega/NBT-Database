@@ -1,4 +1,4 @@
-package com.luneruniverse.minecraft.nbtdatabase;
+package com.luneruniverse.minecraft.nbtdatabase.request;
 
 import java.util.HashSet;
 import java.util.Set;

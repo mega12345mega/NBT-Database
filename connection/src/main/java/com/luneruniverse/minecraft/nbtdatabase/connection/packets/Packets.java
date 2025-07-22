@@ -12,11 +12,11 @@ import com.esotericsoftware.kryo.kryo5.io.Input;
 import com.esotericsoftware.kryo.kryo5.io.Output;
 import com.esotericsoftware.kryo.kryo5.util.DefaultClassResolver;
 import com.luneruniverse.minecraft.nbtdatabase.Config;
-import com.luneruniverse.minecraft.nbtdatabase.EntryFilter;
-import com.luneruniverse.minecraft.nbtdatabase.EntryView;
 import com.luneruniverse.minecraft.nbtdatabase.NBTEntry;
 import com.luneruniverse.minecraft.nbtdatabase.Tag;
-import com.luneruniverse.minecraft.nbtdatabase.TagFilter;
+import com.luneruniverse.minecraft.nbtdatabase.request.EntryFilter;
+import com.luneruniverse.minecraft.nbtdatabase.request.EntryView;
+import com.luneruniverse.minecraft.nbtdatabase.request.TagFilter;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufInputStream;

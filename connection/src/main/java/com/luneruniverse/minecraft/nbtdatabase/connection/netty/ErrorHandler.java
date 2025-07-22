@@ -1,4 +1,4 @@
-package com.luneruniverse.minecraft.nbtdatabase.connection;
+package com.luneruniverse.minecraft.nbtdatabase.connection.netty;
 
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;

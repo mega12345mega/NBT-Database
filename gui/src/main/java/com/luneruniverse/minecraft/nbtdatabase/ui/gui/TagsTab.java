@@ -14,7 +14,7 @@ import javax.swing.JTextField;
 import javax.swing.border.EmptyBorder;
 
 import com.luneruniverse.minecraft.nbtdatabase.Tag;
-import com.luneruniverse.minecraft.nbtdatabase.TagFilter;
+import com.luneruniverse.minecraft.nbtdatabase.request.TagFilter;
 import com.luneruniverse.minecraft.nbtdatabase.ui.UIUtil;
 
 public class TagsTab {

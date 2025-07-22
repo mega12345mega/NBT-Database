@@ -1,4 +1,4 @@
-package com.luneruniverse.minecraft.nbtdatabase.connection;
+package com.luneruniverse.minecraft.nbtdatabase.connection.netty;
 
 import java.util.ArrayList;
 import java.util.HashMap;

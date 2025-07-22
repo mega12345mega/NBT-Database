@@ -17,6 +17,10 @@ import java.util.UUID;
 import org.sqlite.SQLiteErrorCode;
 import org.sqlite.SQLiteException;
 
+import com.luneruniverse.minecraft.nbtdatabase.request.EntryFilter;
+import com.luneruniverse.minecraft.nbtdatabase.request.EntryView;
+import com.luneruniverse.minecraft.nbtdatabase.request.IllegalRequestException;
+import com.luneruniverse.minecraft.nbtdatabase.request.TagFilter;
 import com.luneruniverse.minecraft.nbtdatabase.sqlbuilder.SQLSelectBuilder;
 import com.luneruniverse.minecraft.nbtdatabase.sqlbuilder.SQLUpdateBuilder;
 

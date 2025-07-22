@@ -1,4 +1,4 @@
-package com.luneruniverse.minecraft.nbtdatabase;
+package com.luneruniverse.minecraft.nbtdatabase.request;
 
 import com.esotericsoftware.kryo.kryo5.serializers.FieldSerializer.NotNull;
 
