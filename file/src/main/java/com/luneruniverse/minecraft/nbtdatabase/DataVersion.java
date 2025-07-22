@@ -14,7 +14,6 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.luneruniverse.minecraft.nbtdatabase.cli.DataVersionInput;
 
 public class DataVersion {
 	
@@ -23,7 +22,7 @@ public class DataVersion {
 	
 	private static volatile boolean loading;
 	public static void loadVersions() {
-		synchronized (DataVersionInput.class) {
+		synchronized (DataVersion.class) {
 			if (loading)
 				return;
 			loading = true;
