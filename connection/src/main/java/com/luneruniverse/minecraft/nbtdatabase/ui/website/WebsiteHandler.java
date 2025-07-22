@@ -18,7 +18,7 @@ import org.apache.http.client.utils.URIBuilder;
 import org.owasp.encoder.Encode;
 
 import com.luneruniverse.minecraft.nbtdatabase.DataVersion;
-import com.luneruniverse.minecraft.nbtdatabase.NBTEntry;
+import com.luneruniverse.minecraft.nbtdatabase.Entry;
 import com.luneruniverse.minecraft.nbtdatabase.Tag;
 import com.luneruniverse.minecraft.nbtdatabase.connection.access.NBTDatabaseAccess;
 import com.luneruniverse.minecraft.nbtdatabase.connection.util.FutureUtil;
@@ -114,7 +114,7 @@ public class WebsiteHandler extends SimpleChannelInboundHandler<FullHttpRequest>
 		
 		EntryFilter filter = new EntryFilter();
 		EntryView view = new EntryView();
-		CompletableFuture<List<NBTEntry>> request;
+		CompletableFuture<List<Entry>> request;
 		Optional<Long> id = parseParam(params.get("id"), new LongInput());
 		if (id.isPresent()) {
 			request = FutureUtil.thenApply(database.getEntry(id.get()), entry -> {
@@ -147,7 +147,7 @@ public class WebsiteHandler extends SimpleChannelInboundHandler<FullHttpRequest>
 		}
 		
 		List<Tag> tags = new ArrayList<>();
-		Map<NBTEntry, List<Tag>> entriesWithTags = new ConcurrentHashMap<>();
+		Map<Entry, List<Tag>> entriesWithTags = new ConcurrentHashMap<>();
 		CompletableFuture<Void> requestWithTags = FutureUtil.allOf(
 				FutureUtil.thenApply(database.getTags(new TagFilter()), tags2 -> {
 					tags.addAll(tags2);
@@ -155,7 +155,7 @@ public class WebsiteHandler extends SimpleChannelInboundHandler<FullHttpRequest>
 				}),
 				FutureUtil.thenCompose(request, entries -> {
 					List<CompletableFuture<?>> tagFutures = new ArrayList<>();
-					for (NBTEntry entry : entries) {
+					for (Entry entry : entries) {
 						tagFutures.add(FutureUtil.thenApply(database.getTags(new TagFilter().filterByEntryId(entry.getId())),
 								entryTags -> {
 									entriesWithTags.put(entry, entryTags);
@@ -197,8 +197,8 @@ public class WebsiteHandler extends SimpleChannelInboundHandler<FullHttpRequest>
 			StringBuilder entriesStr = new StringBuilder();
 			if (entriesWithTags.isEmpty())
 				entriesStr.append("No entries found");
-			for (Map.Entry<NBTEntry, List<Tag>> entryWithTags : entriesWithTags.entrySet()) {
-				NBTEntry entry = entryWithTags.getKey();
+			for (Map.Entry<Entry, List<Tag>> entryWithTags : entriesWithTags.entrySet()) {
+				Entry entry = entryWithTags.getKey();
 				List<Tag> entryTags = entryWithTags.getValue();
 				
 				entriesStr.append("<div onclick=\"if (!event.target.matches('.entry_download, .entry_download *'))");

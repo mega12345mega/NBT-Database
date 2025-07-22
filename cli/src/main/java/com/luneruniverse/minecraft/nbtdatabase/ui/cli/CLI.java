@@ -16,8 +16,8 @@ import java.util.function.Consumer;
 
 import com.luneruniverse.minecraft.nbtdatabase.Config;
 import com.luneruniverse.minecraft.nbtdatabase.DataVersion;
+import com.luneruniverse.minecraft.nbtdatabase.Entry;
 import com.luneruniverse.minecraft.nbtdatabase.NBTDatabase;
-import com.luneruniverse.minecraft.nbtdatabase.NBTEntry;
 import com.luneruniverse.minecraft.nbtdatabase.Tag;
 import com.luneruniverse.minecraft.nbtdatabase.connection.NBTDatabaseAccessServer;
 import com.luneruniverse.minecraft.nbtdatabase.connection.RequestFailedException;
@@ -50,7 +50,7 @@ public class CLI extends Thread {
 	private NBTDatabase localDatabase;
 	private NBTDatabaseAccess connection;
 	private NBTDatabaseAccessServer server;
-	private List<NBTEntry> results;
+	private List<Entry> results;
 	
 	public CLI() {
 		DataVersion.loadVersions();
@@ -580,7 +580,7 @@ public class CLI extends Thread {
 		}
 		
 		for (int i = 0; i < results.size(); i++) {
-			NBTEntry entry = results.get(i);
+			Entry entry = results.get(i);
 			
 			if (i != 0)
 				System.out.println();
@@ -606,7 +606,7 @@ public class CLI extends Thread {
 		}
 	}
 	
-	public List<NBTEntry> getResults() {
+	public List<Entry> getResults() {
 		return results;
 	}
 	

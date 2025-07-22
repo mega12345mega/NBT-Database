@@ -34,7 +34,7 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.border.TitledBorder;
 
 import com.luneruniverse.minecraft.nbtdatabase.DataVersion;
-import com.luneruniverse.minecraft.nbtdatabase.NBTEntry;
+import com.luneruniverse.minecraft.nbtdatabase.Entry;
 import com.luneruniverse.minecraft.nbtdatabase.Tag;
 import com.luneruniverse.minecraft.nbtdatabase.connection.util.FutureUtil;
 import com.luneruniverse.minecraft.nbtdatabase.request.EntryFilter;
@@ -98,7 +98,7 @@ public class EntriesTab {
 		view = new EntryView();
 	}
 	
-	private void addEntry(NBTEntry entry) {
+	private void addEntry(Entry entry) {
 		JPanel panel = new JPanel();
 		panel.setLayout(new BoxLayout(panel, BoxLayout.X_AXIS));
 		entries.add(panel);
@@ -183,7 +183,7 @@ public class EntriesTab {
 		gui.whenComplete(gui.getConnection().getEntries(filter, view), entries -> {
 			this.entries.removeAll();
 			
-			for (NBTEntry entry : entries)
+			for (Entry entry : entries)
 				addEntry(entry);
 			
 			view.setOffset(entries.size());
@@ -197,7 +197,7 @@ public class EntriesTab {
 						return;
 					}
 					
-					for (NBTEntry entry : entries2)
+					for (Entry entry : entries2)
 						addEntry(entry);
 					
 					view.setOffset(view.getOffset() + entries2.size());
@@ -352,7 +352,7 @@ public class EntriesTab {
 		});
 	}
 	
-	private void editEntryBtn(NBTEntry previousEntry, Set<String> previousTags) {
+	private void editEntryBtn(Entry previousEntry, Set<String> previousTags) {
 		gui.whenComplete(gui.getConnection().getTags(new TagFilter()), tags -> {
 			JPanel panel = new JPanel(TableLayout.ofColumns(2, 4));
 			
@@ -529,7 +529,7 @@ public class EntriesTab {
 		});
 	}
 	
-	private void detailsEntryBtn(NBTEntry entry) {
+	private void detailsEntryBtn(Entry entry) {
 		JPanel panel = new JPanel(TableLayout.ofColumns(2, 4));
 		
 		panel.add(new JLabel("ID:"));

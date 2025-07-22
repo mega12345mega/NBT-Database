@@ -12,7 +12,7 @@ import com.esotericsoftware.kryo.kryo5.io.Input;
 import com.esotericsoftware.kryo.kryo5.io.Output;
 import com.esotericsoftware.kryo.kryo5.util.DefaultClassResolver;
 import com.luneruniverse.minecraft.nbtdatabase.Config;
-import com.luneruniverse.minecraft.nbtdatabase.NBTEntry;
+import com.luneruniverse.minecraft.nbtdatabase.Entry;
 import com.luneruniverse.minecraft.nbtdatabase.Tag;
 import com.luneruniverse.minecraft.nbtdatabase.request.EntryFilter;
 import com.luneruniverse.minecraft.nbtdatabase.request.EntryView;
@@ -55,8 +55,8 @@ public class Packets {
 		});
 		
 		KRYO.register(Config.class);
-		KRYO.register(NBTEntry.class);
-		KRYO.register(NBTEntry[].class);
+		KRYO.register(Entry.class);
+		KRYO.register(Entry[].class);
 		KRYO.register(EntryFilter.class);
 		KRYO.register(EntryView.class);
 		KRYO.register(EntryView.Order.class);

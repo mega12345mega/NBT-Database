@@ -11,7 +11,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
 import com.luneruniverse.minecraft.nbtdatabase.Config;
-import com.luneruniverse.minecraft.nbtdatabase.NBTEntry;
+import com.luneruniverse.minecraft.nbtdatabase.Entry;
 import com.luneruniverse.minecraft.nbtdatabase.Tag;
 import com.luneruniverse.minecraft.nbtdatabase.connection.RequestFailedException;
 import com.luneruniverse.minecraft.nbtdatabase.connection.ServerException;
@@ -140,7 +140,7 @@ public class RemoteNBTDatabaseAccess implements NBTDatabaseAccess {
 	}
 	
 	@Override
-	public CompletableFuture<NBTEntry> getEntry(long id) {
+	public CompletableFuture<Entry> getEntry(long id) {
 		return request(new GetEntryRequestPacket(id), EntriesPacket.class, EntriesPacket::getEntryNullable);
 	}
 	
@@ -150,7 +150,7 @@ public class RemoteNBTDatabaseAccess implements NBTDatabaseAccess {
 	}
 	
 	@Override
-	public CompletableFuture<List<NBTEntry>> getEntries(EntryFilter filter, EntryView view) {
+	public CompletableFuture<List<Entry>> getEntries(EntryFilter filter, EntryView view) {
 		return request(new GetEntriesRequestPacket(filter, view), EntriesPacket.class, EntriesPacket::getEntriesList);
 	}
 	

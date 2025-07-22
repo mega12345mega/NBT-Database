@@ -4,20 +4,20 @@ import java.util.Arrays;
 import java.util.List;
 
 import com.esotericsoftware.kryo.kryo5.serializers.FieldSerializer.NotNull;
-import com.luneruniverse.minecraft.nbtdatabase.NBTEntry;
+import com.luneruniverse.minecraft.nbtdatabase.Entry;
 
 public class EntriesPacket extends Packet {
 	
-	private @NotNull NBTEntry[] entries;
+	private @NotNull Entry[] entries;
 	
-	public EntriesPacket(NBTEntry[] entries) {
+	public EntriesPacket(Entry[] entries) {
 		this.entries = entries;
 	}
-	public EntriesPacket(List<NBTEntry> entries) {
-		this(entries.toArray(new NBTEntry[entries.size()]));
+	public EntriesPacket(List<Entry> entries) {
+		this(entries.toArray(new Entry[entries.size()]));
 	}
-	public EntriesPacket(NBTEntry entry) {
-		this.entries = new NBTEntry[entry == null ? 0 : 1];
+	public EntriesPacket(Entry entry) {
+		this.entries = new Entry[entry == null ? 0 : 1];
 		if (entry != null)
 			entries[0] = entry;
 	}
@@ -25,18 +25,18 @@ public class EntriesPacket extends Packet {
 		// Deserialization
 	}
 	
-	public NBTEntry[] getEntries() {
+	public Entry[] getEntries() {
 		return entries;
 	}
-	public List<NBTEntry> getEntriesList() {
+	public List<Entry> getEntriesList() {
 		return Arrays.asList(entries);
 	}
-	public NBTEntry getEntryNonNull() throws IllegalStateException {
+	public Entry getEntryNonNull() throws IllegalStateException {
 		if (entries.length != 1)
 			throw new IllegalStateException("Expected exactly 1 entry");
 		return entries[0];
 	}
-	public NBTEntry getEntryNullable() throws IllegalStateException {
+	public Entry getEntryNullable() throws IllegalStateException {
 		if (entries.length > 1)
 			throw new IllegalStateException("Expected exactly 0 or 1 entry");
 		if (entries.length == 0)

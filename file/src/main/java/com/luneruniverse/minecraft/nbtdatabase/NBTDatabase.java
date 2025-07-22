@@ -105,7 +105,7 @@ public class NBTDatabase implements AutoCloseable {
 		long id = genNewEntryId();
 		long created = Instant.now().toEpochMilli();
 		long modified = created;
-		String hash = NBTEntry.genHash(name, nbt, dataVersion, authorUuid, created, modified);
+		String hash = Entry.genHash(name, nbt, dataVersion, authorUuid, created, modified);
 		
 		try (PreparedStatement sql = connection.prepareStatement("INSERT INTO `entries` VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")) {
 			sql.setQueryTimeout(5);
@@ -167,7 +167,7 @@ public class NBTDatabase implements AutoCloseable {
 			throw new IllegalRequestException("Nothing requested to be updated for entry with id " + id);
 		long modified = Instant.now().toEpochMilli();
 		update.addColumn("`modified`=?", PreparedStatement::setLong, modified);
-		NBTEntry oldEntry = getEntry(id);
+		Entry oldEntry = getEntry(id);
 		if (oldEntry == null)
 			throw new IllegalRequestException("Entry doesn't exist: " + id);
 		byte[] oldEntryNBT = null;
@@ -177,7 +177,7 @@ public class NBTDatabase implements AutoCloseable {
 				throw new IllegalRequestException("Entry doesn't exist: " + id);
 		}
 		update.addColumn("`hash`=?", PreparedStatement::setString,
-				NBTEntry.genHash(name.orElse(oldEntry.getName()), nbt.orElse(oldEntryNBT), dataVersion.orElse(oldEntry.getDataVersion()),
+				Entry.genHash(name.orElse(oldEntry.getName()), nbt.orElse(oldEntryNBT), dataVersion.orElse(oldEntry.getDataVersion()),
 						authorUuid.orElse(oldEntry.getAuthorUuid()), oldEntry.getCreated(), modified));
 		update.addFilter("`id`=?", PreparedStatement::setLong, id);
 		
@@ -198,15 +198,15 @@ public class NBTDatabase implements AutoCloseable {
 		}
 	}
 	
-	public NBTEntry getEntry(long id) throws SQLException {
-		try (PreparedStatement sql = connection.prepareStatement("SELECT " + NBTEntry.DATABASE_COLUMNS + " FROM `entries` WHERE `id`=?")) {
+	public Entry getEntry(long id) throws SQLException {
+		try (PreparedStatement sql = connection.prepareStatement("SELECT " + Entry.DATABASE_COLUMNS + " FROM `entries` WHERE `id`=?")) {
 			sql.setQueryTimeout(5);
 			sql.setLong(1, id);
 			ResultSet result = sql.executeQuery();
 			
 			if (!result.isBeforeFirst())
 				return null;
-			return NBTEntry.fromDatabase(result);
+			return Entry.fromDatabase(result);
 		}
 	}
 	
@@ -222,11 +222,11 @@ public class NBTDatabase implements AutoCloseable {
 		}
 	}
 	
-	public List<NBTEntry> getEntries(EntryFilter filter, EntryView view) throws IllegalRequestException, SQLException {
+	public List<Entry> getEntries(EntryFilter filter, EntryView view) throws IllegalRequestException, SQLException {
 		if (view.getOffset() < 0)
 			throw new IllegalRequestException("offset must be >= 0");
 		
-		SQLSelectBuilder select = new SQLSelectBuilder(NBTEntry.DATABASE_COLUMNS + " FROM `entries`");
+		SQLSelectBuilder select = new SQLSelectBuilder(Entry.DATABASE_COLUMNS + " FROM `entries`");
 		if (filter.getName() != null)
 			select.addFilter("`entries`.`name` LIKE ? ESCAPE \"\\\"", PreparedStatement::setString, "%" + escapeQuery(filter.getName()) + "%");
 		if (filter.getMinNbtLength() != null || filter.getMaxNbtLength() != null) {
@@ -278,9 +278,9 @@ public class NBTDatabase implements AutoCloseable {
 			select.setParams(sql);
 			ResultSet result = sql.executeQuery();
 			
-			List<NBTEntry> output = new ArrayList<>();
+			List<Entry> output = new ArrayList<>();
 			while (result.next())
-				output.add(NBTEntry.fromDatabase(result));
+				output.add(Entry.fromDatabase(result));
 			return output;
 		}
 	}

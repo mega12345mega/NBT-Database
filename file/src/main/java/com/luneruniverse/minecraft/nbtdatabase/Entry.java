@@ -12,13 +12,13 @@ import java.util.UUID;
 
 import com.esotericsoftware.kryo.kryo5.serializers.FieldSerializer.NotNull;
 
-public final class NBTEntry {
+public final class Entry {
 	
 	static final String DATABASE_COLUMNS = "`entries`.`id`, `entries`.`name`, length(`entries`.`nbt`) AS `nbt_length`, "
 			+ "`entries`.`data_version`, `entries`.`author_uuid`, `entries`.`author_username`, "
 			+ "`entries`.`created`, `entries`.`modified`, `entries`.`hash`, `entries`.`verified`";
-	static NBTEntry fromDatabase(ResultSet row) throws SQLException {
-		return new NBTEntry(
+	static Entry fromDatabase(ResultSet row) throws SQLException {
+		return new Entry(
 				row.getLong("id"),
 				row.getString("name"),
 				row.getInt("nbt_length"),
@@ -73,7 +73,7 @@ public final class NBTEntry {
 	private @NotNull String hash;
 	private boolean verified;
 	
-	public NBTEntry(long id, String name, int nbtLength, int dataVersion, UUID authorUuid, String authorUsername,
+	public Entry(long id, String name, int nbtLength, int dataVersion, UUID authorUuid, String authorUsername,
 			long created, long modified, String hash, boolean verified) {
 		this.id = id;
 		this.name = name;
@@ -86,7 +86,7 @@ public final class NBTEntry {
 		this.hash = hash;
 		this.verified = verified;
 	}
-	NBTEntry() {
+	Entry() {
 		// Deserialization
 	}
 	
@@ -123,7 +123,7 @@ public final class NBTEntry {
 	
 	@Override
 	public String toString() {
-		return "NBTEntry[id=" + id + ", name=" + name + ", ...]";
+		return "Entry[id=" + id + ", name=" + name + ", ...]";
 	}
 	
 	@Override

@@ -3,15 +3,15 @@ package com.luneruniverse.minecraft.nbtdatabase.ui.cli;
 import java.util.List;
 import java.util.function.Supplier;
 
-import com.luneruniverse.minecraft.nbtdatabase.NBTEntry;
+import com.luneruniverse.minecraft.nbtdatabase.Entry;
 import com.luneruniverse.simplecli.CommandParseException;
 import com.luneruniverse.simplecli.inputs.ArgumentOrFlagImpl;
 
 public class EntryIdInput extends ArgumentOrFlagImpl<Long> {
 	
-	private final Supplier<List<NBTEntry>> results;
+	private final Supplier<List<Entry>> results;
 	
-	public EntryIdInput(Supplier<List<NBTEntry>> results) {
+	public EntryIdInput(Supplier<List<Entry>> results) {
 		this.results = results;
 	}
 	
@@ -19,7 +19,7 @@ public class EntryIdInput extends ArgumentOrFlagImpl<Long> {
 	protected Long parseUnfiltered(String str) throws CommandParseException {
 		try {
 			if (str.startsWith("#")) {
-				List<NBTEntry> results = this.results.get();
+				List<Entry> results = this.results.get();
 				if (results == null)
 					throw new CommandParseException("There are no saved results");
 				
