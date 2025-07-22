@@ -1,4 +1,4 @@
-package com.luneruniverse.minecraft.nbtdatabase.cli;
+package com.luneruniverse.minecraft.nbtdatabase.ui.cli;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -24,12 +24,15 @@ import com.luneruniverse.minecraft.nbtdatabase.NBTEntry;
 import com.luneruniverse.minecraft.nbtdatabase.Tag;
 import com.luneruniverse.minecraft.nbtdatabase.TagFilter;
 import com.luneruniverse.minecraft.nbtdatabase.connection.LocalNBTDatabaseAccess;
-import com.luneruniverse.minecraft.nbtdatabase.connection.MiscUtil;
 import com.luneruniverse.minecraft.nbtdatabase.connection.NBTDatabaseAccess;
 import com.luneruniverse.minecraft.nbtdatabase.connection.NBTDatabaseAccessServer;
 import com.luneruniverse.minecraft.nbtdatabase.connection.RemoteNBTDatabaseAccess;
 import com.luneruniverse.minecraft.nbtdatabase.connection.RequestFailedException;
 import com.luneruniverse.minecraft.nbtdatabase.connection.ServerException;
+import com.luneruniverse.minecraft.nbtdatabase.ui.ColorInput;
+import com.luneruniverse.minecraft.nbtdatabase.ui.DataVersionInput;
+import com.luneruniverse.minecraft.nbtdatabase.ui.UIUtil;
+import com.luneruniverse.minecraft.nbtdatabase.ui.UUIDInput;
 import com.luneruniverse.simplecli.CommandParseException;
 import com.luneruniverse.simplecli.CommandStream;
 import com.luneruniverse.simplecli.CommandSyntaxException;
@@ -587,8 +590,8 @@ public class CLI extends Thread {
 			System.out.println("  Data Version: " + DataVersion.toViewableString(entry.getDataVersion()));
 			if (verbose) {
 				System.out.println("  Bytes: " + entry.getNbtLength());
-				System.out.println("  Created: " + MiscUtil.formatTimestamp(entry.getCreated()));
-				System.out.println("  Modified: " + MiscUtil.formatTimestamp(entry.getModified()));
+				System.out.println("  Created: " + UIUtil.formatTimestamp(entry.getCreated()));
+				System.out.println("  Modified: " + UIUtil.formatTimestamp(entry.getModified()));
 				System.out.println("  Hash: " + entry.getHash());
 				System.out.println("  Verified: " + entry.isVerified());
 			}

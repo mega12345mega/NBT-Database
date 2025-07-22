@@ -1,4 +1,4 @@
-package com.luneruniverse.minecraft.nbtdatabase.gui;
+package com.luneruniverse.minecraft.nbtdatabase.ui.gui;
 
 import java.awt.BorderLayout;
 import java.awt.CardLayout;

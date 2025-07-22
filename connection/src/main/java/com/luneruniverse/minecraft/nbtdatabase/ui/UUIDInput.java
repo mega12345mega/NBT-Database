@@ -1,4 +1,4 @@
-package com.luneruniverse.minecraft.nbtdatabase.cli;
+package com.luneruniverse.minecraft.nbtdatabase.ui;
 
 import java.util.UUID;
 

@@ -1,4 +1,4 @@
-package com.luneruniverse.minecraft.nbtdatabase.gui;
+package com.luneruniverse.minecraft.nbtdatabase.ui.gui;
 
 import java.awt.Color;
 import java.awt.Dimension;

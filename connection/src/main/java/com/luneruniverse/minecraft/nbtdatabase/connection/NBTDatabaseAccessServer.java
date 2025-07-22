@@ -28,7 +28,7 @@ import com.luneruniverse.minecraft.nbtdatabase.connection.packets.RemoveTagReque
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.ServerExceptionPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.SuccessPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.TagsPacket;
-import com.luneruniverse.minecraft.nbtdatabase.website.WebsiteHandler;
+import com.luneruniverse.minecraft.nbtdatabase.ui.website.WebsiteHandler;
 import com.luneruniverse.nettymux.byteprotocol.HttpByteProtocol;
 import com.luneruniverse.nettymux.byteprotocol.MagicByteProtocol;
 import com.luneruniverse.nettymux.byteprotocol.NettyByteMultiplexer;

@@ -1,4 +1,4 @@
-package com.luneruniverse.minecraft.nbtdatabase.cli;
+package com.luneruniverse.minecraft.nbtdatabase.ui.cli;
 
 import java.util.List;
 import java.util.function.Supplier;

@@ -1,8 +1,7 @@
-package com.luneruniverse.minecraft.nbtdatabase.gui;
+package com.luneruniverse.minecraft.nbtdatabase.ui.gui;
 
 import java.awt.Color;
 import java.awt.Font;
-import java.util.Optional;
 import java.util.function.Consumer;
 
 import javax.swing.JLabel;
@@ -43,12 +42,6 @@ public class GUIUtil {
 		label.setBorder(new EmptyBorder(4, 4, 4, 4));
 		
 		return label;
-	}
-	
-	public static <T> Optional<T> edit(T originalValue, T newValue) {
-		if (newValue == null || originalValue.equals(newValue))
-			return Optional.empty();
-		return Optional.of(newValue);
 	}
 	
 }

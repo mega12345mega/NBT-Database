@@ -1,4 +1,4 @@
-package com.luneruniverse.minecraft.nbtdatabase.website;
+package com.luneruniverse.minecraft.nbtdatabase.ui.website;
 
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
@@ -24,13 +24,13 @@ import com.luneruniverse.minecraft.nbtdatabase.IllegalRequestException;
 import com.luneruniverse.minecraft.nbtdatabase.NBTEntry;
 import com.luneruniverse.minecraft.nbtdatabase.Tag;
 import com.luneruniverse.minecraft.nbtdatabase.TagFilter;
-import com.luneruniverse.minecraft.nbtdatabase.cli.ColorInput;
-import com.luneruniverse.minecraft.nbtdatabase.cli.DataVersionInput;
-import com.luneruniverse.minecraft.nbtdatabase.cli.UUIDInput;
 import com.luneruniverse.minecraft.nbtdatabase.connection.FutureUtil;
 import com.luneruniverse.minecraft.nbtdatabase.connection.IOUtil;
-import com.luneruniverse.minecraft.nbtdatabase.connection.MiscUtil;
 import com.luneruniverse.minecraft.nbtdatabase.connection.NBTDatabaseAccess;
+import com.luneruniverse.minecraft.nbtdatabase.ui.ColorInput;
+import com.luneruniverse.minecraft.nbtdatabase.ui.DataVersionInput;
+import com.luneruniverse.minecraft.nbtdatabase.ui.UIUtil;
+import com.luneruniverse.minecraft.nbtdatabase.ui.UUIDInput;
 import com.luneruniverse.simplecli.CommandParseException;
 import com.luneruniverse.simplecli.inputs.BooleanInput;
 import com.luneruniverse.simplecli.inputs.IntegerInput;
@@ -243,10 +243,10 @@ public class WebsiteHandler extends SimpleChannelInboundHandler<FullHttpRequest>
 					entriesStr.append("Never Modified");
 				} else {
 					entriesStr.append("Modified: ");
-					entriesStr.append(MiscUtil.formatTimestamp(entry.getModified()));
+					entriesStr.append(UIUtil.formatTimestamp(entry.getModified()));
 				}
 				entriesStr.append("\">Created: ");
-				entriesStr.append(MiscUtil.formatTimestamp(entry.getCreated()));
+				entriesStr.append(UIUtil.formatTimestamp(entry.getCreated()));
 				entriesStr.append("</text>");
 				
 				if (id.isPresent()) {

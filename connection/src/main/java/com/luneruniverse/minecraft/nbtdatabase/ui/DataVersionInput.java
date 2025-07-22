@@ -1,4 +1,4 @@
-package com.luneruniverse.minecraft.nbtdatabase.cli;
+package com.luneruniverse.minecraft.nbtdatabase.ui;
 
 import com.luneruniverse.minecraft.nbtdatabase.DataVersion;
 import com.luneruniverse.simplecli.CommandParseException;
