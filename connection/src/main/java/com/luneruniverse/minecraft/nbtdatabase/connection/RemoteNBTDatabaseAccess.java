@@ -16,7 +16,6 @@ import com.luneruniverse.minecraft.nbtdatabase.EntryView;
 import com.luneruniverse.minecraft.nbtdatabase.NBTEntry;
 import com.luneruniverse.minecraft.nbtdatabase.Tag;
 import com.luneruniverse.minecraft.nbtdatabase.TagFilter;
-import com.luneruniverse.minecraft.nbtdatabase.Util;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.AddEntryRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.AddTagRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.AddTagToEntryRequestPacket;
@@ -76,7 +75,7 @@ public class RemoteNBTDatabaseAccess implements NBTDatabaseAccess {
 					}
 				})
 				.connect(ip, port);
-		client = Util.addGroupShutdown(clientFuture, group);
+		client = NettyUtil.addGroupShutdown(clientFuture, group);
 		NBTProtocol.sendMagic(client);
 		
 		executor = Executors.newSingleThreadExecutor();
@@ -88,7 +87,7 @@ public class RemoteNBTDatabaseAccess implements NBTDatabaseAccess {
 	}
 	
 	private <T, P> CompletableFuture<T> request(Packet packet, Class<P> responsePacketType, Function<P, T> unpacker) {
-		return Util.supplyAsync(() -> {
+		return FutureUtil.supplyAsync(() -> {
 			try {
 				Packet response = NBTProtocol.sendAndGetResponse(client, packet);
 				if (responsePacketType.isInstance(response))
@@ -186,7 +185,7 @@ public class RemoteNBTDatabaseAccess implements NBTDatabaseAccess {
 	
 	@Override
 	public CompletableFuture<Void> closeAsync() {
-		return Util.finallyDo(Util.shutdown(executor), client::close);
+		return FutureUtil.finallyDo(FutureUtil.shutdown(executor), client::close);
 	}
 	
 	@Override

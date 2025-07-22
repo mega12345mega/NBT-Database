@@ -39,9 +39,10 @@ import com.luneruniverse.minecraft.nbtdatabase.EntryView;
 import com.luneruniverse.minecraft.nbtdatabase.NBTEntry;
 import com.luneruniverse.minecraft.nbtdatabase.Tag;
 import com.luneruniverse.minecraft.nbtdatabase.TagFilter;
-import com.luneruniverse.minecraft.nbtdatabase.Util;
 import com.luneruniverse.minecraft.nbtdatabase.cli.DataVersionInput;
 import com.luneruniverse.minecraft.nbtdatabase.cli.UUIDInput;
+import com.luneruniverse.minecraft.nbtdatabase.connection.FutureUtil;
+import com.luneruniverse.minecraft.nbtdatabase.connection.MiscUtil;
 import com.luneruniverse.simplecli.CommandParseException;
 
 import jnafilechooser.api.JnaFileChooser;
@@ -144,11 +145,11 @@ public class EntriesTab {
 		
 		details.add(new JLabel("Bytes: " + String.format("%,d", entry.getNbtLength())));
 		
-		JLabel created = new JLabel("Created: " + Util.formatTimestamp(entry.getCreated()));
+		JLabel created = new JLabel("Created: " + MiscUtil.formatTimestamp(entry.getCreated()));
 		if (entry.getCreated() == entry.getModified())
 			created.setToolTipText("Never Modified");
 		else
-			created.setToolTipText("Modified: " + Util.formatTimestamp(entry.getModified()));
+			created.setToolTipText("Modified: " + MiscUtil.formatTimestamp(entry.getModified()));
 		details.add(created);
 		
 		JPanel options = new JPanel();
@@ -493,7 +494,7 @@ public class EntriesTab {
 			if (previousEntry == null) {
 				gui.whenComplete(gui.getConnection().addEntry(nameField.getText(), nbt, dataVersion,
 						authorUuid, authorUsernameField.getText(), verifiedField.isSelected()), id -> {
-					gui.whenComplete(Util.allOf(tagFields.entrySet().stream()
+					gui.whenComplete(FutureUtil.allOf(tagFields.entrySet().stream()
 							.filter(entry -> entry.getValue().isSelected())
 							.map(entry -> gui.getConnection().addTagToEntry(id, entry.getKey()))
 							.toArray(CompletableFuture[]::new)), v -> refresh());
@@ -509,14 +510,14 @@ public class EntriesTab {
 								tagFutures.add(gui.getConnection().removeTagFromEntry(previousEntry.getId(), tag.getKey()));
 						}
 					}
-					gui.whenComplete(Util.allOf(tagFutures.toArray(new CompletableFuture[tagFutures.size()])), v2 -> refresh());
+					gui.whenComplete(FutureUtil.allOf(tagFutures.toArray(new CompletableFuture[tagFutures.size()])), v2 -> refresh());
 				};
-				Optional<String> nameEdit = Util.edit(previousEntry.getName(), nameField.getText());
+				Optional<String> nameEdit = GUIUtil.edit(previousEntry.getName(), nameField.getText());
 				Optional<byte[]> nbtEdit = Optional.ofNullable(nbt);
-				Optional<Integer> dataVersionEdit = Util.edit(previousEntry.getDataVersion(), dataVersion);
-				Optional<UUID> authorUuidEdit = Util.edit(previousEntry.getAuthorUuid(), authorUuid);
-				Optional<String> authorUsernameEdit = Util.edit(previousEntry.getAuthorUsername(), authorUsernameField.getText());
-				Optional<Boolean> verifiedEdit = Util.edit(previousEntry.isVerified(), verifiedField.isSelected());
+				Optional<Integer> dataVersionEdit = GUIUtil.edit(previousEntry.getDataVersion(), dataVersion);
+				Optional<UUID> authorUuidEdit = GUIUtil.edit(previousEntry.getAuthorUuid(), authorUuid);
+				Optional<String> authorUsernameEdit = GUIUtil.edit(previousEntry.getAuthorUsername(), authorUsernameField.getText());
+				Optional<Boolean> verifiedEdit = GUIUtil.edit(previousEntry.isVerified(), verifiedField.isSelected());
 				if (nameEdit.isPresent() || nbtEdit.isPresent() || dataVersionEdit.isPresent() ||
 						authorUuidEdit.isPresent() || authorUsernameEdit.isPresent() || verifiedEdit.isPresent()) {
 					gui.whenComplete(gui.getConnection().editEntry(previousEntry.getId(), nameEdit, nbtEdit, dataVersionEdit,

@@ -23,8 +23,8 @@ import com.luneruniverse.minecraft.nbtdatabase.NBTDatabase;
 import com.luneruniverse.minecraft.nbtdatabase.NBTEntry;
 import com.luneruniverse.minecraft.nbtdatabase.Tag;
 import com.luneruniverse.minecraft.nbtdatabase.TagFilter;
-import com.luneruniverse.minecraft.nbtdatabase.Util;
 import com.luneruniverse.minecraft.nbtdatabase.connection.LocalNBTDatabaseAccess;
+import com.luneruniverse.minecraft.nbtdatabase.connection.MiscUtil;
 import com.luneruniverse.minecraft.nbtdatabase.connection.NBTDatabaseAccess;
 import com.luneruniverse.minecraft.nbtdatabase.connection.NBTDatabaseAccessServer;
 import com.luneruniverse.minecraft.nbtdatabase.connection.RemoteNBTDatabaseAccess;
@@ -587,8 +587,8 @@ public class CLI extends Thread {
 			System.out.println("  Data Version: " + DataVersion.toViewableString(entry.getDataVersion()));
 			if (verbose) {
 				System.out.println("  Bytes: " + entry.getNbtLength());
-				System.out.println("  Created: " + Util.formatTimestamp(entry.getCreated()));
-				System.out.println("  Modified: " + Util.formatTimestamp(entry.getModified()));
+				System.out.println("  Created: " + MiscUtil.formatTimestamp(entry.getCreated()));
+				System.out.println("  Modified: " + MiscUtil.formatTimestamp(entry.getModified()));
 				System.out.println("  Hash: " + entry.getHash());
 				System.out.println("  Verified: " + entry.isVerified());
 			}

@@ -6,7 +6,6 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.function.Function;
 
 import com.luneruniverse.minecraft.nbtdatabase.IllegalRequestException;
-import com.luneruniverse.minecraft.nbtdatabase.Util;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.AddEntryRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.AddTagRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.AddTagToEntryRequestPacket;
@@ -106,7 +105,7 @@ public class NBTDatabaseAccessServer implements AutoCloseable {
 					}
 				})
 				.bind(port);
-		server = Util.addGroupShutdown(serverFuture, group);
+		server = NettyUtil.addGroupShutdown(serverFuture, group);
 	}
 	
 	public int getPort() {
@@ -194,7 +193,7 @@ public class NBTDatabaseAccessServer implements AutoCloseable {
 	}
 	
 	public CompletableFuture<Void> closeAsync() {
-		return Util.runAsync(server::close, ForkJoinPool.commonPool());
+		return FutureUtil.runAsync(server::close, ForkJoinPool.commonPool());
 	}
 	
 	@Override

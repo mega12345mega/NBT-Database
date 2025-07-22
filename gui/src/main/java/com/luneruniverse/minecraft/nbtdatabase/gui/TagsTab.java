@@ -15,7 +15,6 @@ import javax.swing.border.EmptyBorder;
 
 import com.luneruniverse.minecraft.nbtdatabase.Tag;
 import com.luneruniverse.minecraft.nbtdatabase.TagFilter;
-import com.luneruniverse.minecraft.nbtdatabase.Util;
 
 public class TagsTab {
 	
@@ -105,8 +104,8 @@ public class TagsTab {
 		if (previousTag == null)
 			gui.whenComplete(gui.getConnection().addTag(nameField.getText(), colorField.getColor()), v -> refresh());
 		else {
-			Optional<String> nameEdit = Util.edit(previousTag.getName(), nameField.getText());
-			Optional<Integer> colorEdit = Util.edit(previousTag.getColor(), colorField.getColor());
+			Optional<String> nameEdit = GUIUtil.edit(previousTag.getName(), nameField.getText());
+			Optional<Integer> colorEdit = GUIUtil.edit(previousTag.getColor(), colorField.getColor());
 			if (nameEdit.isPresent() || colorEdit.isPresent())
 				gui.whenComplete(gui.getConnection().editTag(previousTag.getName(), nameEdit, colorEdit), v -> refresh());
 		}

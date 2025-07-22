@@ -1,14 +1,5 @@
-package com.luneruniverse.minecraft.nbtdatabase;
+package com.luneruniverse.minecraft.nbtdatabase.connection;
 
-import java.awt.Color;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-import java.time.Instant;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
@@ -17,12 +8,7 @@ import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import io.netty.buffer.ByteBuf;
-import io.netty.channel.Channel;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.EventLoopGroup;
-
-public class Util {
+public class FutureUtil {
 	
 	public interface ThrowableSupplier<T> {
 		public T get() throws Throwable;
@@ -149,85 +135,6 @@ public class Util {
 			}
 		});
 		return future;
-	}
-	
-	public static String formatTimestamp(long utcMillis) {
-		return Instant.ofEpochMilli(utcMillis).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.RFC_1123_DATE_TIME);
-	}
-	
-	public static boolean isColorBright(Color color) {
-		float[] channels = new float[] {color.getRed(), color.getGreen(), color.getBlue()};
-		for (int i = 0; i < 3; i++) {
-			float channel = channels[i] / 255;
-			if (channel <= 0.04045)
-				channel /= 12.92;
-			else
-				channel = (float) Math.pow((channel + 0.055) / 1.055, 2.4);
-			channels[i] = channel;
-		}
-		return channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722 > 0.179;
-	}
-	
-	public static <T> Optional<T> edit(T originalValue, T newValue) {
-		if (newValue == null || originalValue.equals(newValue))
-			return Optional.empty();
-		return Optional.of(newValue);
-	}
-	
-	public static Channel addGroupShutdown(ChannelFuture future, EventLoopGroup group) throws IOException, InterruptedException {
-		boolean success = false;
-		try {
-			try {
-				future.sync();
-			} catch (Throwable e) {
-				throw new IOException("Failed to start channel", e);
-			}
-			Channel channel = future.channel();
-			channel.closeFuture().addListener(v -> group.shutdownGracefully(100, 100, TimeUnit.MILLISECONDS));
-			success = true;
-			return channel;
-		} finally {
-			if (!success)
-				group.shutdownGracefully(100, 100, TimeUnit.MILLISECONDS);
-		}
-	}
-	
-	public static void println(ByteBuf buf) {
-		byte[] bytes = new byte[buf.readableBytes()];
-		buf.getBytes(buf.readerIndex(), bytes);
-		for (byte b : bytes)
-			System.out.print(String.format("%02x ", b));
-		System.out.println();
-	}
-	
-	public static byte[] readAllBytes(InputStream in) throws IOException {
-		ByteArrayOutputStream out = new ByteArrayOutputStream();
-		byte[] buf = new byte[1024];
-		int numRead;
-		while ((numRead = in.read(buf)) != -1)
-			out.write(buf, 0, numRead);
-		return out.toByteArray();
-	}
-	public static byte[] readAllBytesAndClose(InputStream in) throws IOException {
-		try {
-			return readAllBytes(in);
-		} finally {
-			in.close();
-		}
-	}
-	public static byte[] readAllBytesAndCloseOrNull(InputStream in) {
-		try {
-			return readAllBytesAndClose(in);
-		} catch (IOException e) {
-			e.printStackTrace();
-			return null;
-		}
-	}
-	public static String readStringAndCloseOrNull(InputStream in) {
-		byte[] bytes = readAllBytesAndCloseOrNull(in);
-		if (bytes == null)
-			return null;
-		return new String(bytes, StandardCharsets.UTF_8);
 	}
 	
 }

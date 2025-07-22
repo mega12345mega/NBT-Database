@@ -1,6 +1,5 @@
 package com.luneruniverse.minecraft.nbtdatabase.website;
 
-import java.awt.Color;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -25,10 +24,12 @@ import com.luneruniverse.minecraft.nbtdatabase.IllegalRequestException;
 import com.luneruniverse.minecraft.nbtdatabase.NBTEntry;
 import com.luneruniverse.minecraft.nbtdatabase.Tag;
 import com.luneruniverse.minecraft.nbtdatabase.TagFilter;
-import com.luneruniverse.minecraft.nbtdatabase.Util;
 import com.luneruniverse.minecraft.nbtdatabase.cli.ColorInput;
 import com.luneruniverse.minecraft.nbtdatabase.cli.DataVersionInput;
 import com.luneruniverse.minecraft.nbtdatabase.cli.UUIDInput;
+import com.luneruniverse.minecraft.nbtdatabase.connection.FutureUtil;
+import com.luneruniverse.minecraft.nbtdatabase.connection.IOUtil;
+import com.luneruniverse.minecraft.nbtdatabase.connection.MiscUtil;
 import com.luneruniverse.minecraft.nbtdatabase.connection.NBTDatabaseAccess;
 import com.luneruniverse.simplecli.CommandParseException;
 import com.luneruniverse.simplecli.inputs.BooleanInput;
@@ -61,8 +62,8 @@ public class WebsiteHandler extends SimpleChannelInboundHandler<FullHttpRequest>
 	
 	public WebsiteHandler(NBTDatabaseAccess database) {
 		this.database = database;
-		this.websiteHtml = Util.readStringAndCloseOrNull(getClass().getClassLoader().getResourceAsStream("website.html"));
-		this.downloadSvg = Util.readAllBytesAndCloseOrNull(getClass().getClassLoader().getResourceAsStream("download.svg"));
+		this.websiteHtml = IOUtil.readStringAndCloseOrNull(getClass().getClassLoader().getResourceAsStream("website.html"));
+		this.downloadSvg = IOUtil.readAllBytesAndCloseOrNull(getClass().getClassLoader().getResourceAsStream("download.svg"));
 	}
 	
 	@Override
@@ -116,7 +117,7 @@ public class WebsiteHandler extends SimpleChannelInboundHandler<FullHttpRequest>
 		CompletableFuture<List<NBTEntry>> request;
 		Optional<Long> id = parseParam(params.get("id"), new LongInput());
 		if (id.isPresent()) {
-			request = Util.thenApply(database.getEntry(id.get()), entry -> {
+			request = FutureUtil.thenApply(database.getEntry(id.get()), entry -> {
 				if (entry == null)
 					throw new IllegalRequestException("Entry doesn't exist: " + id.get());
 				return Arrays.asList(entry);
@@ -147,21 +148,21 @@ public class WebsiteHandler extends SimpleChannelInboundHandler<FullHttpRequest>
 		
 		List<Tag> tags = new ArrayList<>();
 		Map<NBTEntry, List<Tag>> entriesWithTags = new ConcurrentHashMap<>();
-		CompletableFuture<Void> requestWithTags = Util.allOf(
-				Util.thenApply(database.getTags(new TagFilter()), tags2 -> {
+		CompletableFuture<Void> requestWithTags = FutureUtil.allOf(
+				FutureUtil.thenApply(database.getTags(new TagFilter()), tags2 -> {
 					tags.addAll(tags2);
 					return null;
 				}),
-				Util.thenCompose(request, entries -> {
+				FutureUtil.thenCompose(request, entries -> {
 					List<CompletableFuture<?>> tagFutures = new ArrayList<>();
 					for (NBTEntry entry : entries) {
-						tagFutures.add(Util.thenApply(database.getTags(new TagFilter().filterByEntryId(entry.getId())),
+						tagFutures.add(FutureUtil.thenApply(database.getTags(new TagFilter().filterByEntryId(entry.getId())),
 								entryTags -> {
 									entriesWithTags.put(entry, entryTags);
 									return null;
 								}));
 					}
-					return Util.allOf(tagFutures.toArray(new CompletableFuture<?>[tagFutures.size()]));
+					return FutureUtil.allOf(tagFutures.toArray(new CompletableFuture<?>[tagFutures.size()]));
 				}));
 		
 		writeDatabaseRequest(ctx, msg, requestWithTags, v -> {
@@ -242,10 +243,10 @@ public class WebsiteHandler extends SimpleChannelInboundHandler<FullHttpRequest>
 					entriesStr.append("Never Modified");
 				} else {
 					entriesStr.append("Modified: ");
-					entriesStr.append(Util.formatTimestamp(entry.getModified()));
+					entriesStr.append(MiscUtil.formatTimestamp(entry.getModified()));
 				}
 				entriesStr.append("\">Created: ");
-				entriesStr.append(Util.formatTimestamp(entry.getCreated()));
+				entriesStr.append(MiscUtil.formatTimestamp(entry.getCreated()));
 				entriesStr.append("</text>");
 				
 				if (id.isPresent()) {
@@ -281,7 +282,7 @@ public class WebsiteHandler extends SimpleChannelInboundHandler<FullHttpRequest>
 	}
 	private void writeTag(StringBuilder output, Tag tag) {
 		output.append("<text class=\"tag\" style=\"color: ");
-		output.append(Util.isColorBright(new Color(tag.getColor())) ? "black" : "white");
+		output.append(tag.isTextColorWhite() ? "white" : "black");
 		output.append("; background-color: #");
 		output.append(ColorInput.toString(tag.getColor()));
 		output.append(";\">");

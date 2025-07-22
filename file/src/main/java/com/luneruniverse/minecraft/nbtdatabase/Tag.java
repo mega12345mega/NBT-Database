@@ -29,6 +29,19 @@ public final class Tag {
 		return color;
 	}
 	
+	public boolean isTextColorWhite() {
+		float[] channels = new float[3];
+		for (int i = 0; i < 3; i++) {
+			float channel = ((color >> ((2 - i) * 8)) & 0xFF) / 255.0f;
+			if (channel <= 0.04045)
+				channel /= 12.92;
+			else
+				channel = (float) Math.pow((channel + 0.055) / 1.055, 2.4);
+			channels[i] = channel;
+		}
+		return channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722 <= 0.179;
+	}
+	
 	@Override
 	public String toString() {
 		return "Tag[name=" + name + ", color=" + color + "]";
