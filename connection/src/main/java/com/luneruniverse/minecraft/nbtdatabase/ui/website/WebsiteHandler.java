@@ -147,15 +147,17 @@ public class WebsiteHandler extends SimpleChannelInboundHandler<FullHttpRequest>
 		}
 		
 		List<Tag> tags = new ArrayList<>();
+		List<Entry> entries = new ArrayList<>();
 		Map<Entry, List<Tag>> entriesWithTags = new ConcurrentHashMap<>();
 		CompletableFuture<Void> requestWithTags = FutureUtil.allOf(
 				FutureUtil.thenApply(database.getTags(new TagFilter()), tags2 -> {
 					tags.addAll(tags2);
 					return null;
 				}),
-				FutureUtil.thenCompose(request, entries -> {
+				FutureUtil.thenCompose(request, entries2 -> {
+					entries.addAll(entries2);
 					List<CompletableFuture<?>> tagFutures = new ArrayList<>();
-					for (Entry entry : entries) {
+					for (Entry entry : entries2) {
 						tagFutures.add(FutureUtil.thenApply(database.getTags(new TagFilter().filterByEntryId(entry.getId())),
 								entryTags -> {
 									entriesWithTags.put(entry, entryTags);
@@ -195,12 +197,9 @@ public class WebsiteHandler extends SimpleChannelInboundHandler<FullHttpRequest>
 			}
 			
 			StringBuilder entriesStr = new StringBuilder();
-			if (entriesWithTags.isEmpty())
+			if (entries.isEmpty())
 				entriesStr.append("No entries found");
-			for (Map.Entry<Entry, List<Tag>> entryWithTags : entriesWithTags.entrySet()) {
-				Entry entry = entryWithTags.getKey();
-				List<Tag> entryTags = entryWithTags.getValue();
-				
+			for (Entry entry : entries) {
 				entriesStr.append("<div onclick=\"if (!event.target.matches('.entry_download, .entry_download *'))");
 				entriesStr.append("window.location.assign('?id=");
 				entriesStr.append(entry.getId());
@@ -209,18 +208,24 @@ public class WebsiteHandler extends SimpleChannelInboundHandler<FullHttpRequest>
 					entriesStr.append(" entry_verified");
 				entriesStr.append("\">");
 				
-				entriesStr.append("<a class=\"entry_download\" href=\"/entry/");
-				entriesStr.append(entry.getId());
-				entriesStr.append("\" download><img src=\"download.svg\"></a>");
+				entriesStr.append("<span class=\"entry_topbar\">");
 				
 				entriesStr.append("<text class=\"entry_name\">");
 				entriesStr.append(Encode.forHtmlContent(entry.getName()));
 				if (entry.isVerified())
-					entriesStr.append(" ✔");
+					entriesStr.append(" <text class=\"unicode_icon\">✔</text>");
 				entriesStr.append("</text>");
 				
+				entriesStr.append("<text class=\"entry_topbar_spacer\"></text>");
+				
+				entriesStr.append("<a class=\"entry_download\" href=\"/entry/");
+				entriesStr.append(entry.getId());
+				entriesStr.append("\" download><img src=\"download.svg\"></a>");
+				
+				entriesStr.append("</span>");
+				
 				entriesStr.append("<span class=\"entry_tags\">");
-				for (Tag tag : entryTags)
+				for (Tag tag : entriesWithTags.get(entry))
 					writeTag(entriesStr, tag);
 				entriesStr.append("</span>");
 				

@@ -28,6 +28,10 @@
 				vertical-align: middle;
 			}
 			
+			.unicode_icon {
+				line-height: 1;
+			}
+			
 			.nbtgradient {
 				width: fit-content;
 				background-image: linear-gradient(to right, var(--theme-color-red), var(--theme-color-blue));
@@ -39,6 +43,7 @@
 				display: inline-block;
 				padding: 0.25rem;
 				border-radius: 0.25rem;
+				font-weight: bold;
 			}
 			
 			#title {
@@ -94,12 +99,8 @@
 			.entry > * {
 				display: block;
 			}
-			.entry_download {
-				float: right;
-			}
-			.entry_download img {
-				width: 1.5rem;
-				filter: invert();
+			.entry_topbar {
+				display: flex;
 			}
 			.entry_name {
 				margin-bottom: 0.25rem;
@@ -109,6 +110,16 @@
 			}
 			.entry_verified .entry_name {
 				color: var(--theme-color-green);
+			}
+			.entry_topbar_spacer {
+				flex-grow: 1;
+			}
+			.entry_download {
+				margin-left: 1rem;
+			}
+			.entry_download img {
+				width: 1.5rem;
+				filter: invert();
 			}
 			.entry_tags text:not(:first-child) {
 				margin-left: 0.25rem;
