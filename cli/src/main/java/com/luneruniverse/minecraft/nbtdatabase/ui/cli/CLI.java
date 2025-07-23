@@ -45,6 +45,13 @@ import com.luneruniverse.simplecli.inputs.StringKeyInput;
 
 public class CLI extends Thread {
 	
+	public static void main(String[] args) {
+		CLI cli = new CLI();
+		for (String arg : args)
+			cli.exec(arg);
+		cli.start();
+	}
+	
 	private final GroupCommand root;
 	private boolean exit;
 	private NBTDatabase localDatabase;

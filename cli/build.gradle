@@ -1,4 +1,14 @@
+plugins {
+	alias(libs.plugins.shadow)
+}
+
 dependencies {
 	api project(":connection")
 	runtimeOnly libs.slf4j.simple
+}
+
+jar {
+	manifest {
+		attributes "Main-Class": "com.luneruniverse.minecraft.nbtdatabase.ui.cli.CLI"
+	}
 }

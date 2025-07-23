@@ -1,6 +1,16 @@
+plugins {
+	alias(libs.plugins.shadow)
+}
+
 dependencies {
 	api project(":connection")
 	runtimeOnly libs.slf4j.simple
 	implementation libs.steos.jnafilechooser
 	implementation libs.querz.nbt
+}
+
+jar {
+	manifest {
+		attributes "Main-Class": "com.luneruniverse.minecraft.nbtdatabase.ui.gui.GUI"
+	}
 }

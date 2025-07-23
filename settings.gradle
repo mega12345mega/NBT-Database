@@ -1,3 +1,4 @@
+rootProject.name = "nbtdatabase"
 include ":file"
 include ":connection"
 include ":cli"

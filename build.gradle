@@ -19,6 +19,17 @@ subprojects {
 		}
 	}
 	
+	jar {
+		archiveBaseName.set("${rootProject.name}-${project.name}")
+	}
+	
+	plugins.withId("com.gradleup.shadow") {
+		build.dependsOn "shadowJar"
+		tasks.named("shadowJar") {
+			archiveBaseName.set("${rootProject.name}-${project.name}")
+		}
+	}
+	
 	publishing {
 		publications {
 			maven(MavenPublication) {

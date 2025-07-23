@@ -45,6 +45,10 @@ import jnafilechooser.api.JnaFileChooser;
 
 public class GUI {
 	
+	public static void main(String[] args) {
+		new GUI().open();
+	}
+	
 	private static JScrollPane createJScrollPane(JComponent component) {
 		JScrollPane scrollPane = new JScrollPane(component);
 		scrollPane.getHorizontalScrollBar().setUnitIncrement(15);
