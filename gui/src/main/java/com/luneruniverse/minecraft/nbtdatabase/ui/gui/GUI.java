@@ -8,10 +8,12 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.sql.SQLException;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
+import javax.imageio.ImageIO;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
@@ -87,6 +89,11 @@ public class GUI {
 		});
 		frame.setSize(500, 500);
 		frame.setLocationRelativeTo(null);
+		try (InputStream in = getClass().getClassLoader().getResourceAsStream("logo_transparent.png")) {
+			frame.setIconImage(ImageIO.read(in));
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 		
 		JMenuBar menuBar = new JMenuBar();
 		frame.setJMenuBar(menuBar);
@@ -440,6 +447,8 @@ public class GUI {
 	
 	private void customPortStartServerMenuItem() {
 		String portStr = JOptionPane.showInputDialog(frame, "Enter port:", "Start Server", JOptionPane.QUESTION_MESSAGE);
+		if (portStr == null)
+			return;
 		int port;
 		try {
 			port = Integer.parseInt(portStr);

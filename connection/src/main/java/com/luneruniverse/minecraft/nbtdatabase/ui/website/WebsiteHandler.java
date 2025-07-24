@@ -2,6 +2,7 @@ package com.luneruniverse.minecraft.nbtdatabase.ui.website;
 
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -42,6 +43,7 @@ import com.luneruniverse.simplecli.inputs.flags.Flag;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
+import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.http.DefaultFullHttpResponse;
@@ -54,16 +56,23 @@ import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpUtil;
 import io.netty.handler.codec.http.HttpVersion;
 
+@Sharable
 public class WebsiteHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
 	
 	private final NBTDatabaseAccess database;
 	private final String websiteHtml;
-	private final byte[] downloadSvg;
+	private final Map<String, Map.Entry<String, byte[]>> resources;
 	
 	public WebsiteHandler(NBTDatabaseAccess database) {
 		this.database = database;
 		this.websiteHtml = IOUtil.readStringAndCloseOrNull(getClass().getClassLoader().getResourceAsStream("website.html"));
-		this.downloadSvg = IOUtil.readAllBytesAndCloseOrNull(getClass().getClassLoader().getResourceAsStream("download.svg"));
+		this.resources = new HashMap<>();
+		addResource("logo_transparent_plain.svg", "image/svg+xml");
+		addResource("download.svg", "image/svg+xml");
+	}
+	private void addResource(String name, String contentType) {
+		resources.put(name, new AbstractMap.SimpleImmutableEntry<>(contentType,
+				IOUtil.readAllBytesAndCloseOrNull(getClass().getClassLoader().getResourceAsStream(name))));
 	}
 	
 	@Override
@@ -90,8 +99,12 @@ public class WebsiteHandler extends SimpleChannelInboundHandler<FullHttpRequest>
 			return;
 		}
 		
-		if (path.size() == 1 && path.get(0).equals("download.svg")) {
-			writeResource(ctx, msg, downloadSvg, "image/svg+xml");
+		if (path.size() == 1 && resources.containsKey(path.get(0))) {
+			Map.Entry<String, byte[]> resource = resources.get(path.get(0));
+			if (resource.getValue() == null)
+				writeError(ctx, HttpResponseStatus.INTERNAL_SERVER_ERROR, null);
+			else
+				writeResource(ctx, msg, resource.getValue(), resource.getKey());
 			return;
 		}
 		

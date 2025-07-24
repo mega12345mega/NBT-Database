@@ -3,6 +3,7 @@
 <html>
 	<head>
 		<title>NBT Database</title>
+		<link rel="icon" href="logo_transparent_plain.svg" sizes="any" type="image/svg+xml">
 		<style>
 			:root {
 				--theme-color-red: #df4949;
@@ -47,9 +48,15 @@
 			}
 			
 			#title {
+				display: flex;
+				align-items: center;
 				margin: auto;
 				font-size: 4rem;
 				font-family: arial, helvetica;
+			}
+			#title img {
+				height: 1em;
+				margin-right: 1rem;
 			}
 			
 			#search {
@@ -134,7 +141,10 @@
 		</style>
 	</head>
 	<body>
-		<h1 id="title" class="nbtgradient">NBT Database</h1>
+		<h1 id="title" class="nbtgradient">
+			<img src="logo_transparent_plain.svg">
+			NBT Database
+		</h1>
 		<hr>
 		<form id="form" method="GET">
 			<div id="search">

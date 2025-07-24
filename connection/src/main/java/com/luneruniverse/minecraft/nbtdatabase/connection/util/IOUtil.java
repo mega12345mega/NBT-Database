@@ -27,7 +27,7 @@ public class IOUtil {
 	public static byte[] readAllBytesAndCloseOrNull(InputStream in) {
 		try {
 			return readAllBytesAndClose(in);
-		} catch (IOException e) {
+		} catch (Exception e) {
 			e.printStackTrace();
 			return null;
 		}

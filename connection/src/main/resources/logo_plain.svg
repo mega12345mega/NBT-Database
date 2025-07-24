@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="32"
+   height="32"
+   viewBox="0 0 32 32"
+   version="1.1"
+   id="svg1"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs1">
+    <linearGradient
+       id="linearGradient1">
+      <stop
+         style="stop-color:#df4949;stop-opacity:1;"
+         offset="0"
+         id="stop1" />
+      <stop
+         style="stop-color:#257789;stop-opacity:1;"
+         offset="1"
+         id="stop2" />
+    </linearGradient>
+    <linearGradient
+       xlink:href="#linearGradient1"
+       id="linearGradient2"
+       x1="0"
+       y1="16"
+       x2="32"
+       y2="16"
+       gradientUnits="userSpaceOnUse" />
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath14">
+      <path
+         id="path14"
+         style="mix-blend-mode:normal;fill:#bcbcbc;stroke-width:4;stroke-linejoin:round"
+         d="M 16,4 A 12,6 0 0 0 4,10 v 12 a 12,6 0 0 0 12,6 12,6 0 0 0 12,-6 V 10 A 12,6 0 0 0 16,4 Z" />
+    </clipPath>
+  </defs>
+  <g
+     id="layer1">
+    <g
+       id="g11"
+       clip-path="url(#clipPath14)">
+      <rect
+         style="display:inline;fill:url(#linearGradient2);fill-opacity:1;stroke-width:4;stroke-linejoin:round"
+         id="rect1"
+         width="32"
+         height="32"
+         x="0"
+         y="0" />
+      <g
+         id="g2"
+         style="display:inline;mix-blend-mode:multiply">
+        <rect
+           style="fill:#000000;stroke-width:4;stroke-linejoin:round"
+           id="rect2"
+           width="32"
+           height="32"
+           x="-6.695651e-08"
+           y="-1.3136399e-08" />
+        <ellipse
+           style="fill:#bcbcbc;fill-opacity:1;stroke-width:4;stroke-linejoin:round"
+           id="path8-3"
+           cx="16"
+           cy="22"
+           rx="12"
+           ry="6" />
+        <rect
+           style="mix-blend-mode:normal;fill:#bcbcbc;fill-opacity:1;stroke-width:4;stroke-linejoin:round"
+           id="rect9"
+           width="24"
+           height="12"
+           x="4"
+           y="10" />
+        <ellipse
+           style="fill:#ffffff;stroke-width:4;stroke-linejoin:round"
+           id="path8"
+           cx="16"
+           cy="10"
+           rx="12"
+           ry="6" />
+      </g>
+    </g>
+  </g>
+</svg>

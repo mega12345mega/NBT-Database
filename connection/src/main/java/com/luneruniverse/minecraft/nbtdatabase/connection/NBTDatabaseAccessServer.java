@@ -83,6 +83,8 @@ public class NBTDatabaseAccessServer implements AutoCloseable {
 				.when(AddTagToEntryRequestPacket.class, this::addTagToEntryRequestPacket)
 				.when(RemoveTagFromEntryRequestPacket.class, this::removeTagFromEntryRequestPacket);
 		
+		WebsiteHandler websiteHandler = new WebsiteHandler(database);
+		
 		EventLoopGroup group = new MultiThreadIoEventLoopGroup(3, NioIoHandler.newFactory());
 		ChannelFuture serverFuture = new ServerBootstrap()
 				.group(group)
@@ -99,7 +101,7 @@ public class NBTDatabaseAccessServer implements AutoCloseable {
 									ctx.pipeline().addAfter("http#aggregator", null,
 											NettyMessageMultiplexer.builder(FullHttpRequest.class)
 											.addProtocol(new NormalHttpMessageProtocol(ctx2 -> {
-												ctx2.pipeline().addAfter(ctx2.name(), "website", new WebsiteHandler(database));
+												ctx2.pipeline().addAfter(ctx2.name(), "website", websiteHandler);
 											}))
 											.addProtocol(new WebSocketHttpMessageProtocol(ctx2 -> {
 												ctx2.pipeline().addAfter(
