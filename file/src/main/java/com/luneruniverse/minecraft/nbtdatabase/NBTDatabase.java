@@ -1,6 +1,7 @@
 package com.luneruniverse.minecraft.nbtdatabase;
 
 import java.io.File;
+import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -13,6 +14,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
+import java.util.zip.GZIPInputStream;
 
 import org.sqlite.SQLiteErrorCode;
 import org.sqlite.SQLiteException;
@@ -23,6 +25,13 @@ import com.luneruniverse.minecraft.nbtdatabase.request.IllegalRequestException;
 import com.luneruniverse.minecraft.nbtdatabase.request.TagFilter;
 import com.luneruniverse.minecraft.nbtdatabase.sqlbuilder.SQLSelectBuilder;
 import com.luneruniverse.minecraft.nbtdatabase.sqlbuilder.SQLUpdateBuilder;
+
+import net.querz.nbt.io.NBTDeserializer;
+import net.querz.nbt.io.NBTSerializer;
+import net.querz.nbt.io.NamedTag;
+import net.querz.nbt.tag.CompoundTag;
+import net.querz.nbt.tag.IntTag;
+import net.querz.nbt.tag.StringTag;
 
 public class NBTDatabase implements AutoCloseable {
 	
@@ -102,8 +111,12 @@ public class NBTDatabase implements AutoCloseable {
 			throw new IllegalRequestException("name must be <= 256 characters long");
 		if (nbt.length > config.getMaxNbtSize())
 			throw new IllegalRequestException("nbt must be <= " + config.getMaxNbtSize() + " bytes long");
+		if (dataVersion < 0)
+			throw new IllegalRequestException("dataVersion must be >= 0");
 		if (authorUsername.length() > 16)
 			throw new IllegalRequestException("authorUsername must be <= 16 characters long");
+		
+		nbt = checkNBT(nbt, type, dataVersion);
 		
 		long id = genNewEntryId();
 		long created = Instant.now().toEpochMilli();
@@ -145,6 +158,10 @@ public class NBTDatabase implements AutoCloseable {
 	
 	public void editEntry(long id, Optional<String> name, Optional<byte[]> nbt, Optional<Entry.Type> type, Optional<Integer> dataVersion,
 			Optional<UUID> authorUuid, Optional<String> authorUsername, Optional<Boolean> verified) throws IllegalRequestException, SQLException {
+		Entry oldEntry = getEntry(id);
+		if (oldEntry == null)
+			throw new IllegalRequestException("Entry doesn't exist: " + id);
+		
 		SQLUpdateBuilder update = new SQLUpdateBuilder("`entries`");
 		if (name.isPresent()) {
 			if (name.get().length() > 256)
@@ -154,12 +171,21 @@ public class NBTDatabase implements AutoCloseable {
 		if (nbt.isPresent()) {
 			if (nbt.get().length > config.getMaxNbtSize())
 				throw new IllegalRequestException("nbt must be <= " + config.getMaxNbtSize() + " bytes long");
+			nbt = Optional.of(checkNBT(nbt.get(), type.orElse(oldEntry.getType()), dataVersion.orElse(oldEntry.getDataVersion())));
 			update.addColumn("`nbt`=?", PreparedStatement::setBytes, nbt.get());
 		}
-		if (type.isPresent())
+		if (type.isPresent()) {
+			if (!nbt.isPresent() && type.get() != oldEntry.getType())
+				throw new IllegalRequestException("type must match the type tag in nbt");
 			update.addColumn("`type`=?", PreparedStatement::setByte, (byte) type.get().ordinal());
-		if (dataVersion.isPresent())
+		}
+		if (dataVersion.isPresent()) {
+			if (dataVersion.get() < 0)
+				throw new IllegalRequestException("dataVersion must be >= 0");
+			if (!nbt.isPresent() && dataVersion.get() != oldEntry.getDataVersion())
+				throw new IllegalRequestException("dataVersion must match the DataVersion tag in nbt");
 			update.addColumn("`data_version`=?", PreparedStatement::setInt, dataVersion.get());
+		}
 		if (authorUuid.isPresent())
 			update.addColumn("`author_uuid`=?", PreparedStatement::setString, authorUuid.get().toString());
 		if (authorUsername.isPresent()) {
@@ -173,9 +199,6 @@ public class NBTDatabase implements AutoCloseable {
 			throw new IllegalRequestException("Nothing requested to be updated for entry with id " + id);
 		long modified = Instant.now().toEpochMilli();
 		update.addColumn("`modified`=?", PreparedStatement::setLong, modified);
-		Entry oldEntry = getEntry(id);
-		if (oldEntry == null)
-			throw new IllegalRequestException("Entry doesn't exist: " + id);
 		byte[] oldEntryNBT = null;
 		if (!nbt.isPresent()) {
 			oldEntryNBT = getEntryNBT(id);
@@ -415,6 +438,41 @@ public class NBTDatabase implements AutoCloseable {
 				throw new IllegalRequestException("Entry with id " + entry + " already doesn't have tag '" + tag + "'");
 			}
 		}
+	}
+	
+	private byte[] checkNBT(byte[] nbt, Entry.Type type, int dataVersion) throws IllegalRequestException {
+		NamedTag rootTag;
+		CompoundTag rootValue;
+		try {
+			rootTag = new NBTDeserializer((nbt[0] & 0xFF) + ((nbt[1] & 0xFF) << 8) == GZIPInputStream.GZIP_MAGIC).fromBytes(nbt);
+			if (rootTag.getTag() instanceof CompoundTag)
+				rootValue = (CompoundTag) rootTag.getTag();
+			else
+				throw new IOException();
+		} catch (IOException e) {
+			throw new IllegalRequestException("nbt must be a valid NBT file");
+		}
+		
+		if (rootValue.containsKey("type") && rootValue.get("type") instanceof StringTag) {
+			if (type != Entry.Type.fromNBT(rootValue.getString("type")))
+				throw new IllegalRequestException("type must match the type tag in nbt");
+		}
+		
+		if (rootValue.containsKey("DataVersion") && rootValue.get("DataVersion") instanceof IntTag) {
+			if (dataVersion != rootValue.getInt("DataVersion"))
+				throw new IllegalRequestException("dataVersion must match the DataVersion tag in nbt");
+		}
+		
+		try {
+			byte[] compressedBytes = new NBTSerializer(true).toBytes(rootTag);
+			if (compressedBytes.length < nbt.length)
+				nbt = compressedBytes;
+		} catch (IOException e) {
+			// Impossible
+			throw new RuntimeException("Failed to serialize NBT", e);
+		}
+		
+		return nbt;
 	}
 	
 	private String escapeQuery(String query) {

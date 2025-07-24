@@ -2,4 +2,5 @@ dependencies {
 	implementation libs.sqlite
 	implementation libs.google.gson
 	implementation libs.esotericsoftware.kryo
+	implementation libs.querz.nbt
 }

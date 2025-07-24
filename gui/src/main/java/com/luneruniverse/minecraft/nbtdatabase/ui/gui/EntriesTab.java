@@ -420,6 +420,7 @@ public class EntriesTab {
 			
 			JCheckBox verifiedField = new JCheckBox();
 			panel.add(verifiedField);
+			verifiedField.setSelected(true);
 			
 			panel.add(new JLabel("Tags:"));
 			
