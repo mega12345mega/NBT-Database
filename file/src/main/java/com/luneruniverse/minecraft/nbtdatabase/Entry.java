@@ -14,14 +14,46 @@ import com.esotericsoftware.kryo.kryo5.serializers.FieldSerializer.NotNull;
 
 public final class Entry {
 	
+	public enum Type {
+		ITEM("Item"),
+		BLOCK("Block"),
+		ENTITY("Entity"),
+		OTHER("Other");
+		
+		public static Type fromNBT(String nbt) {
+			switch (nbt) {
+				case "item":
+					return ITEM;
+				case "block":
+					return BLOCK;
+				case "entity":
+					return ENTITY;
+				default:
+					return OTHER;
+			}
+		}
+		
+		private final String toString;
+		
+		private Type(String toString) {
+			this.toString = toString;
+		}
+		
+		@Override
+		public String toString() {
+			return toString;
+		}
+	}
+	
 	static final String DATABASE_COLUMNS = "`entries`.`id`, `entries`.`name`, length(`entries`.`nbt`) AS `nbt_length`, "
-			+ "`entries`.`data_version`, `entries`.`author_uuid`, `entries`.`author_username`, "
+			+ "`entries`.`type`, `entries`.`data_version`, `entries`.`author_uuid`, `entries`.`author_username`, "
 			+ "`entries`.`created`, `entries`.`modified`, `entries`.`hash`, `entries`.`verified`";
 	static Entry fromDatabase(ResultSet row) throws SQLException {
 		return new Entry(
 				row.getLong("id"),
 				row.getString("name"),
 				row.getInt("nbt_length"),
+				Type.values()[row.getByte("type")],
 				row.getInt("data_version"),
 				UUID.fromString(row.getString("author_uuid")),
 				row.getString("author_username"),
@@ -31,7 +63,7 @@ public final class Entry {
 				row.getInt("verified") != 0);
 	}
 	
-	public static String genHash(String name, byte[] nbt, int dataVersion, UUID authorUuid, long created, long modified) {
+	public static String genHash(String name, byte[] nbt, Type type, int dataVersion, UUID authorUuid, long created, long modified) {
 		try (ByteArrayOutputStream buf = new ByteArrayOutputStream();
 				DataOutputStream bufData = new DataOutputStream(buf);) {
 			byte[] nameBytes = name.getBytes(StandardCharsets.UTF_8);
@@ -40,6 +72,8 @@ public final class Entry {
 			
 			bufData.writeInt(nbt.length);
 			bufData.write(nbt);
+			
+			bufData.writeByte(type.ordinal());
 			
 			bufData.writeInt(dataVersion);
 			
@@ -65,6 +99,7 @@ public final class Entry {
 	private long id;
 	private @NotNull String name;
 	private int nbtLength;
+	private @NotNull Type type;
 	private int dataVersion;
 	private @NotNull UUID authorUuid;
 	private @NotNull String authorUsername;
@@ -73,11 +108,12 @@ public final class Entry {
 	private @NotNull String hash;
 	private boolean verified;
 	
-	public Entry(long id, String name, int nbtLength, int dataVersion, UUID authorUuid, String authorUsername,
+	public Entry(long id, String name, int nbtLength, Type type, int dataVersion, UUID authorUuid, String authorUsername,
 			long created, long modified, String hash, boolean verified) {
 		this.id = id;
 		this.name = name;
 		this.nbtLength = nbtLength;
+		this.type = type;
 		this.dataVersion = dataVersion;
 		this.authorUuid = authorUuid;
 		this.authorUsername = authorUsername;
@@ -98,6 +134,9 @@ public final class Entry {
 	}
 	public int getNbtLength() {
 		return nbtLength;
+	}
+	public Type getType() {
+		return type;
 	}
 	public int getDataVersion() {
 		return dataVersion;

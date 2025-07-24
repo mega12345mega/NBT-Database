@@ -124,14 +124,14 @@ public class RemoteNBTDatabaseAccess implements NBTDatabaseAccess {
 	}
 	
 	@Override
-	public CompletableFuture<Long> addEntry(String name, byte[] nbt, int dataVersion, UUID authorUuid, String authorUsername, boolean verified) {
-		return request(new AddEntryRequestPacket(name, nbt, dataVersion, authorUuid, authorUsername, verified), EntryIdPacket.class, EntryIdPacket::getId);
+	public CompletableFuture<Long> addEntry(String name, byte[] nbt, Entry.Type type, int dataVersion, UUID authorUuid, String authorUsername, boolean verified) {
+		return request(new AddEntryRequestPacket(name, nbt, type, dataVersion, authorUuid, authorUsername, verified), EntryIdPacket.class, EntryIdPacket::getId);
 	}
 	
 	@Override
-	public CompletableFuture<Void> editEntry(long id, Optional<String> name, Optional<byte[]> nbt, Optional<Integer> dataVersion,
-			Optional<UUID> authorUuid, Optional<String> authorUsername, Optional<Boolean> verified) {
-		return requestVoid(new EditEntryRequestPacket(id, name, nbt, dataVersion, authorUuid, authorUsername, verified));
+	public CompletableFuture<Void> editEntry(long id, Optional<String> name, Optional<byte[]> nbt, Optional<Entry.Type> type,
+			Optional<Integer> dataVersion, Optional<UUID> authorUuid, Optional<String> authorUsername, Optional<Boolean> verified) {
+		return requestVoid(new EditEntryRequestPacket(id, name, nbt, type, dataVersion, authorUuid, authorUsername, verified));
 	}
 	
 	@Override

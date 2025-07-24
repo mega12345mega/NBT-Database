@@ -3,6 +3,7 @@ package com.luneruniverse.minecraft.nbtdatabase.ui.gui;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.GridLayout;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -51,6 +52,7 @@ import net.querz.nbt.io.NBTUtil;
 import net.querz.nbt.io.NamedTag;
 import net.querz.nbt.tag.CompoundTag;
 import net.querz.nbt.tag.IntTag;
+import net.querz.nbt.tag.StringTag;
 
 public class EntriesTab {
 	
@@ -141,6 +143,8 @@ public class EntriesTab {
 		author.setToolTipText("UUID: " + entry.getAuthorUuid());
 		details.add(author);
 		
+		details.add(new JLabel("Type: " + entry.getType()));
+		
 		details.add(new JLabel("Data Version: " + DataVersion.toViewableString(entry.getDataVersion())));
 		
 		details.add(new JLabel("Bytes: " + String.format("%,d", entry.getNbtLength())));
@@ -183,6 +187,11 @@ public class EntriesTab {
 		gui.whenComplete(gui.getConnection().getEntries(filter, view), entries -> {
 			this.entries.removeAll();
 			
+			if (entries.isEmpty()) {
+				JLabel noEntriesLabel = new JLabel("No entries found");
+				noEntriesLabel.setBorder(new EmptyBorder(4, 4, 4, 4));
+				this.entries.add(noEntriesLabel);
+			}
 			for (Entry entry : entries)
 				addEntry(entry);
 			
@@ -256,6 +265,16 @@ public class EntriesTab {
 			else
 				maxNbtLengthField.setValue(filter.getMaxNbtLength());
 			
+			panel.add(new JLabel("Type:"));
+			
+			JComboBox<Object> typeField = new JComboBox<>();
+			panel.add(typeField);
+			typeField.addItem("");
+			for (Entry.Type type : Entry.Type.values())
+				typeField.addItem(type);
+			if (filter.getType() != null)
+				typeField.setSelectedItem(filter.getType());
+			
 			panel.add(new JLabel("Min Data Version:"));
 			
 			JTextField minDataVersionField = new JTextField();
@@ -317,6 +336,9 @@ public class EntriesTab {
 			
 			if ((int) maxNbtLengthField.getValue() < Integer.MAX_VALUE)
 				filter.filterByMaxNbtLength((int) maxNbtLengthField.getValue());
+			
+			if (typeField.getSelectedIndex() != 0)
+				filter.filterByType((Entry.Type) typeField.getSelectedItem());
 			
 			if (!minDataVersionField.getText().isEmpty()) {
 				try {
@@ -425,13 +447,12 @@ public class EntriesTab {
 					tagFields.get(tag).setSelected(true);
 			}
 			
-			if (JOptionPane.showConfirmDialog(frame, panel,
-					previousEntry == null ? "Add Entry" : "Edit Entry: " + previousEntry.getName(),
-					JOptionPane.OK_CANCEL_OPTION) != JOptionPane.OK_OPTION) {
+			String dialogTitle = previousEntry == null ? "Add Entry" : "Edit Entry: " + previousEntry.getName();
+			if (JOptionPane.showConfirmDialog(frame, panel, dialogTitle, JOptionPane.OK_CANCEL_OPTION) != JOptionPane.OK_OPTION)
 				return;
-			}
 			
 			File file = selectFileField.get();
+			Entry.Type type;
 			Integer dataVersion;
 			byte[] nbt;
 			if (file == null) {
@@ -439,6 +460,7 @@ public class EntriesTab {
 					JOptionPane.showMessageDialog(frame, "You must select a file!", "Error", JOptionPane.ERROR_MESSAGE);
 					return;
 				} else {
+					type = null;
 					dataVersion = null;
 					nbt = null;
 				}
@@ -461,10 +483,22 @@ public class EntriesTab {
 					return;
 				}
 				
+				if (rootValue.containsKey("type") && rootValue.get("type") instanceof StringTag)
+					type = Entry.Type.fromNBT(rootValue.getString("type"));
+				else {
+					JPanel typePanel = new JPanel(new GridLayout(0, 1));
+					typePanel.add(new JLabel("Enter type:"));
+					JComboBox<Entry.Type> typeField = new JComboBox<>(Entry.Type.values());
+					typePanel.add(typeField);
+					if (JOptionPane.showConfirmDialog(frame, typePanel, dialogTitle, JOptionPane.OK_CANCEL_OPTION) != JOptionPane.OK_OPTION)
+						return;
+					type = (Entry.Type) typeField.getSelectedItem();
+				}
+				
 				if (rootValue.containsKey("DataVersion") && rootValue.get("DataVersion") instanceof IntTag)
 					dataVersion = rootValue.getInt("DataVersion");
 				else {
-					String dataVersionStr = JOptionPane.showInputDialog(frame, "Enter data version:", "Add Entry", JOptionPane.QUESTION_MESSAGE);
+					String dataVersionStr = JOptionPane.showInputDialog(frame, "Enter data version:", dialogTitle, JOptionPane.QUESTION_MESSAGE);
 					if (dataVersionStr == null)
 						return;
 					try {
@@ -492,7 +526,7 @@ public class EntriesTab {
 			}
 			
 			if (previousEntry == null) {
-				gui.whenComplete(gui.getConnection().addEntry(nameField.getText(), nbt, dataVersion,
+				gui.whenComplete(gui.getConnection().addEntry(nameField.getText(), nbt, type, dataVersion,
 						authorUuid, authorUsernameField.getText(), verifiedField.isSelected()), id -> {
 					gui.whenComplete(FutureUtil.allOf(tagFields.entrySet().stream()
 							.filter(entry -> entry.getValue().isSelected())
@@ -514,14 +548,15 @@ public class EntriesTab {
 				};
 				Optional<String> nameEdit = UIUtil.edit(previousEntry.getName(), nameField.getText());
 				Optional<byte[]> nbtEdit = Optional.ofNullable(nbt);
+				Optional<Entry.Type> typeEdit = UIUtil.edit(previousEntry.getType(), type);
 				Optional<Integer> dataVersionEdit = UIUtil.edit(previousEntry.getDataVersion(), dataVersion);
 				Optional<UUID> authorUuidEdit = UIUtil.edit(previousEntry.getAuthorUuid(), authorUuid);
 				Optional<String> authorUsernameEdit = UIUtil.edit(previousEntry.getAuthorUsername(), authorUsernameField.getText());
 				Optional<Boolean> verifiedEdit = UIUtil.edit(previousEntry.isVerified(), verifiedField.isSelected());
 				if (nameEdit.isPresent() || nbtEdit.isPresent() || dataVersionEdit.isPresent() ||
 						authorUuidEdit.isPresent() || authorUsernameEdit.isPresent() || verifiedEdit.isPresent()) {
-					gui.whenComplete(gui.getConnection().editEntry(previousEntry.getId(), nameEdit, nbtEdit, dataVersionEdit,
-							authorUuidEdit, authorUsernameEdit, verifiedEdit), v -> editTags.run());
+					gui.whenComplete(gui.getConnection().editEntry(previousEntry.getId(), nameEdit, nbtEdit, typeEdit,
+							dataVersionEdit, authorUuidEdit, authorUsernameEdit, verifiedEdit), v -> editTags.run());
 				} else {
 					editTags.run();
 				}

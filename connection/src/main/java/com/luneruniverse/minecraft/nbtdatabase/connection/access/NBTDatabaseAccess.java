@@ -16,9 +16,9 @@ public interface NBTDatabaseAccess extends AutoCloseable {
 	public String getName();
 	public CompletableFuture<Void> setConfig(Config config);
 	public CompletableFuture<Config> getConfig();
-	public CompletableFuture<Long> addEntry(String name, byte[] nbt, int dataVersion, UUID authorUuid, String authorUsername, boolean verified);
-	public CompletableFuture<Void> editEntry(long id, Optional<String> name, Optional<byte[]> nbt, Optional<Integer> dataVersion,
-			Optional<UUID> authorUuid, Optional<String> authorUsername, Optional<Boolean> verified);
+	public CompletableFuture<Long> addEntry(String name, byte[] nbt, Entry.Type type, int dataVersion, UUID authorUuid, String authorUsername, boolean verified);
+	public CompletableFuture<Void> editEntry(long id, Optional<String> name, Optional<byte[]> nbt, Optional<Entry.Type> type,
+			Optional<Integer> dataVersion, Optional<UUID> authorUuid, Optional<String> authorUsername, Optional<Boolean> verified);
 	public CompletableFuture<Void> removeEntry(long id);
 	public CompletableFuture<Entry> getEntry(long id);
 	public CompletableFuture<byte[]> getEntryNBT(long id);

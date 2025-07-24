@@ -148,12 +148,12 @@ public class NBTDatabaseAccessServer implements AutoCloseable {
 	}
 	
 	private void addEntryRequestPacket(AddEntryRequestPacket packet, Channel channel) {
-		respond(packet, channel, database.addEntry(packet.getName(), packet.getNbt(), packet.getDataVersion(),
+		respond(packet, channel, database.addEntry(packet.getName(), packet.getNbt(), packet.getType(), packet.getDataVersion(),
 				packet.getAuthorUuid(), packet.getAuthorUsername(), packet.isVerified()), EntryIdPacket::new);
 	}
 	
 	private void editEntryRequestPacket(EditEntryRequestPacket packet, Channel channel) {
-		respondVoid(packet, channel, database.editEntry(packet.getId(), packet.getName(), packet.getNbt(),
+		respondVoid(packet, channel, database.editEntry(packet.getId(), packet.getName(), packet.getNbt(), packet.getType(),
 				packet.getDataVersion(), packet.getAuthorUuid(), packet.getAuthorUsername(), packet.isVerified()));
 	}
 	

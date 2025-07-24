@@ -43,14 +43,14 @@ public class LocalNBTDatabaseAccess implements NBTDatabaseAccess {
 	}
 	
 	@Override
-	public CompletableFuture<Long> addEntry(String name, byte[] nbt, int dataVersion, UUID authorUuid, String authorUsername, boolean verified) {
-		return FutureUtil.supplyAsync(() -> database.addEntry(name, nbt, dataVersion, authorUuid, authorUsername, verified), executor);
+	public CompletableFuture<Long> addEntry(String name, byte[] nbt, Entry.Type type, int dataVersion, UUID authorUuid, String authorUsername, boolean verified) {
+		return FutureUtil.supplyAsync(() -> database.addEntry(name, nbt, type, dataVersion, authorUuid, authorUsername, verified), executor);
 	}
 	
 	@Override
-	public CompletableFuture<Void> editEntry(long id, Optional<String> name, Optional<byte[]> nbt, Optional<Integer> dataVersion,
-			Optional<UUID> authorUuid, Optional<String> authorUsername, Optional<Boolean> verified) {
-		return FutureUtil.runAsync(() -> database.editEntry(id, name, nbt, dataVersion, authorUuid, authorUsername, verified), executor);
+	public CompletableFuture<Void> editEntry(long id, Optional<String> name, Optional<byte[]> nbt, Optional<Entry.Type> type,
+			Optional<Integer> dataVersion, Optional<UUID> authorUuid, Optional<String> authorUsername, Optional<Boolean> verified) {
+		return FutureUtil.runAsync(() -> database.editEntry(id, name, nbt, type, dataVersion, authorUuid, authorUsername, verified), executor);
 	}
 	
 	@Override

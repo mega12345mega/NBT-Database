@@ -51,6 +51,7 @@ public class NBTDatabase implements AutoCloseable {
 						+ "`id` INTEGER PRIMARY KEY,"
 						+ "`name` TEXT NOT NULL,"
 						+ "`nbt` BLOB NOT NULL,"
+						+ "`type` INTEGER NOT NULL,"
 						+ "`data_version` INTEGER NOT NULL,"
 						+ "`author_uuid` TEXT NOT NULL,"
 						+ "`author_username` TEXT NOT NULL,"
@@ -59,6 +60,7 @@ public class NBTDatabase implements AutoCloseable {
 						+ "`hash` TEXT NOT NULL,"
 						+ "`verified` INTEGER NOT NULL)");
 				sql.executeUpdate("CREATE INDEX `entries-nbt_length` ON `entries` (length(`nbt`))");
+				sql.executeUpdate("CREATE INDEX `entries-type` ON `entries` (`type`)");
 				sql.executeUpdate("CREATE INDEX `entries-data_version` ON `entries` (`data_version`)");
 				sql.executeUpdate("CREATE INDEX `entries-author_uuid` ON `entries` (`author_uuid`)");
 				
@@ -94,7 +96,8 @@ public class NBTDatabase implements AutoCloseable {
 		return config;
 	}
 	
-	public long addEntry(String name, byte[] nbt, int dataVersion, UUID authorUuid, String authorUsername, boolean verified) throws IllegalRequestException, SQLException {
+	public long addEntry(String name, byte[] nbt, Entry.Type type, int dataVersion, UUID authorUuid, String authorUsername,
+			boolean verified) throws IllegalRequestException, SQLException {
 		if (name.length() > 256)
 			throw new IllegalRequestException("name must be <= 256 characters long");
 		if (nbt.length > config.getMaxNbtSize())
@@ -105,20 +108,21 @@ public class NBTDatabase implements AutoCloseable {
 		long id = genNewEntryId();
 		long created = Instant.now().toEpochMilli();
 		long modified = created;
-		String hash = Entry.genHash(name, nbt, dataVersion, authorUuid, created, modified);
+		String hash = Entry.genHash(name, nbt, type, dataVersion, authorUuid, created, modified);
 		
-		try (PreparedStatement sql = connection.prepareStatement("INSERT INTO `entries` VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")) {
+		try (PreparedStatement sql = connection.prepareStatement("INSERT INTO `entries` VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")) {
 			sql.setQueryTimeout(5);
 			sql.setLong(1, id);
 			sql.setString(2, name);
 			sql.setBytes(3, nbt);
-			sql.setInt(4, dataVersion);
-			sql.setString(5, authorUuid.toString());
-			sql.setString(6, authorUsername);
-			sql.setLong(7, created);
-			sql.setLong(8, modified);
-			sql.setString(9, hash);
-			sql.setInt(10, verified ? 1 : 0);
+			sql.setByte(4, (byte) type.ordinal());
+			sql.setInt(5, dataVersion);
+			sql.setString(6, authorUuid.toString());
+			sql.setString(7, authorUsername);
+			sql.setLong(8, created);
+			sql.setLong(9, modified);
+			sql.setString(10, hash);
+			sql.setInt(11, verified ? 1 : 0);
 			sql.executeUpdate();
 		}
 		
@@ -139,7 +143,7 @@ public class NBTDatabase implements AutoCloseable {
 		return id;
 	}
 	
-	public void editEntry(long id, Optional<String> name, Optional<byte[]> nbt, Optional<Integer> dataVersion,
+	public void editEntry(long id, Optional<String> name, Optional<byte[]> nbt, Optional<Entry.Type> type, Optional<Integer> dataVersion,
 			Optional<UUID> authorUuid, Optional<String> authorUsername, Optional<Boolean> verified) throws IllegalRequestException, SQLException {
 		SQLUpdateBuilder update = new SQLUpdateBuilder("`entries`");
 		if (name.isPresent()) {
@@ -152,6 +156,8 @@ public class NBTDatabase implements AutoCloseable {
 				throw new IllegalRequestException("nbt must be <= " + config.getMaxNbtSize() + " bytes long");
 			update.addColumn("`nbt`=?", PreparedStatement::setBytes, nbt.get());
 		}
+		if (type.isPresent())
+			update.addColumn("`type`=?", PreparedStatement::setByte, (byte) type.get().ordinal());
 		if (dataVersion.isPresent())
 			update.addColumn("`data_version`=?", PreparedStatement::setInt, dataVersion.get());
 		if (authorUuid.isPresent())
@@ -177,8 +183,9 @@ public class NBTDatabase implements AutoCloseable {
 				throw new IllegalRequestException("Entry doesn't exist: " + id);
 		}
 		update.addColumn("`hash`=?", PreparedStatement::setString,
-				Entry.genHash(name.orElse(oldEntry.getName()), nbt.orElse(oldEntryNBT), dataVersion.orElse(oldEntry.getDataVersion()),
-						authorUuid.orElse(oldEntry.getAuthorUuid()), oldEntry.getCreated(), modified));
+				Entry.genHash(name.orElse(oldEntry.getName()), nbt.orElse(oldEntryNBT), type.orElse(oldEntry.getType()),
+						dataVersion.orElse(oldEntry.getDataVersion()), authorUuid.orElse(oldEntry.getAuthorUuid()),
+						oldEntry.getCreated(), modified));
 		update.addFilter("`id`=?", PreparedStatement::setLong, id);
 		
 		try (PreparedStatement sql = connection.prepareStatement(update.toSQL())) {
@@ -242,6 +249,8 @@ public class NBTDatabase implements AutoCloseable {
 				select.addParam(PreparedStatement::setInt, filter.getMaxNbtLength());
 			}
 		}
+		if (filter.getType() != null)
+			select.addFilter("`entries`.`type`=?", PreparedStatement::setByte, (byte) filter.getType().ordinal());
 		if (filter.getMinDataVersion() != null || filter.getMaxDataVersion() != null) {
 			if (filter.getMaxDataVersion() == null)
 				select.addFilter("`entries`.`data_version`>=?", PreparedStatement::setInt, filter.getMinDataVersion());

@@ -71,6 +71,11 @@ public class TagsTab {
 		gui.whenComplete(gui.getConnection().getTags(filter), tags -> {
 			table.removeAll();
 			
+			if (tags.isEmpty()) {
+				JLabel noTagsLabel = new JLabel("No tags found");
+				noTagsLabel.setBorder(new EmptyBorder(0, 4, 0, 4));
+				table.add(noTagsLabel);
+			}
 			for (Tag tag : tags)
 				addTagEntry(tag);
 			

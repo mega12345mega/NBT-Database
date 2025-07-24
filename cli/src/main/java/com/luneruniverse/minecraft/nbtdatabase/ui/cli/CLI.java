@@ -99,12 +99,14 @@ public class CLI extends Thread {
 				.addCommand(new SingleCommand("add", inputs -> entryAddCmd(
 						inputs.getArgument("name", String.class),
 						new File(inputs.getArgument("file", String.class)),
+						inputs.getArgument("type", Entry.Type.class),
 						inputs.getArgument("data_version", Integer.class),
 						inputs.getArgument("author_uuid", UUID.class),
 						inputs.getArgument("author_username", String.class),
 						!inputs.hasFlag("unverified")))
 						.addArgument("name", new StringInput())
 						.addArgument("file", new StringInput())
+						.addArgument("type", StringKeyInput.forEnum(Entry.Type.class, true))
 						.addArgument("data_version", new DataVersionInput())
 						.addArgument("author_uuid", new UUIDInput())
 						.addArgument("author_username", new StringInput())
@@ -113,6 +115,7 @@ public class CLI extends Thread {
 						inputs.getArgument("id", Long.class),
 						inputs.getFlagOptional("name", String.class),
 						inputs.getFlagOptional("file", String.class).map(File::new),
+						inputs.getFlagOptional("type", Entry.Type.class),
 						inputs.getFlagOptional("data_version", Integer.class),
 						inputs.getFlagOptional("author_uuid", UUID.class),
 						inputs.getFlagOptional("author_username", String.class),
@@ -120,6 +123,7 @@ public class CLI extends Thread {
 						.addArgument("id", new EntryIdInput(this::getResults))
 						.addFlag("name", "n", new StringInput())
 						.addFlag("file", "f", new StringInput())
+						.addFlag("type", "t", StringKeyInput.forEnum(Entry.Type.class, true))
 						.addFlag("data_version", "d", new DataVersionInput())
 						.addFlag("author_uuid", "au", new UUIDInput())
 						.addFlag("author_username", "an", new StringInput())
@@ -150,6 +154,8 @@ public class CLI extends Thread {
 								if (inputs.hasFlag("nbt_length_max"))
 									filter.filterByMaxNbtLength(inputs.getFlag("nbt_length_max", Integer.class));
 							}
+							if (inputs.hasFlag("type"))
+								filter.filterByType(inputs.getFlag("type", Entry.Type.class));
 							if (inputs.hasFlag("data_version"))
 								filter.filterByDataVersion(inputs.getFlag("data_version", Integer.class));
 							else {
@@ -177,12 +183,13 @@ public class CLI extends Thread {
 						.addFlag("nbt_length", "l", new IntegerInput().min(0))
 						.addFlag("nbt_length_min", "lmin", new IntegerInput().min(0))
 						.addFlag("nbt_length_max", "lmax", new IntegerInput().min(0))
+						.addFlag("type", "t", StringKeyInput.forEnum(Entry.Type.class, true))
 						.addFlag("data_version", "d", new DataVersionInput())
 						.addFlag("data_version_min", "dmin", new DataVersionInput())
 						.addFlag("data_version_max", "dmax", new DataVersionInput())
 						.addFlag("author_uuid", "au", new UUIDInput())
 						.addFlag("author_username", "an", new StringInput())
-						.addFlag("tags", "t", new StringInput())
+						.addFlag("tags", "g", new StringInput())
 						.addFlag("order", "o", StringKeyInput.forEnum(EntryView.Order.class, true))
 						.addFlag("reversed_order", "r")
 						.addFlag("offset", "f", new IntegerInput().min(0))
@@ -430,21 +437,21 @@ public class CLI extends Thread {
 		});
 	}
 	
-	private void entryAddCmd(String name, File file, int dataVersion, UUID authorUuid, String authorUsername, boolean verified) {
+	private void entryAddCmd(String name, File file, Entry.Type type, int dataVersion, UUID authorUuid, String authorUsername, boolean verified) {
 		if (checkConnectionExists() || checkFileExists(file))
 			return;
 		
 		try {
 			whenComplete(connection.addEntry(
-					name, Files.readAllBytes(file.toPath()), dataVersion, authorUuid, authorUsername, verified),
+					name, Files.readAllBytes(file.toPath()), type, dataVersion, authorUuid, authorUsername, verified),
 					id -> System.out.println("Added entry '" + name + "' with id " + id));
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 	}
 	
-	private void entryEditCmd(long id, Optional<String> name, Optional<File> file, Optional<Integer> dataVersion,
-			Optional<UUID> authorUuid, Optional<String> authorUsername, Optional<Boolean> verified) {
+	private void entryEditCmd(long id, Optional<String> name, Optional<File> file, Optional<Entry.Type> type,
+			Optional<Integer> dataVersion, Optional<UUID> authorUuid, Optional<String> authorUsername, Optional<Boolean> verified) {
 		if (checkConnectionExists() || file.isPresent() && checkFileExists(file.get()))
 			return;
 		
@@ -459,7 +466,7 @@ public class CLI extends Thread {
 		} else
 			nbt = Optional.empty();
 		
-		whenComplete(connection.editEntry(id, name, nbt, dataVersion, authorUuid, authorUsername, verified),
+		whenComplete(connection.editEntry(id, name, nbt, type, dataVersion, authorUuid, authorUsername, verified),
 				v -> System.out.println("Edited entry with id " + id));
 	}
 	
@@ -553,7 +560,7 @@ public class CLI extends Thread {
 		
 		whenComplete(connection.getTags(filter), tags -> {
 			if (tags.isEmpty())
-				System.out.println("There are no tags");
+				System.out.println("No tags found");
 			else {
 				for (Tag tag : tags)
 					System.out.println(tag.getName() + " (#" + ColorInput.toString(tag.getColor()) + ")");
@@ -582,7 +589,7 @@ public class CLI extends Thread {
 			return;
 		
 		if (results.isEmpty()) {
-			System.out.println("There are no entries");
+			System.out.println("No entries found");
 			return;
 		}
 		
@@ -594,6 +601,7 @@ public class CLI extends Thread {
 			
 			System.out.println("#" + i + ": " + entry.getId() + ": " + entry.getName());
 			System.out.println("  Author: " + entry.getAuthorUsername() + " (" + entry.getAuthorUuid() + ")");
+			System.out.println("  Type: " + entry.getType());
 			System.out.println("  Data Version: " + DataVersion.toViewableString(entry.getDataVersion()));
 			if (verbose) {
 				System.out.println("  Bytes: " + entry.getNbtLength());

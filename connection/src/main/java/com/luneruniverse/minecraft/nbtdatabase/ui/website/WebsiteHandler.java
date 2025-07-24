@@ -139,6 +139,7 @@ public class WebsiteHandler extends SimpleChannelInboundHandler<FullHttpRequest>
 			parseParam(params.get("name"), new StringInput()).ifPresent(filter::filterByName);
 			parseParam(params.get("nbt_length_min"), new IntegerInput().min(0)).ifPresent(filter::filterByMinNbtLength);
 			parseParam(params.get("nbt_length_max"), new IntegerInput().min(0)).ifPresent(filter::filterByMaxNbtLength);
+			parseParam(params.get("type"), StringKeyInput.forEnum(Entry.Type.class, true)).ifPresent(filter::filterByType);
 			parseParam(params.get("data_version_min"), new DataVersionInput()).ifPresent(filter::filterByMinDataVersion);
 			parseParam(params.get("data_version_max"), new DataVersionInput()).ifPresent(filter::filterByMaxDataVersion);
 			parseParam(params.get("author_uuid"), new UUIDInput()).ifPresent(filter::filterByAuthorUuid);
@@ -191,6 +192,18 @@ public class WebsiteHandler extends SimpleChannelInboundHandler<FullHttpRequest>
 				ordersStr.append("\">");
 				ordersStr.append(Encode.forHtmlContent(order.toString()));
 				ordersStr.append("</option>");
+			}
+			
+			StringBuilder typesStr = new StringBuilder("<option></option>");
+			for (Entry.Type type : Entry.Type.values()) {
+				if (type == filter.getType())
+					typesStr.append("<option selected value=\"");
+				else
+					typesStr.append("<option value=\"");
+				typesStr.append(Encode.forHtmlAttribute(type.name()));
+				typesStr.append("\">");
+				typesStr.append(Encode.forHtmlContent(type.toString()));
+				typesStr.append("</option>");
 			}
 			
 			StringBuilder tagsStr = new StringBuilder("<span>Tags:");
@@ -248,6 +261,10 @@ public class WebsiteHandler extends SimpleChannelInboundHandler<FullHttpRequest>
 				entriesStr.append(Encode.forHtmlContent(entry.getAuthorUsername()));
 				entriesStr.append("</text>");
 				
+				entriesStr.append("<text>Type: ");
+				entriesStr.append(entry.getType().toString());
+				entriesStr.append("</text>");
+				
 				entriesStr.append("<text>Data Version: ");
 				entriesStr.append(Encode.forHtmlContent(DataVersion.toViewableString(entry.getDataVersion())));
 				entriesStr.append("</text>");
@@ -286,6 +303,7 @@ public class WebsiteHandler extends SimpleChannelInboundHandler<FullHttpRequest>
 					.replace("{@reversed_order}", view.isReversedOrder() ? " checked" : "")
 					.replace("{@nbt_length_min}", filter.getMinNbtLength() == null ? "" : " value=" + filter.getMinNbtLength())
 					.replace("{@nbt_length_max}", filter.getMaxNbtLength() == null ? "" : " value=" + filter.getMaxNbtLength())
+					.replace("{@types}", typesStr)
 					.replace("{@data_version_min}", filter.getMinDataVersion() == null ? "" : " value=\"" + Encode.forHtmlAttribute(DataVersion.toParsableString(filter.getMinDataVersion())) + "\"")
 					.replace("{@data_version_max}", filter.getMaxDataVersion() == null ? "" : " value=\"" + Encode.forHtmlAttribute(DataVersion.toParsableString(filter.getMaxDataVersion())) + "\"")
 					.replace("{@author_uuid}", filter.getAuthorUuid() == null ? "" : " value=\"" + filter.getAuthorUuid() + "\"")

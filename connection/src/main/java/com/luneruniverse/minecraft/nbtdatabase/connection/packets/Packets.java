@@ -57,6 +57,7 @@ public class Packets {
 		KRYO.register(Config.class);
 		KRYO.register(Entry.class);
 		KRYO.register(Entry[].class);
+		KRYO.register(Entry.Type.class);
 		KRYO.register(EntryFilter.class);
 		KRYO.register(EntryView.class);
 		KRYO.register(EntryView.Order.class);

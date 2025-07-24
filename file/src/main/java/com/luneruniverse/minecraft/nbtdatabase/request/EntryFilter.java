@@ -5,12 +5,14 @@ import java.util.Set;
 import java.util.UUID;
 
 import com.esotericsoftware.kryo.kryo5.serializers.CollectionSerializer.BindCollection;
+import com.luneruniverse.minecraft.nbtdatabase.Entry;
 
 public final class EntryFilter {
 	
 	private String name;
 	private Integer minNbtLength;
 	private Integer maxNbtLength;
+	private Entry.Type type;
 	private Integer minDataVersion;
 	private Integer maxDataVersion;
 	private UUID authorUuid;
@@ -18,11 +20,12 @@ public final class EntryFilter {
 	private @BindCollection(elementsCanBeNull = false) Set<String> tags;
 	
 	public EntryFilter() {}
-	public EntryFilter(String name, Integer minNbtLength, Integer maxNbtLength, Integer minDataVersion, Integer maxDataVersion,
-			UUID authorUuid, String authorUsername, Set<String> tags) {
+	public EntryFilter(String name, Integer minNbtLength, Integer maxNbtLength, Entry.Type type,
+			Integer minDataVersion, Integer maxDataVersion, UUID authorUuid, String authorUsername, Set<String> tags) {
 		this.name = name;
 		this.minNbtLength = minNbtLength;
 		this.maxNbtLength = maxNbtLength;
+		this.type = type;
 		this.minDataVersion = minDataVersion;
 		this.maxDataVersion = maxDataVersion;
 		this.authorUuid = authorUuid;
@@ -45,6 +48,10 @@ public final class EntryFilter {
 	}
 	public EntryFilter filterByMaxNbtLength(int query) {
 		maxNbtLength = query;
+		return this;
+	}
+	public EntryFilter filterByType(Entry.Type query) {
+		type = query;
 		return this;
 	}
 	public EntryFilter filterByDataVersion(int query) {
@@ -91,6 +98,9 @@ public final class EntryFilter {
 	}
 	public Integer getMaxNbtLength() {
 		return maxNbtLength;
+	}
+	public Entry.Type getType() {
+		return type;
 	}
 	public Integer getMinDataVersion() {
 		return minDataVersion;
