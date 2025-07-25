@@ -1,9 +1,7 @@
 package com.luneruniverse.minecraft.nbtdatabase.ui.cli;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.sql.SQLException;
 import java.util.Arrays;
@@ -12,6 +10,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 
 import com.luneruniverse.minecraft.nbtdatabase.Config;
@@ -43,17 +43,34 @@ import com.luneruniverse.simplecli.inputs.IntegerInput;
 import com.luneruniverse.simplecli.inputs.StringInput;
 import com.luneruniverse.simplecli.inputs.StringKeyInput;
 
-public class CLI extends Thread {
+public class CLI implements AutoCloseable {
 	
-	public static void main(String[] args) {
-		CLI cli = new CLI();
-		for (String arg : args)
-			cli.exec(arg);
-		cli.start();
+	public static void main(String[] args) throws IOException {
+		try (CLI cli = new CLI()) {
+			for (String arg : args)
+				cli.exec(arg);
+			
+			StringBuilder line = new StringBuilder();
+			while (cli.isOpen()) {
+				while (System.in.available() > 0) {
+					char c = (char) System.in.read();
+					if (c == '\n') {
+						cli.exec(line.toString());
+						line.setLength(0);
+					} else if (c != '\r')
+						line.append(c);
+				}
+				try {
+					Thread.sleep(10);
+				} catch (InterruptedException e) {
+					break;
+				}
+			}
+		}
 	}
 	
+	private final ExecutorService executor;
 	private final GroupCommand root;
-	private boolean exit;
 	private NBTDatabase localDatabase;
 	private NBTDatabaseAccess connection;
 	private NBTDatabaseAccessServer server;
@@ -62,9 +79,11 @@ public class CLI extends Thread {
 	public CLI() {
 		DataVersion.loadVersions();
 		
+		executor = Executors.newSingleThreadExecutor();
+		
 		root = new GroupCommand(null);
 		
-		root.addCommand(new SingleCommand("exit", () -> exit = true));
+		root.addCommand(new SingleCommand("exit", this::close));
 		
 		root.addCommand(new SingleCommand("create", inputs -> createCmd(
 				new File(inputs.getArgument("file", String.class)), inputs.hasFlag("overwrite")))
@@ -234,23 +253,60 @@ public class CLI extends Thread {
 				.addFlag("verbose", "v"));
 	}
 	
-	private <T> void whenComplete(CompletableFuture<T> future, Consumer<T> consumer) {
-		future.whenComplete((value, e) -> {
-			if (e == null)
-				consumer.accept(value);
-			else {
-				if (e instanceof IllegalRequestException || e instanceof RequestFailedException) {
-					if (e instanceof IllegalRequestException)
-						System.err.println("[Database] " + e.getMessage());
-					else if (e instanceof ServerException)
-						System.err.println("[Server] " + e.getMessage());
-					else
-						System.err.println(e.getMessage());
-					if (e.getCause() != null)
-						e.getCause().printStackTrace();
-				} else
-					e.printStackTrace();
+	public NBTDatabase getLocalDatabase() {
+		return localDatabase;
+	}
+	
+	public NBTDatabaseAccess getConnection() {
+		return connection;
+	}
+	
+	public NBTDatabaseAccessServer getServer() {
+		return server;
+	}
+	
+	private void onConnectionOpen() {
+		NBTDatabaseAccess connection = this.connection;
+		connection.getCloseFuture().whenComplete((v, e) -> {
+			if (e != null) {
+				executor.execute(() -> {
+					if (connection == this.connection) {
+						closeConnection(true);
+						System.err.println("[Disconnected] " + (e.getMessage() == null ? "Connection lost" : e.getMessage()));
+					}
+				});
 			}
+		});
+	}
+	
+	private void onConnectionClose() {}
+	
+	private void onServerStart() {}
+	
+	private void onServerStop() {}
+	
+	private <T> void whenComplete(CompletableFuture<T> future, Consumer<T> consumer) {
+		NBTDatabaseAccess connection = this.connection;
+		future.whenComplete((value, e) -> {
+			executor.execute(() -> {
+				if (connection != this.connection)
+					return;
+				if (e == null)
+					consumer.accept(value);
+				else {
+					if (e instanceof IllegalRequestException || e instanceof RequestFailedException) {
+						if (e instanceof IllegalRequestException)
+							System.err.println("[Database] " + e.getMessage());
+						else if (e instanceof ServerException)
+							System.err.println("[Server] " + e.getMessage());
+						else
+							System.err.println(e.getMessage());
+						if (e.getCause() != null)
+							e.getCause().printStackTrace();
+					} else
+						e.printStackTrace();
+				}
+			});
 		});
 	}
 	
@@ -324,6 +380,7 @@ public class CLI extends Thread {
 					System.out.println("Closed connection");
 			});
 			connection = null;
+			onConnectionClose();
 		}
 		
 		if (localDatabase != null) {
@@ -345,6 +402,7 @@ public class CLI extends Thread {
 					System.out.println("Closed server");
 			});
 			server = null;
+			onServerStop();
 		}
 	}
 	
@@ -362,6 +420,7 @@ public class CLI extends Thread {
 		try {
 			localDatabase = new NBTDatabase(file);
 			connection = new LocalNBTDatabaseAccess(localDatabase);
+			onConnectionOpen();
 			System.out.println("Created and opened: " + file.getAbsolutePath());
 		} catch (IllegalRequestException e) {
 			System.err.println("[Database] " + e.getMessage());
@@ -379,6 +438,7 @@ public class CLI extends Thread {
 		try {
 			localDatabase = new NBTDatabase(file);
 			connection = new LocalNBTDatabaseAccess(localDatabase);
+			onConnectionOpen();
 			System.out.println("Opened: " + file.getAbsolutePath());
 		} catch (IllegalRequestException e) {
 			System.err.println("[Database] " + e.getMessage());
@@ -392,6 +452,7 @@ public class CLI extends Thread {
 		
 		try {
 			connection = new RemoteNBTDatabaseAccess(ip, port);
+			onConnectionOpen();
 			System.out.println("Opened: " + ip + ":" + port);
 		} catch (IOException | InterruptedException e) {
 			e.printStackTrace();
@@ -413,6 +474,7 @@ public class CLI extends Thread {
 		
 		try {
 			server = new NBTDatabaseAccessServer(connection, port);
+			onServerStart();
 			System.out.println("Started server on port " + port);
 		} catch (IOException | InterruptedException e) {
 			e.printStackTrace();
@@ -628,29 +690,27 @@ public class CLI extends Thread {
 	}
 	
 	public void exec(String cmd) {
-		try {
-			root.parse(new CommandStream(cmd));
-		} catch (CommandSyntaxException | CommandParseException e) {
-			System.err.println(e.getMessage());
-		}
+		executor.execute(() -> {
+			try {
+				root.parse(new CommandStream(cmd));
+			} catch (CommandSyntaxException | CommandParseException e) {
+				System.err.println(e.getMessage());
+			}
+		});
 	}
 	
 	public List<Entry> getResults() {
 		return results;
 	}
 	
+	public boolean isOpen() {
+		return !executor.isShutdown();
+	}
+	
 	@Override
-	public void run() {
-		try {
-			BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
-			String line;
-			while (!exit && (line = in.readLine()) != null)
-				exec(line);
-		} catch (IOException e) {
-			e.printStackTrace();
-		} finally {
-			closeConnection(false);
-		}
+	public void close() {
+		closeConnection(false);
+		executor.shutdown();
 	}
 	
 }

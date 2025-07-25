@@ -6,8 +6,9 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.function.Function;
 
 import com.luneruniverse.minecraft.nbtdatabase.connection.access.NBTDatabaseAccess;
-import com.luneruniverse.minecraft.nbtdatabase.connection.netty.ErrorHandler;
+import com.luneruniverse.minecraft.nbtdatabase.connection.netty.ExceptionHandler;
 import com.luneruniverse.minecraft.nbtdatabase.connection.netty.NBTProtocol;
+import com.luneruniverse.minecraft.nbtdatabase.connection.netty.ProtocolVersionHandler;
 import com.luneruniverse.minecraft.nbtdatabase.connection.netty.TypedPacketHandler;
 import com.luneruniverse.minecraft.nbtdatabase.connection.netty.WebSocketNBTProtocol;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.AddEntryRequestPacket;
@@ -93,7 +94,10 @@ public class NBTDatabaseAccessServer implements AutoCloseable {
 					protected void initChannel(SocketChannel channel) throws Exception {
 						channel.pipeline().addLast(NettyByteMultiplexer.builder()
 								.addProtocol(new MagicByteProtocol("nbt", NBTProtocol.MAGIC, true, ctx -> {
-									ctx.pipeline().addAfter(NBTProtocol.bind(ctx).name(), "nbt#handler", nbtHandler);
+									ctx.pipeline().addAfter(
+											NBTProtocol.bind(ctx).name(), "nbt#version", new ProtocolVersionHandler(false));
+									ctx.pipeline().addAfter("nbt#version", "nbt#handler", nbtHandler);
+									ctx.flush(); // Flush protocol version
 								}))
 								.addProtocol(new HttpByteProtocol(ctx -> {
 									ctx.pipeline().addAfter(ctx.name(), "http#codec", new HttpServerCodec());
@@ -104,13 +108,15 @@ public class NBTDatabaseAccessServer implements AutoCloseable {
 												ctx2.pipeline().addAfter(ctx2.name(), "website", websiteHandler);
 											}))
 											.addProtocol(new WebSocketHttpMessageProtocol(ctx2 -> {
-												ctx2.pipeline().addAfter(
-														WebSocketNBTProtocol.bind(ctx2).name(), "nbt#handler", nbtHandler);
+												ctx2.pipeline().addAfter(WebSocketNBTProtocol.bind(ctx2).name(),
+														"nbt#version", new ProtocolVersionHandler(false));
+												ctx2.pipeline().addAfter("nbt#version", "nbt#handler", nbtHandler);
+												ctx.flush(); // Flush protocol version
 											}))
 											.build());
 								}))
 								.build());
-						channel.pipeline().addLast(new ErrorHandler());
+						channel.pipeline().addLast(new ExceptionHandler(null));
 					}
 				})
 				.bind(port);

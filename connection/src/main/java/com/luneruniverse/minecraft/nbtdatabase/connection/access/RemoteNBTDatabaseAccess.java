@@ -13,10 +13,12 @@ import java.util.function.Function;
 import com.luneruniverse.minecraft.nbtdatabase.Config;
 import com.luneruniverse.minecraft.nbtdatabase.Entry;
 import com.luneruniverse.minecraft.nbtdatabase.Tag;
+import com.luneruniverse.minecraft.nbtdatabase.connection.DisconnectException;
 import com.luneruniverse.minecraft.nbtdatabase.connection.RequestFailedException;
 import com.luneruniverse.minecraft.nbtdatabase.connection.ServerException;
-import com.luneruniverse.minecraft.nbtdatabase.connection.netty.ErrorHandler;
+import com.luneruniverse.minecraft.nbtdatabase.connection.netty.ExceptionHandler;
 import com.luneruniverse.minecraft.nbtdatabase.connection.netty.NBTProtocol;
+import com.luneruniverse.minecraft.nbtdatabase.connection.netty.ProtocolVersionHandler;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.AddEntryRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.AddTagRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.AddTagToEntryRequestPacket;
@@ -60,12 +62,15 @@ public class RemoteNBTDatabaseAccess implements NBTDatabaseAccess {
 	
 	private final String ip;
 	private final int port;
+	private final CompletableFuture<Void> closeFuture;
 	private final Channel client;
 	private final ExecutorService executor;
 	
 	public RemoteNBTDatabaseAccess(String ip, int port) throws IOException, InterruptedException {
 		this.ip = ip;
 		this.port = port;
+		
+		closeFuture = new CompletableFuture<>();
 		
 		EventLoopGroup group = new MultiThreadIoEventLoopGroup(1, NioIoHandler.newFactory());
 		ChannelFuture clientFuture = new Bootstrap()
@@ -77,12 +82,13 @@ public class RemoteNBTDatabaseAccess implements NBTDatabaseAccess {
 						channel.pipeline().addLast("dummy", new ChannelHandlerAdapter() {});
 						NBTProtocol.bind(channel.pipeline().context("dummy"));
 						channel.pipeline().remove("dummy");
-						channel.pipeline().addLast(new ErrorHandler());
+						channel.pipeline().addLast(new ProtocolVersionHandler(true), new ExceptionHandler(closeFuture));
 					}
 				})
 				.connect(ip, port);
 		client = NettyUtil.addGroupShutdown(clientFuture, group);
-		NBTProtocol.sendMagic(client);
+		client.closeFuture().addListener(future -> closeFuture.completeExceptionally(new DisconnectException()));
+		client.flush(); // Flush magic and protocol version
 		
 		executor = Executors.newSingleThreadExecutor();
 	}
@@ -190,12 +196,19 @@ public class RemoteNBTDatabaseAccess implements NBTDatabaseAccess {
 	}
 	
 	@Override
+	public CompletableFuture<Void> getCloseFuture() {
+		return closeFuture;
+	}
+	
+	@Override
 	public CompletableFuture<Void> closeAsync() {
+		closeFuture.complete(null);
 		return FutureUtil.finallyDo(FutureUtil.shutdown(executor), client::close);
 	}
 	
 	@Override
 	public void close() throws IOException, InterruptedException {
+		closeFuture.complete(null);
 		try {
 			executor.shutdown();
 			executor.awaitTermination(Long.MAX_VALUE, TimeUnit.DAYS);

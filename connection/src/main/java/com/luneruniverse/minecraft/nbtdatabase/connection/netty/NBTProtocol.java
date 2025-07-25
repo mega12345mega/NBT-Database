@@ -27,15 +27,13 @@ import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 public class NBTProtocol extends ChannelDuplexHandler {
 	
 	public static final byte[] MAGIC = "nbt".getBytes(StandardCharsets.US_ASCII);
+	public static final int PROTOCOL_VERSION = 1;
 	private static final int TIMEOUT = 5000;
 	
 	public static ChannelHandlerContext bind(ChannelHandlerContext ctx) {
 		ctx.pipeline().addAfter(ctx.name(), "nbt#length", new LengthFieldBasedFrameDecoder(Integer.MAX_VALUE, 12, 4));
 		ctx.pipeline().addAfter("nbt#length", "nbt#protocol", new NBTProtocol(TIMEOUT));
 		return ctx.pipeline().context("nbt#protocol");
-	}
-	public static void sendMagic(Channel channel) {
-		channel.writeAndFlush(Unpooled.copiedBuffer(MAGIC)).addListener(ChannelFutureListener.FIRE_EXCEPTION_ON_FAILURE);
 	}
 	
 	public static void send(Channel channel, Packet packet) {
@@ -45,8 +43,11 @@ public class NBTProtocol extends ChannelDuplexHandler {
 		send(channel, packet.replyTo(toReply));
 	}
 	public static Packet sendAndGetResponse(Channel channel, Packet packet) throws InterruptedException {
+		if (!channel.isOpen())
+			return null;
 		CompletableFuture<Packet> future = new CompletableFuture<>();
 		packet.addResponseListener((response, channel2) -> future.complete(response));
+		channel.closeFuture().addListener(closeFuture -> future.complete(null));
 		send(channel, packet);
 		try {
 			return future.get(TIMEOUT, TimeUnit.MILLISECONDS);

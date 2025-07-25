@@ -20,10 +20,12 @@ import com.luneruniverse.minecraft.nbtdatabase.request.TagFilter;
 public class LocalNBTDatabaseAccess implements NBTDatabaseAccess {
 	
 	private final NBTDatabase database;
+	private final CompletableFuture<Void> closeFuture;
 	private final ExecutorService executor;
 	
 	public LocalNBTDatabaseAccess(NBTDatabase database) {
 		this.database = database;
+		this.closeFuture = new CompletableFuture<>();
 		this.executor = Executors.newSingleThreadExecutor();
 	}
 	
@@ -109,12 +111,19 @@ public class LocalNBTDatabaseAccess implements NBTDatabaseAccess {
 	}
 	
 	@Override
+	public CompletableFuture<Void> getCloseFuture() {
+		return closeFuture;
+	}
+	
+	@Override
 	public CompletableFuture<Void> closeAsync() {
+		closeFuture.complete(null);
 		return FutureUtil.shutdown(executor);
 	}
 	
 	@Override
 	public void close() throws InterruptedException {
+		closeFuture.complete(null);
 		executor.shutdown();
 		executor.awaitTermination(Long.MAX_VALUE, TimeUnit.DAYS);
 	}

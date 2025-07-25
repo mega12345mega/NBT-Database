@@ -65,6 +65,22 @@ public class Packets {
 		KRYO.register(Tag[].class);
 		KRYO.register(TagFilter.class);
 		
+		// Client <-> Server
+		KRYO.register(ProtocolVersionPacket.class, new Serializer<ProtocolVersionPacket>() {
+			@Override
+			public void write(Kryo kryo, Output output, ProtocolVersionPacket object) {
+				for (int i = 24; i >= 0; i -= 8)
+					output.writeByte((object.getVersion() >> i) & 0xFF);
+			}
+			@Override
+			public ProtocolVersionPacket read(Kryo kryo, Input input, Class<? extends ProtocolVersionPacket> type) {
+				int version = 0;
+				for (int i = 0; i < 4; i++)
+					version = (version << 8) | (input.readByte() & 0xFF);
+				return new ProtocolVersionPacket(version);
+			}
+		}, Integer.MAX_VALUE);
+		
 		// Client -> Server
 		KRYO.register(GetConfigRequestPacket.class);
 		KRYO.register(AddEntryRequestPacket.class);
