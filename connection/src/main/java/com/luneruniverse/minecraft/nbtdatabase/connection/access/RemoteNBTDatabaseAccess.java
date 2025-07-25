@@ -88,7 +88,6 @@ public class RemoteNBTDatabaseAccess implements NBTDatabaseAccess {
 				.connect(ip, port);
 		client = NettyUtil.addGroupShutdown(clientFuture, group);
 		client.closeFuture().addListener(future -> closeFuture.completeExceptionally(new DisconnectException()));
-		client.flush(); // Flush magic and protocol version
 		
 		executor = Executors.newSingleThreadExecutor();
 	}

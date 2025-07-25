@@ -97,7 +97,6 @@ public class NBTDatabaseAccessServer implements AutoCloseable {
 									ctx.pipeline().addAfter(
 											NBTProtocol.bind(ctx).name(), "nbt#version", new ProtocolVersionHandler(false));
 									ctx.pipeline().addAfter("nbt#version", "nbt#handler", nbtHandler);
-									ctx.flush(); // Flush protocol version
 								}))
 								.addProtocol(new HttpByteProtocol(ctx -> {
 									ctx.pipeline().addAfter(ctx.name(), "http#codec", new HttpServerCodec());
@@ -109,9 +108,8 @@ public class NBTDatabaseAccessServer implements AutoCloseable {
 											}))
 											.addProtocol(new WebSocketHttpMessageProtocol(ctx2 -> {
 												ctx2.pipeline().addAfter(WebSocketNBTProtocol.bind(ctx2).name(),
-														"nbt#version", new ProtocolVersionHandler(false));
+														"nbt#version", ProtocolVersionHandler.waitForWebSocket(false));
 												ctx2.pipeline().addAfter("nbt#version", "nbt#handler", nbtHandler);
-												ctx.flush(); // Flush protocol version
 											}))
 											.build());
 								}))
