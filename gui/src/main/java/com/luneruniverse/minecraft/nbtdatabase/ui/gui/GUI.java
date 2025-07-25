@@ -9,6 +9,7 @@ import java.awt.event.WindowEvent;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
 import java.sql.SQLException;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
@@ -307,7 +308,13 @@ public class GUI {
 				return;
 			}
 			
-			file.delete();
+			try {
+				Files.delete(file.toPath());
+			} catch (IOException e) {
+				e.printStackTrace();
+				JOptionPane.showMessageDialog(frame, "Failed to delete '" + file.getName() + "'", "Error", JOptionPane.ERROR_MESSAGE);
+				return;
+			}
 		}
 		
 		closeConnection();
@@ -316,6 +323,9 @@ public class GUI {
 			localDatabase = new NBTDatabase(file);
 			connection = new LocalNBTDatabaseAccess(localDatabase);
 			onConnectionOpen();
+		} catch (IllegalRequestException e) {
+			System.err.println("[Database] " + e.getMessage());
+			JOptionPane.showMessageDialog(frame, e.getMessage(), "Database Error", JOptionPane.ERROR_MESSAGE);
 		} catch (SQLException e) {
 			e.printStackTrace();
 			JOptionPane.showMessageDialog(frame, "Failed to create '" + file.getName() + "'", "Error", JOptionPane.ERROR_MESSAGE);
@@ -346,6 +356,9 @@ public class GUI {
 			localDatabase = new NBTDatabase(file);
 			connection = new LocalNBTDatabaseAccess(localDatabase);
 			onConnectionOpen();
+		} catch (IllegalRequestException e) {
+			System.err.println("[Database] " + e.getMessage());
+			JOptionPane.showMessageDialog(frame, e.getMessage(), "Database Error", JOptionPane.ERROR_MESSAGE);
 		} catch (SQLException e) {
 			e.printStackTrace();
 			JOptionPane.showMessageDialog(frame, "Failed to open '" + file.getName() + "'", "Error", JOptionPane.ERROR_MESSAGE);

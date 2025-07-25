@@ -2,6 +2,7 @@ package com.luneruniverse.minecraft.nbtdatabase;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -35,66 +36,91 @@ import net.querz.nbt.tag.StringTag;
 
 public class NBTDatabase implements AutoCloseable {
 	
+	public static final int MAGIC;
+	static {
+		byte[] magicBytes = "nbt".getBytes(StandardCharsets.US_ASCII);
+		MAGIC = (magicBytes[0] << 16) | (magicBytes[1] << 8) | magicBytes[2];
+	}
+	public static final int DATABASE_VERSION = 1;
+	
 	private final File file;
 	private final Connection connection;
 	private final ConfigManager config;
 	
-	public NBTDatabase(File file) throws SQLException {
+	public NBTDatabase(File file) throws IllegalRequestException, SQLException {
 		this.file = file;
 		
 		boolean createNew = !file.exists();
 		this.connection = DriverManager.getConnection("jdbc:sqlite:" + file.getAbsolutePath());
 		
-		if (createNew) {
+		boolean success = false;
+		try {
+			if (createNew) {
+				try (Statement sql = connection.createStatement()) {
+					sql.setQueryTimeout(5);
+					
+					sql.executeUpdate("PRAGMA application_id = " + MAGIC);
+					sql.executeUpdate("PRAGMA user_version = " + DATABASE_VERSION);
+					
+					sql.executeUpdate("CREATE TABLE `config` ("
+							+ "`key` TEXT NOT NULL,"
+							+ "`value` BLOB NOT NULL)");
+					sql.executeUpdate("CREATE UNIQUE INDEX `config-key` ON `config` (`key`)");
+					sql.executeUpdate("INSERT INTO `config` VALUES (\"max_nbt_size\", 1048576)");
+					sql.executeUpdate("INSERT INTO `config` VALUES (\"max_num_results\", 100)");
+					
+					sql.executeUpdate("CREATE TABLE `entries` ("
+							+ "`id` INTEGER PRIMARY KEY,"
+							+ "`name` TEXT NOT NULL,"
+							+ "`nbt` BLOB NOT NULL,"
+							+ "`type` INTEGER NOT NULL,"
+							+ "`data_version` INTEGER NOT NULL,"
+							+ "`author_uuid` TEXT NOT NULL,"
+							+ "`author_username` TEXT NOT NULL,"
+							+ "`created` INTEGER NOT NULL,"
+							+ "`modified` INTEGER NOT NULL,"
+							+ "`hash` TEXT NOT NULL,"
+							+ "`verified` INTEGER NOT NULL)");
+					sql.executeUpdate("CREATE INDEX `entries-nbt_length` ON `entries` (length(`nbt`))");
+					sql.executeUpdate("CREATE INDEX `entries-type` ON `entries` (`type`)");
+					sql.executeUpdate("CREATE INDEX `entries-data_version` ON `entries` (`data_version`)");
+					sql.executeUpdate("CREATE INDEX `entries-author_uuid` ON `entries` (`author_uuid`)");
+					
+					sql.executeUpdate("CREATE TABLE `tags` ("
+							+ "`name` TEXT NOT NULL,"
+							+ "`color` INTEGER NOT NULL)");
+					sql.executeUpdate("CREATE UNIQUE INDEX `tags-name` ON `tags` (`name`)");
+					
+					sql.executeUpdate("CREATE TABLE `entries_tags` ("
+							+ "`entry_id` INTEGER NOT NULL,"
+							+ "`tag` TEXT NOT NULL,"
+							+ "FOREIGN KEY (`entry_id`) REFERENCES `entries` (`id`) ON UPDATE CASCADE ON DELETE CASCADE,"
+							+ "FOREIGN KEY (`tag`) REFERENCES `tags` (`name`) ON UPDATE CASCADE ON DELETE CASCADE,"
+							+ "UNIQUE (`entry_id`, `tag`))");
+					sql.executeUpdate("CREATE INDEX `entries_tags-entry_id` ON `entries_tags` (`entry_id`)");
+					sql.executeUpdate("CREATE INDEX `entries_tags-tag` ON `entries_tags` (`tag`)");
+				}
+			}
+			
 			try (Statement sql = connection.createStatement()) {
 				sql.setQueryTimeout(5);
+				sql.executeUpdate("PRAGMA foreign_keys = ON");
 				
-				sql.executeUpdate("CREATE TABLE `config` ("
-						+ "`key` TEXT NOT NULL,"
-						+ "`value` BLOB NOT NULL)");
-				sql.executeUpdate("CREATE UNIQUE INDEX `config-key` ON `config` (`key`)");
-				sql.executeUpdate("INSERT INTO `config` VALUES (\"max_nbt_size\", 1048576)");
-				sql.executeUpdate("INSERT INTO `config` VALUES (\"max_num_results\", 100)");
-				
-				sql.executeUpdate("CREATE TABLE `entries` ("
-						+ "`id` INTEGER PRIMARY KEY,"
-						+ "`name` TEXT NOT NULL,"
-						+ "`nbt` BLOB NOT NULL,"
-						+ "`type` INTEGER NOT NULL,"
-						+ "`data_version` INTEGER NOT NULL,"
-						+ "`author_uuid` TEXT NOT NULL,"
-						+ "`author_username` TEXT NOT NULL,"
-						+ "`created` INTEGER NOT NULL,"
-						+ "`modified` INTEGER NOT NULL,"
-						+ "`hash` TEXT NOT NULL,"
-						+ "`verified` INTEGER NOT NULL)");
-				sql.executeUpdate("CREATE INDEX `entries-nbt_length` ON `entries` (length(`nbt`))");
-				sql.executeUpdate("CREATE INDEX `entries-type` ON `entries` (`type`)");
-				sql.executeUpdate("CREATE INDEX `entries-data_version` ON `entries` (`data_version`)");
-				sql.executeUpdate("CREATE INDEX `entries-author_uuid` ON `entries` (`author_uuid`)");
-				
-				sql.executeUpdate("CREATE TABLE `tags` ("
-						+ "`name` TEXT NOT NULL,"
-						+ "`color` INTEGER NOT NULL)");
-				sql.executeUpdate("CREATE UNIQUE INDEX `tags-name` ON `tags` (`name`)");
-				
-				sql.executeUpdate("CREATE TABLE `entries_tags` ("
-						+ "`entry_id` INTEGER NOT NULL,"
-						+ "`tag` TEXT NOT NULL,"
-						+ "FOREIGN KEY (`entry_id`) REFERENCES `entries` (`id`) ON UPDATE CASCADE ON DELETE CASCADE,"
-						+ "FOREIGN KEY (`tag`) REFERENCES `tags` (`name`) ON UPDATE CASCADE ON DELETE CASCADE,"
-						+ "UNIQUE (`entry_id`, `tag`))");
-				sql.executeUpdate("CREATE INDEX `entries_tags-entry_id` ON `entries_tags` (`entry_id`)");
-				sql.executeUpdate("CREATE INDEX `entries_tags-tag` ON `entries_tags` (`tag`)");
+				int version = sql.executeQuery("PRAGMA user_version").getInt(1);
+				if (version != DATABASE_VERSION)
+					throw new IllegalRequestException("Database version " + version + " doesn't match " + DATABASE_VERSION);
+			}
+			
+			this.config = new ConfigManager(connection);
+			
+			success = true;
+		} finally {
+			if (!success) {
+				try {
+					connection.close();
+				} catch (SQLException e) {}
 			}
 		}
-		
-		try (Statement sql = connection.createStatement()) {
-			sql.setQueryTimeout(5);
-			sql.executeUpdate("PRAGMA foreign_keys = ON");
-		}
-		
-		this.config = new ConfigManager(connection);
 	}
 	
 	public File getFile() {

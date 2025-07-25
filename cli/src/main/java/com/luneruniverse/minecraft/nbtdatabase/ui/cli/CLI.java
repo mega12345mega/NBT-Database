@@ -254,7 +254,7 @@ public class CLI extends Thread {
 		});
 	}
 	
-	private boolean checkFileDoesntExist(File file, boolean overwrite, boolean deleteIfOverwriting) {
+	private boolean checkFileDoesntExist(File file, boolean overwrite, boolean deleteIfOverwriting) throws IOException {
 		if (file.exists()) {
 			if (!overwrite) {
 				System.err.println("File already exists: " + file.getAbsolutePath());
@@ -267,10 +267,10 @@ public class CLI extends Thread {
 			}
 			
 			if (deleteIfOverwriting)
-				file.delete();
+				Files.delete(file.toPath());
 		}
 		
-		file.getAbsoluteFile().getParentFile().mkdirs();
+		Files.createDirectories(file.getAbsoluteFile().getParentFile().toPath());
 		return false;
 	}
 	
@@ -349,8 +349,13 @@ public class CLI extends Thread {
 	}
 	
 	private void createCmd(File file, boolean overwrite) {
-		if (checkFileDoesntExist(file, overwrite, true))
+		try {
+			if (checkFileDoesntExist(file, overwrite, true))
+				return;
+		} catch (IOException e) {
+			e.printStackTrace();
 			return;
+		}
 		
 		closeConnection(true);
 		
@@ -358,6 +363,8 @@ public class CLI extends Thread {
 			localDatabase = new NBTDatabase(file);
 			connection = new LocalNBTDatabaseAccess(localDatabase);
 			System.out.println("Created and opened: " + file.getAbsolutePath());
+		} catch (IllegalRequestException e) {
+			System.err.println("[Database] " + e.getMessage());
 		} catch (SQLException e) {
 			e.printStackTrace();
 		}
@@ -373,6 +380,8 @@ public class CLI extends Thread {
 			localDatabase = new NBTDatabase(file);
 			connection = new LocalNBTDatabaseAccess(localDatabase);
 			System.out.println("Opened: " + file.getAbsolutePath());
+		} catch (IllegalRequestException e) {
+			System.err.println("[Database] " + e.getMessage());
 		} catch (SQLException e) {
 			e.printStackTrace();
 		}
@@ -492,8 +501,13 @@ public class CLI extends Thread {
 	}
 	
 	private void entryExportCmd(long id, File file, boolean overwrite) {
-		if (checkFileDoesntExist(file, overwrite, false))
+		try {
+			if (checkFileDoesntExist(file, overwrite, false))
+				return;
+		} catch (IOException e) {
+			e.printStackTrace();
 			return;
+		}
 		
 		whenComplete(connection.getEntryNBT(id), nbt -> {
 			if (nbt == null)
