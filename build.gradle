@@ -2,8 +2,10 @@ plugins {
 	id "base"
 }
 
-group = "com.luneruniverse.minecraft.nbtdatabase"
-version = "0.0.1-SNAPSHOT"
+allprojects {
+	group = "com.luneruniverse.minecraft.nbtdatabase"
+	version = "0.0.1-SNAPSHOT"
+}
 
 subprojects {
 	apply plugin: "java-library"
