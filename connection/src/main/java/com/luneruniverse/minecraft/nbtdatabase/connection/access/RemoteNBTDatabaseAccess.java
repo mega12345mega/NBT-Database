@@ -16,6 +16,8 @@ import com.luneruniverse.minecraft.nbtdatabase.Tag;
 import com.luneruniverse.minecraft.nbtdatabase.connection.DisconnectException;
 import com.luneruniverse.minecraft.nbtdatabase.connection.RequestFailedException;
 import com.luneruniverse.minecraft.nbtdatabase.connection.ServerException;
+import com.luneruniverse.minecraft.nbtdatabase.connection.netty.ClientLoginHandler;
+import com.luneruniverse.minecraft.nbtdatabase.connection.netty.DisconnectHandler;
 import com.luneruniverse.minecraft.nbtdatabase.connection.netty.ExceptionHandler;
 import com.luneruniverse.minecraft.nbtdatabase.connection.netty.NBTProtocol;
 import com.luneruniverse.minecraft.nbtdatabase.connection.netty.ProtocolVersionHandler;
@@ -34,6 +36,7 @@ import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetEntryNBTReq
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetEntryRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetTagRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetTagsRequestPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.LoginPacket.User;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.Packet;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.RemoveEntryRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.RemoveTagFromEntryRequestPacket;
@@ -66,7 +69,10 @@ public class RemoteNBTDatabaseAccess implements NBTDatabaseAccess {
 	private final Channel client;
 	private final ExecutorService executor;
 	
-	public RemoteNBTDatabaseAccess(String ip, int port) throws IOException, InterruptedException {
+	public RemoteNBTDatabaseAccess(String ip, int port, User user, String accessToken) throws IOException, InterruptedException {
+		if ((user == null) != (accessToken == null))
+			throw new IllegalArgumentException("Either both or neither of user and accessToken can be null!");
+		
 		this.ip = ip;
 		this.port = port;
 		
@@ -82,14 +88,21 @@ public class RemoteNBTDatabaseAccess implements NBTDatabaseAccess {
 						channel.pipeline().addLast("dummy", new ChannelHandlerAdapter() {});
 						NBTProtocol.bind(channel.pipeline().context("dummy"));
 						channel.pipeline().remove("dummy");
-						channel.pipeline().addLast(new ProtocolVersionHandler(true), new ExceptionHandler(closeFuture));
+						channel.pipeline().addLast(
+								new ProtocolVersionHandler(true),
+								new DisconnectHandler(),
+								new ClientLoginHandler(user, accessToken),
+								new ExceptionHandler(closeFuture));
 					}
 				})
 				.connect(ip, port);
 		client = NettyUtil.addGroupShutdown(clientFuture, group);
-		client.closeFuture().addListener(future -> closeFuture.completeExceptionally(new DisconnectException()));
+		client.closeFuture().addListener(future -> closeFuture.completeExceptionally(new DisconnectException("Connection lost")));
 		
 		executor = Executors.newSingleThreadExecutor();
+	}
+	public RemoteNBTDatabaseAccess(String ip, int port) throws IOException, InterruptedException {
+		this(ip, port, null, null);
 	}
 	
 	@Override

@@ -3,7 +3,7 @@ plugins {
 }
 
 dependencies {
-	api project(":connection")
+	api project(":ui")
 	runtimeOnly libs.slf4j.simple
 }
 

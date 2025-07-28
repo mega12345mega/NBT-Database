@@ -3,7 +3,7 @@ plugins {
 }
 
 dependencies {
-	api project(":connection")
+	api project(":ui")
 	runtimeOnly libs.slf4j.simple
 	implementation libs.steos.jnafilechooser
 	implementation libs.querz.nbt

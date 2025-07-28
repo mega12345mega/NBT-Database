@@ -1,6 +1,9 @@
 package com.luneruniverse.minecraft.nbtdatabase.connection;
 
 import java.io.IOException;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.NoSuchAlgorithmException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ForkJoinPool;
 import java.util.function.Function;
@@ -9,6 +12,7 @@ import com.luneruniverse.minecraft.nbtdatabase.connection.access.NBTDatabaseAcce
 import com.luneruniverse.minecraft.nbtdatabase.connection.netty.ExceptionHandler;
 import com.luneruniverse.minecraft.nbtdatabase.connection.netty.NBTProtocol;
 import com.luneruniverse.minecraft.nbtdatabase.connection.netty.ProtocolVersionHandler;
+import com.luneruniverse.minecraft.nbtdatabase.connection.netty.ServerLoginHandler;
 import com.luneruniverse.minecraft.nbtdatabase.connection.netty.TypedPacketHandler;
 import com.luneruniverse.minecraft.nbtdatabase.connection.netty.WebSocketNBTProtocol;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.AddEntryRequestPacket;
@@ -63,9 +67,13 @@ public class NBTDatabaseAccessServer implements AutoCloseable {
 	private final int port;
 	private final Channel server;
 	
-	public NBTDatabaseAccessServer(NBTDatabaseAccess database, int port) throws IOException, InterruptedException {
+	public NBTDatabaseAccessServer(NBTDatabaseAccess database, int port) throws NoSuchAlgorithmException, IOException, InterruptedException {
 		this.database = database;
 		this.port = port;
+		
+		KeyPairGenerator keysGenerator = KeyPairGenerator.getInstance("RSA");
+		keysGenerator.initialize(1024);
+		KeyPair keys = keysGenerator.generateKeyPair();
 		
 		TypedPacketHandler nbtHandler = new TypedPacketHandler()
 				.when(ConfigPacket.class, this::configPacket)
@@ -96,7 +104,8 @@ public class NBTDatabaseAccessServer implements AutoCloseable {
 								.addProtocol(new MagicByteProtocol("nbt", NBTProtocol.MAGIC, true, ctx -> {
 									ctx.pipeline().addAfter(
 											NBTProtocol.bind(ctx).name(), "nbt#version", new ProtocolVersionHandler(false));
-									ctx.pipeline().addAfter("nbt#version", "nbt#handler", nbtHandler);
+									ctx.pipeline().addAfter("nbt#version", "nbt#login", new ServerLoginHandler(keys));
+									ctx.pipeline().addAfter("nbt#login", "nbt#handler", nbtHandler);
 								}))
 								.addProtocol(new HttpByteProtocol(ctx -> {
 									ctx.pipeline().addAfter(ctx.name(), "http#codec", new HttpServerCodec());
@@ -109,7 +118,8 @@ public class NBTDatabaseAccessServer implements AutoCloseable {
 											.addProtocol(new WebSocketHttpMessageProtocol(ctx2 -> {
 												ctx2.pipeline().addAfter(WebSocketNBTProtocol.bind(ctx2).name(),
 														"nbt#version", ProtocolVersionHandler.waitForWebSocket(false));
-												ctx2.pipeline().addAfter("nbt#version", "nbt#handler", nbtHandler);
+												ctx2.pipeline().addAfter("nbt#version", "nbt#login", new ServerLoginHandler(keys));
+												ctx2.pipeline().addAfter("nbt#login", "nbt#handler", nbtHandler);
 											}))
 											.build());
 								}))

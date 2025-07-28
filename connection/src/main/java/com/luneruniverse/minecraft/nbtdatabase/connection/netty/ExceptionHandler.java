@@ -1,5 +1,6 @@
 package com.luneruniverse.minecraft.nbtdatabase.connection.netty;
 
+import java.security.GeneralSecurityException;
 import java.util.concurrent.CompletableFuture;
 
 import com.luneruniverse.minecraft.nbtdatabase.connection.DisconnectException;
@@ -24,6 +25,11 @@ public class ExceptionHandler extends ChannelInboundHandlerAdapter {
 		if (cause instanceof InvalidProtocolException || cause.getCause() instanceof InvalidProtocolException) {
 			ctx.close();
 			return;
+		}
+		
+		if (cause instanceof GeneralSecurityException) {
+			cause.printStackTrace();
+			cause = new DisconnectException("Login failed: Encryption failed");
 		}
 		
 		if (cause instanceof DisconnectException) {

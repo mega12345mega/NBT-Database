@@ -82,6 +82,8 @@ public class Packets {
 		}, Integer.MAX_VALUE);
 		
 		// Client -> Server
+		KRYO.register(LoginPacket.class);
+		KRYO.register(LoginPacket.User.class);
 		KRYO.register(GetConfigRequestPacket.class);
 		KRYO.register(AddEntryRequestPacket.class);
 		KRYO.register(EditEntryRequestPacket.class);
@@ -98,6 +100,8 @@ public class Packets {
 		KRYO.register(RemoveTagFromEntryRequestPacket.class);
 		
 		// Server -> Client
+		KRYO.register(LoginRequestPacket.class);
+		KRYO.register(DisconnectPacket.class);
 		KRYO.register(ServerExceptionPacket.class);
 		KRYO.register(SuccessPacket.class);
 		KRYO.register(ConfigPacket.class);

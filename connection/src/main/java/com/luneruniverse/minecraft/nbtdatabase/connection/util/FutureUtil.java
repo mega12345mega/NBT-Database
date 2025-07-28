@@ -3,8 +3,10 @@ package com.luneruniverse.minecraft.nbtdatabase.connection.util;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -136,5 +138,16 @@ public class FutureUtil {
 		});
 		return future;
 	}
+	
+	public static ThreadFactory daemonThreadFactory() {
+		ThreadFactory defaultFactory = Executors.defaultThreadFactory();
+		return r -> {
+			Thread thread = defaultFactory.newThread(r);
+			thread.setDaemon(true);
+			return thread;
+		};
+	}
+	
+	public static final Executor DAEMON_EXECUTOR = Executors.newCachedThreadPool(daemonThreadFactory());
 	
 }

@@ -42,6 +42,7 @@ import com.luneruniverse.minecraft.nbtdatabase.request.EntryFilter;
 import com.luneruniverse.minecraft.nbtdatabase.request.EntryView;
 import com.luneruniverse.minecraft.nbtdatabase.request.TagFilter;
 import com.luneruniverse.minecraft.nbtdatabase.ui.DataVersionInput;
+import com.luneruniverse.minecraft.nbtdatabase.ui.TimestampUtil;
 import com.luneruniverse.minecraft.nbtdatabase.ui.UIUtil;
 import com.luneruniverse.minecraft.nbtdatabase.ui.UUIDInput;
 import com.luneruniverse.simplecli.CommandParseException;
@@ -149,11 +150,11 @@ public class EntriesTab {
 		
 		details.add(new JLabel("Bytes: " + String.format("%,d", entry.getNbtLength())));
 		
-		JLabel created = new JLabel("Created: " + UIUtil.formatTimestamp(entry.getCreated()));
+		JLabel created = new JLabel("Created: " + TimestampUtil.formatTimestamp(entry.getCreated()));
 		if (entry.getCreated() == entry.getModified())
 			created.setToolTipText("Never Modified");
 		else
-			created.setToolTipText("Modified: " + UIUtil.formatTimestamp(entry.getModified()));
+			created.setToolTipText("Modified: " + TimestampUtil.formatTimestamp(entry.getModified()));
 		details.add(created);
 		
 		JPanel options = new JPanel();
@@ -179,6 +180,12 @@ public class EntriesTab {
 		JButton removeEntryBtn = new JButton("-");
 		options.add(removeEntryBtn);
 		removeEntryBtn.addActionListener(event -> removeEntryBtn(entry.getId(), entry.getName(), panel));
+	}
+	
+	public void clear() {
+		entries.removeAll();
+		entries.revalidate();
+		entries.repaint();
 	}
 	
 	public void refresh() {

@@ -2,19 +2,23 @@ package com.luneruniverse.minecraft.nbtdatabase.ui.gui;
 
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
+import java.awt.Desktop;
 import java.awt.Dimension;
 import java.awt.EventQueue;
+import java.awt.Toolkit;
+import java.awt.datatransfer.StringSelection;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
+import java.security.NoSuchAlgorithmException;
 import java.sql.SQLException;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
-import javax.imageio.ImageIO;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
@@ -42,14 +46,21 @@ import com.luneruniverse.minecraft.nbtdatabase.connection.ServerException;
 import com.luneruniverse.minecraft.nbtdatabase.connection.access.LocalNBTDatabaseAccess;
 import com.luneruniverse.minecraft.nbtdatabase.connection.access.NBTDatabaseAccess;
 import com.luneruniverse.minecraft.nbtdatabase.connection.access.RemoteNBTDatabaseAccess;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.LoginPacket.User;
+import com.luneruniverse.minecraft.nbtdatabase.connection.util.FutureUtil;
 import com.luneruniverse.minecraft.nbtdatabase.request.IllegalRequestException;
+import com.luneruniverse.minecraft.nbtdatabase.ui.LoginUtil;
+import com.luneruniverse.minecraft.nbtdatabase.ui.UIUtil;
 
 import jnafilechooser.api.JnaFileChooser;
+import net.raphimc.minecraftauth.step.java.StepMCToken.MCToken;
+import net.raphimc.minecraftauth.step.java.session.StepFullJavaSession;
 
 public class GUI implements AutoCloseable {
 	
 	@SuppressWarnings("resource")
 	public static void main(String[] args) {
+		LoginUtil.setMinecraftAuthLogger();
 		new GUI().open();
 	}
 	
@@ -61,6 +72,7 @@ public class GUI implements AutoCloseable {
 	}
 	
 	private final JFrame frame;
+	private final JMenu accountMenu;
 	private final JLabel connectionLabel;
 	private final JLabel serverLabel;
 	private final JPanel mainPanel;
@@ -69,6 +81,8 @@ public class GUI implements AutoCloseable {
 	private final TagsTab tagsTab;
 	private final JButton refreshBtn;
 	
+	private User user;
+	private MCToken accessToken;
 	private NBTDatabase localDatabase;
 	private NBTDatabaseAccess connection;
 	private NBTDatabaseAccessServer server;
@@ -91,11 +105,7 @@ public class GUI implements AutoCloseable {
 		});
 		frame.setSize(500, 500);
 		frame.setLocationRelativeTo(null);
-		try (InputStream in = getClass().getClassLoader().getResourceAsStream("logo_transparent.png")) {
-			frame.setIconImage(ImageIO.read(in));
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+		UIUtil.setJFrameLogo(frame);
 		
 		JMenuBar menuBar = new JMenuBar();
 		frame.setJMenuBar(menuBar);
@@ -143,6 +153,26 @@ public class GUI implements AutoCloseable {
 		JMenuItem stopServerMenuItem = new JMenuItem("Stop", 't');
 		serverMenu.add(stopServerMenuItem);
 		stopServerMenuItem.addActionListener(event -> stopServerMenuItem());
+		
+		accountMenu = new JMenu("Account");
+		accountMenu.setMnemonic('A');
+		menuBar.add(accountMenu);
+		
+		JMenu loginAccountMenu = new JMenu("Login");
+		loginAccountMenu.setMnemonic('i');
+		accountMenu.add(loginAccountMenu);
+		
+		JMenuItem linkLoginAccountMenuItem = new JMenuItem("In Browser", 'B');
+		loginAccountMenu.add(linkLoginAccountMenuItem);
+		linkLoginAccountMenuItem.addActionListener(event -> linkLoginAccountMenuItem());
+		
+		JMenuItem windowLoginAccountMenuItem = new JMenuItem("In Window", 'W');
+		loginAccountMenu.add(windowLoginAccountMenuItem);
+		windowLoginAccountMenuItem.addActionListener(event -> windowLoginAccountMenuItem());
+		
+		JMenuItem logoutAccountMenuItem = new JMenuItem("Logout", 'o');
+		accountMenu.add(logoutAccountMenuItem);
+		logoutAccountMenuItem.addActionListener(event -> logoutAccountMenuItem());
 		
 		frame.setLayout(new BorderLayout());
 		
@@ -205,6 +235,10 @@ public class GUI implements AutoCloseable {
 		return server;
 	}
 	
+	private void updateAccountMenu() {
+		accountMenu.setText(user == null ? "Account" : "Account: " + user.getUsername());
+	}
+	
 	private void updateConnectionInfo() {
 		connectionLabel.setText(connection == null ? "Disconnected" : connection.getName());
 		serverLabel.setText(server == null ? "No Server" : "Server On Port " + server.getPort());
@@ -219,8 +253,7 @@ public class GUI implements AutoCloseable {
 					if (connection == this.connection) {
 						closeConnection();
 						updateConnectionInfo();
-						JOptionPane.showMessageDialog(frame, e.getMessage() == null ? "Connection lost" : e.getMessage(),
-								"Disconnected", JOptionPane.ERROR_MESSAGE);
+						JOptionPane.showMessageDialog(frame, e.getMessage(), "Disconnected", JOptionPane.ERROR_MESSAGE);
 					}
 				});
 			}
@@ -232,6 +265,8 @@ public class GUI implements AutoCloseable {
 	
 	private void onConnectionClose() {
 		((CardLayout) mainPanel.getLayout()).first(mainPanel);
+		entriesTab.clear();
+		tagsTab.clear();
 	}
 	
 	private void onServerStart() {}
@@ -387,6 +422,14 @@ public class GUI implements AutoCloseable {
 	}
 	
 	private void connectToRemoteDatabaseMenuItem() {
+		if (accessToken != null && accessToken.isExpired()) {
+			user = null;
+			accessToken = null;
+			updateAccountMenu();
+			JOptionPane.showMessageDialog(frame, "Your access token has expired; you are now logged out",
+					"Error", JOptionPane.ERROR_MESSAGE);
+		}
+		
 		String address = JOptionPane.showInputDialog(frame, "Enter address:\n(Port will default to 25560)",
 				"Connect To Remote", JOptionPane.QUESTION_MESSAGE);
 		if (address == null)
@@ -410,7 +453,7 @@ public class GUI implements AutoCloseable {
 		closeConnection();
 		
 		try {
-			connection = new RemoteNBTDatabaseAccess(ip, port);
+			connection = new RemoteNBTDatabaseAccess(ip, port, user, accessToken == null ? null : accessToken.getAccessToken());
 			onConnectionOpen();
 		} catch (IOException | InterruptedException e) {
 			e.printStackTrace();
@@ -469,7 +512,7 @@ public class GUI implements AutoCloseable {
 		try {
 			server = new NBTDatabaseAccessServer(connection, 25560);
 			onServerStart();
-		} catch (IOException | InterruptedException e) {
+		} catch (NoSuchAlgorithmException | IOException | InterruptedException e) {
 			e.printStackTrace();
 			JOptionPane.showMessageDialog(frame, "Failed to start server", "Error", JOptionPane.ERROR_MESSAGE);
 		}
@@ -499,7 +542,7 @@ public class GUI implements AutoCloseable {
 		try {
 			server = new NBTDatabaseAccessServer(connection, port);
 			onServerStart();
-		} catch (IOException | InterruptedException e) {
+		} catch (NoSuchAlgorithmException | IOException | InterruptedException e) {
 			e.printStackTrace();
 			JOptionPane.showMessageDialog(frame, "Failed to start server on port '" + port + "'", "Error", JOptionPane.ERROR_MESSAGE);
 		}
@@ -514,6 +557,56 @@ public class GUI implements AutoCloseable {
 		closeServer();
 		
 		updateConnectionInfo();
+	}
+	
+	private void linkLoginAccountMenuItem() {
+		FutureUtil.DAEMON_EXECUTOR.execute(() -> {
+			LoginUtil.loginWithDeviceCode(url -> {
+				switch (JOptionPane.showOptionDialog(frame, "Use this link to login: (expires in 5 minutes)\n" + url,
+						"Login", JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE, null,
+						new String[] {"Open Link", "Copy Link", "Cancel"}, null)) {
+					case -1: // Close
+						break;
+					case 0: // Open Link
+						try {
+							Desktop.getDesktop().browse(new URI(url));
+						} catch (IOException | URISyntaxException e) {
+							e.printStackTrace();
+						}
+						break;
+					case 1: // Copy Link
+						Toolkit.getDefaultToolkit().getSystemClipboard().setContents(new StringSelection(url), null);
+						break;
+					case 2: // Cancel
+						break;
+				}
+			}, this::login, () -> {});
+		});
+	}
+	
+	private void windowLoginAccountMenuItem() {
+		FutureUtil.DAEMON_EXECUTOR.execute(() -> LoginUtil.loginWithJavaFX(this::login, () -> {}));
+	}
+	
+	private void login(StepFullJavaSession.FullJavaSession session) {
+		EventQueue.invokeLater(() -> {
+			user = new User(session.getMcProfile().getId(), session.getMcProfile().getName());
+			accessToken = session.getMcProfile().getMcToken();
+			updateAccountMenu();
+			JOptionPane.showMessageDialog(frame, "Logged in as " + user.getUsername() + " (" + user.getUuid() + ")",
+					"Login", JOptionPane.INFORMATION_MESSAGE);
+		});
+	}
+	
+	private void logoutAccountMenuItem() {
+		if (user == null) {
+			JOptionPane.showMessageDialog(frame, "You are already logged out", "Error", JOptionPane.ERROR_MESSAGE);
+			return;
+		}
+		
+		user = null;
+		accessToken = null;
+		updateAccountMenu();
 	}
 	
 	private void refreshBtn() {

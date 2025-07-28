@@ -4,5 +4,6 @@ dependencies {
 	implementation libs.esotericsoftware.kryo
 	implementation libs.owasp.encoder
 	implementation libs.apache.httpclient
+	implementation libs.google.gson
 	api libs.mega12345mega.simplecli
 }

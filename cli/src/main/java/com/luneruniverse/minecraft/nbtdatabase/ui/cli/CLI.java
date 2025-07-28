@@ -3,6 +3,7 @@ package com.luneruniverse.minecraft.nbtdatabase.ui.cli;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.security.NoSuchAlgorithmException;
 import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -25,13 +26,16 @@ import com.luneruniverse.minecraft.nbtdatabase.connection.ServerException;
 import com.luneruniverse.minecraft.nbtdatabase.connection.access.LocalNBTDatabaseAccess;
 import com.luneruniverse.minecraft.nbtdatabase.connection.access.NBTDatabaseAccess;
 import com.luneruniverse.minecraft.nbtdatabase.connection.access.RemoteNBTDatabaseAccess;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.LoginPacket.User;
+import com.luneruniverse.minecraft.nbtdatabase.connection.util.FutureUtil;
 import com.luneruniverse.minecraft.nbtdatabase.request.EntryFilter;
 import com.luneruniverse.minecraft.nbtdatabase.request.EntryView;
 import com.luneruniverse.minecraft.nbtdatabase.request.IllegalRequestException;
 import com.luneruniverse.minecraft.nbtdatabase.request.TagFilter;
 import com.luneruniverse.minecraft.nbtdatabase.ui.ColorInput;
 import com.luneruniverse.minecraft.nbtdatabase.ui.DataVersionInput;
-import com.luneruniverse.minecraft.nbtdatabase.ui.UIUtil;
+import com.luneruniverse.minecraft.nbtdatabase.ui.LoginUtil;
+import com.luneruniverse.minecraft.nbtdatabase.ui.TimestampUtil;
 import com.luneruniverse.minecraft.nbtdatabase.ui.UUIDInput;
 import com.luneruniverse.simplecli.CommandParseException;
 import com.luneruniverse.simplecli.CommandStream;
@@ -43,9 +47,14 @@ import com.luneruniverse.simplecli.inputs.IntegerInput;
 import com.luneruniverse.simplecli.inputs.StringInput;
 import com.luneruniverse.simplecli.inputs.StringKeyInput;
 
+import net.raphimc.minecraftauth.step.java.StepMCToken.MCToken;
+import net.raphimc.minecraftauth.step.java.session.StepFullJavaSession;
+
 public class CLI implements AutoCloseable {
 	
 	public static void main(String[] args) throws IOException {
+		LoginUtil.setMinecraftAuthLogger();
+		
 		try (CLI cli = new CLI()) {
 			for (String arg : args)
 				cli.exec(arg);
@@ -61,7 +70,7 @@ public class CLI implements AutoCloseable {
 						line.append(c);
 				}
 				try {
-					Thread.sleep(10);
+					Thread.sleep(100);
 				} catch (InterruptedException e) {
 					break;
 				}
@@ -71,6 +80,8 @@ public class CLI implements AutoCloseable {
 	
 	private final ExecutorService executor;
 	private final GroupCommand root;
+	private User user;
+	private MCToken accessToken;
 	private NBTDatabase localDatabase;
 	private NBTDatabaseAccess connection;
 	private NBTDatabaseAccessServer server;
@@ -84,6 +95,12 @@ public class CLI implements AutoCloseable {
 		root = new GroupCommand(null);
 		
 		root.addCommand(new SingleCommand("exit", this::close));
+		
+		root.addCommand(new SingleCommand("login", inputs -> loginCmd(
+				inputs.hasFlag("popup")))
+				.addFlag("popup", "p"));
+		
+		root.addCommand(new SingleCommand("logout", this::logoutCmd));
 		
 		root.addCommand(new SingleCommand("create", inputs -> createCmd(
 				new File(inputs.getArgument("file", String.class)), inputs.hasFlag("overwrite")))
@@ -272,7 +289,7 @@ public class CLI implements AutoCloseable {
 				executor.execute(() -> {
 					if (connection == this.connection) {
 						closeConnection(true);
-						System.err.println("[Disconnected] " + (e.getMessage() == null ? "Connection lost" : e.getMessage()));
+						System.err.println("[Disconnected] " + e.getMessage());
 					}
 				});
 			}
@@ -406,6 +423,38 @@ public class CLI implements AutoCloseable {
 		}
 	}
 	
+	private void loginCmd(boolean popup) {
+		FutureUtil.DAEMON_EXECUTOR.execute(() -> {
+			Consumer<StepFullJavaSession.FullJavaSession> sessionConsumer = session -> {
+				executor.execute(() -> {
+					user = new User(session.getMcProfile().getId(), session.getMcProfile().getName());
+					accessToken = session.getMcProfile().getMcToken();
+					System.out.println("Logged in as " + user.getUsername() + " (" + user.getUuid() + ")");
+				});
+			};
+			
+			if (popup) {
+				LoginUtil.loginWithJavaFX(sessionConsumer, () -> {});
+			} else {
+				LoginUtil.loginWithDeviceCode(url -> {
+					System.out.println("Use this link to login: (expires in 5 minutes)");
+					System.out.println(url);
+				}, sessionConsumer, () -> System.out.println("Login timed out"));
+			}
+		});
+	}
+	
+	private void logoutCmd() {
+		if (user == null) {
+			System.err.println("You are already logged out");
+			return;
+		}
+		
+		user = null;
+		accessToken = null;
+		System.out.println("Logged out");
+	}
+	
 	private void createCmd(File file, boolean overwrite) {
 		try {
 			if (checkFileDoesntExist(file, overwrite, true))
@@ -448,10 +497,18 @@ public class CLI implements AutoCloseable {
 	}
 	
 	private void openRemoteCmd(String ip, int port) {
+		if (accessToken != null && accessToken.isExpired()) {
+			user = null;
+			accessToken = null;
+			System.err.println("Your access token has expired; you are now logged out");
+			System.err.println("The connection was not opened in case you want to login again");
+			return;
+		}
+		
 		closeConnection(true);
 		
 		try {
-			connection = new RemoteNBTDatabaseAccess(ip, port);
+			connection = new RemoteNBTDatabaseAccess(ip, port, user, accessToken == null ? null : accessToken.getAccessToken());
 			onConnectionOpen();
 			System.out.println("Opened: " + ip + ":" + port);
 		} catch (IOException | InterruptedException e) {
@@ -476,7 +533,7 @@ public class CLI implements AutoCloseable {
 			server = new NBTDatabaseAccessServer(connection, port);
 			onServerStart();
 			System.out.println("Started server on port " + port);
-		} catch (IOException | InterruptedException e) {
+		} catch (NoSuchAlgorithmException | IOException | InterruptedException e) {
 			e.printStackTrace();
 		}
 	}
@@ -681,8 +738,8 @@ public class CLI implements AutoCloseable {
 			System.out.println("  Data Version: " + DataVersion.toViewableString(entry.getDataVersion()));
 			if (verbose) {
 				System.out.println("  Bytes: " + entry.getNbtLength());
-				System.out.println("  Created: " + UIUtil.formatTimestamp(entry.getCreated()));
-				System.out.println("  Modified: " + UIUtil.formatTimestamp(entry.getModified()));
+				System.out.println("  Created: " + TimestampUtil.formatTimestamp(entry.getCreated()));
+				System.out.println("  Modified: " + TimestampUtil.formatTimestamp(entry.getModified()));
 				System.out.println("  Hash: " + entry.getHash());
 				System.out.println("  Verified: " + entry.isVerified());
 			}

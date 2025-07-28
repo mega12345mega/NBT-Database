@@ -14,8 +14,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-import org.apache.http.NameValuePair;
-import org.apache.http.client.utils.URIBuilder;
+import org.apache.hc.core5.http.NameValuePair;
+import org.apache.hc.core5.net.URIBuilder;
 import org.owasp.encoder.Encode;
 
 import com.luneruniverse.minecraft.nbtdatabase.DataVersion;
@@ -30,7 +30,7 @@ import com.luneruniverse.minecraft.nbtdatabase.request.IllegalRequestException;
 import com.luneruniverse.minecraft.nbtdatabase.request.TagFilter;
 import com.luneruniverse.minecraft.nbtdatabase.ui.ColorInput;
 import com.luneruniverse.minecraft.nbtdatabase.ui.DataVersionInput;
-import com.luneruniverse.minecraft.nbtdatabase.ui.UIUtil;
+import com.luneruniverse.minecraft.nbtdatabase.ui.TimestampUtil;
 import com.luneruniverse.minecraft.nbtdatabase.ui.UUIDInput;
 import com.luneruniverse.simplecli.CommandParseException;
 import com.luneruniverse.simplecli.inputs.BooleanInput;
@@ -278,10 +278,10 @@ public class WebsiteHandler extends SimpleChannelInboundHandler<FullHttpRequest>
 					entriesStr.append("Never Modified");
 				} else {
 					entriesStr.append("Modified: ");
-					entriesStr.append(UIUtil.formatTimestamp(entry.getModified()));
+					entriesStr.append(TimestampUtil.formatTimestamp(entry.getModified()));
 				}
 				entriesStr.append("\">Created: ");
-				entriesStr.append(UIUtil.formatTimestamp(entry.getCreated()));
+				entriesStr.append(TimestampUtil.formatTimestamp(entry.getCreated()));
 				entriesStr.append("</text>");
 				
 				if (id.isPresent()) {

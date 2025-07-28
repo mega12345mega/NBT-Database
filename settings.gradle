@@ -1,5 +1,6 @@
 rootProject.name = "nbtdatabase"
 include ":file"
 include ":connection"
+include ":ui"
 include ":cli"
 include ":gui"

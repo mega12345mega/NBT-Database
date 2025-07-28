@@ -67,6 +67,12 @@ public class TagsTab {
 		removeTagBtn.addActionListener(event -> removeTagBtn(tag.getName()));
 	}
 	
+	public void clear() {
+		table.removeAll();
+		table.revalidate();
+		table.repaint();
+	}
+	
 	public void refresh() {
 		gui.whenComplete(gui.getConnection().getTags(filter), tags -> {
 			table.removeAll();

@@ -1,0 +1,4 @@
+dependencies {
+	api project(":connection")
+	api libs.raphimc.minecraftauth
+}

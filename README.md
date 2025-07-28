@@ -20,3 +20,13 @@ Note that WebSockets are also supported, but you would have to implement the pro
 **The standard port is 25560, which should be used whenever possible!**
 
 If you only need to work with local `.db` files directly, you can just use the `:file` module.
+
+# Building
+
+```
+git clone https://github.com/mega12345mega/NBT-Database.git nbtdatabase
+cd nbtdatabase
+gradlew build
+```
+
+Note that this project uses a LGPL 3 library ([RaphiMC/MinecraftAuth](https://github.com/RaphiMC/MinecraftAuth)) - you can modify this dependency by modifying `connection/build.gradle` and rebuilding.
