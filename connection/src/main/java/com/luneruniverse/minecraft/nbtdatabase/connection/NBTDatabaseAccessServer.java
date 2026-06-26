@@ -9,6 +9,9 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.function.Function;
 
 import com.luneruniverse.minecraft.nbtdatabase.connection.access.NBTDatabaseAccess;
+import com.luneruniverse.minecraft.nbtdatabase.connection.exceptions.IllegalRequestServerException;
+import com.luneruniverse.minecraft.nbtdatabase.connection.exceptions.InternalServerException;
+import com.luneruniverse.minecraft.nbtdatabase.connection.exceptions.ServerException;
 import com.luneruniverse.minecraft.nbtdatabase.connection.netty.ExceptionHandler;
 import com.luneruniverse.minecraft.nbtdatabase.connection.netty.NBTProtocol;
 import com.luneruniverse.minecraft.nbtdatabase.connection.netty.ProtocolVersionHandler;
@@ -34,7 +37,6 @@ import com.luneruniverse.minecraft.nbtdatabase.connection.packets.Packet;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.RemoveEntryRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.RemoveTagFromEntryRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.RemoveTagRequestPacket;
-import com.luneruniverse.minecraft.nbtdatabase.connection.packets.ServerExceptionPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.SuccessPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.TagsPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.util.FutureUtil;
@@ -138,14 +140,19 @@ public class NBTDatabaseAccessServer implements AutoCloseable {
 	private <T> void respond(Packet packet, Channel channel, CompletableFuture<T> request, Function<T, Packet> packer) {
 		request.whenComplete((value, e) -> {
 			if (e != null) {
-				if (e instanceof IllegalRequestException)
-					NBTProtocol.reply(channel, packet, new ServerExceptionPacket(e.getMessage()));
-				else {
+				ServerException serverException;
+				if (e instanceof ServerException) {
+					serverException = (ServerException) e;
+				} else if (e instanceof IllegalRequestException) {
+					serverException = new IllegalRequestServerException((IllegalRequestException) e);
+				} else {
 					e.printStackTrace();
-					NBTProtocol.reply(channel, packet, new ServerExceptionPacket("An internal server error occurred"));
+					serverException = new InternalServerException();
 				}
-			} else
+				NBTProtocol.reply(channel, packet, serverException.toPacket());
+			} else {
 				NBTProtocol.reply(channel, packet, packer.apply(value));
+			}
 		});
 	}
 	

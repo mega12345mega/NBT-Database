@@ -3,7 +3,7 @@ package com.luneruniverse.minecraft.nbtdatabase.connection.netty;
 import java.security.GeneralSecurityException;
 import java.util.concurrent.CompletableFuture;
 
-import com.luneruniverse.minecraft.nbtdatabase.connection.DisconnectException;
+import com.luneruniverse.minecraft.nbtdatabase.connection.exceptions.DisconnectException;
 import com.luneruniverse.nettymux.InvalidProtocolException;
 
 import io.netty.channel.ChannelHandlerContext;

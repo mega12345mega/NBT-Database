@@ -14,6 +14,9 @@ import com.esotericsoftware.kryo.kryo5.util.DefaultClassResolver;
 import com.luneruniverse.minecraft.nbtdatabase.Config;
 import com.luneruniverse.minecraft.nbtdatabase.Entry;
 import com.luneruniverse.minecraft.nbtdatabase.Tag;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.exceptions.AuthorizationServerExceptionPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.exceptions.IllegalRequestServerExceptionPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.exceptions.InternalServerExceptionPacket;
 import com.luneruniverse.minecraft.nbtdatabase.request.EntryFilter;
 import com.luneruniverse.minecraft.nbtdatabase.request.EntryView;
 import com.luneruniverse.minecraft.nbtdatabase.request.TagFilter;
@@ -102,7 +105,9 @@ public class Packets {
 		// Server -> Client
 		KRYO.register(LoginRequestPacket.class);
 		KRYO.register(DisconnectPacket.class);
-		KRYO.register(ServerExceptionPacket.class);
+		KRYO.register(AuthorizationServerExceptionPacket.class);
+		KRYO.register(IllegalRequestServerExceptionPacket.class);
+		KRYO.register(InternalServerExceptionPacket.class);
 		KRYO.register(SuccessPacket.class);
 		KRYO.register(ConfigPacket.class);
 		KRYO.register(EntriesPacket.class);

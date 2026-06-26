@@ -22,6 +22,9 @@ import com.luneruniverse.minecraft.nbtdatabase.DataVersion;
 import com.luneruniverse.minecraft.nbtdatabase.Entry;
 import com.luneruniverse.minecraft.nbtdatabase.Tag;
 import com.luneruniverse.minecraft.nbtdatabase.connection.access.NBTDatabaseAccess;
+import com.luneruniverse.minecraft.nbtdatabase.connection.exceptions.AuthorizationServerException;
+import com.luneruniverse.minecraft.nbtdatabase.connection.exceptions.IllegalRequestServerException;
+import com.luneruniverse.minecraft.nbtdatabase.connection.exceptions.InternalServerException;
 import com.luneruniverse.minecraft.nbtdatabase.connection.util.FutureUtil;
 import com.luneruniverse.minecraft.nbtdatabase.connection.util.IOUtil;
 import com.luneruniverse.minecraft.nbtdatabase.request.EntryFilter;
@@ -345,9 +348,13 @@ public class WebsiteHandler extends SimpleChannelInboundHandler<FullHttpRequest>
 		
 		request.whenComplete((value, e) -> {
 			if (e != null) {
-				if (e instanceof IllegalRequestException)
+				if (e instanceof IllegalRequestException || e instanceof IllegalRequestServerException) {
 					writeError(ctx, HttpResponseStatus.BAD_REQUEST, e.getMessage());
-				else {
+				} else if (e instanceof AuthorizationServerException) {
+					writeError(ctx, HttpResponseStatus.FORBIDDEN, e.getMessage());
+				} else if (e instanceof InternalServerException) {
+					writeError(ctx, HttpResponseStatus.INTERNAL_SERVER_ERROR, null);
+				} else {
 					e.printStackTrace();
 					writeError(ctx, HttpResponseStatus.INTERNAL_SERVER_ERROR, null);
 				}

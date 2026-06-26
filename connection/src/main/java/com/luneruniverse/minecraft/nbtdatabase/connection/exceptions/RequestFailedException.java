@@ -1,4 +1,4 @@
-package com.luneruniverse.minecraft.nbtdatabase.connection;
+package com.luneruniverse.minecraft.nbtdatabase.connection.exceptions;
 
 @SuppressWarnings("serial")
 public class RequestFailedException extends Exception {

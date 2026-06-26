@@ -8,8 +8,8 @@ import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 
-import com.luneruniverse.minecraft.nbtdatabase.connection.DisconnectException;
 import com.luneruniverse.minecraft.nbtdatabase.connection.MojangAuth;
+import com.luneruniverse.minecraft.nbtdatabase.connection.exceptions.DisconnectException;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.LoginPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.LoginPacket.User;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.LoginRequestPacket;

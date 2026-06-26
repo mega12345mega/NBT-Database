@@ -13,9 +13,8 @@ import java.util.function.Function;
 import com.luneruniverse.minecraft.nbtdatabase.Config;
 import com.luneruniverse.minecraft.nbtdatabase.Entry;
 import com.luneruniverse.minecraft.nbtdatabase.Tag;
-import com.luneruniverse.minecraft.nbtdatabase.connection.DisconnectException;
-import com.luneruniverse.minecraft.nbtdatabase.connection.RequestFailedException;
-import com.luneruniverse.minecraft.nbtdatabase.connection.ServerException;
+import com.luneruniverse.minecraft.nbtdatabase.connection.exceptions.DisconnectException;
+import com.luneruniverse.minecraft.nbtdatabase.connection.exceptions.RequestFailedException;
 import com.luneruniverse.minecraft.nbtdatabase.connection.netty.ClientLoginHandler;
 import com.luneruniverse.minecraft.nbtdatabase.connection.netty.DisconnectHandler;
 import com.luneruniverse.minecraft.nbtdatabase.connection.netty.ExceptionHandler;
@@ -41,9 +40,9 @@ import com.luneruniverse.minecraft.nbtdatabase.connection.packets.Packet;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.RemoveEntryRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.RemoveTagFromEntryRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.RemoveTagRequestPacket;
-import com.luneruniverse.minecraft.nbtdatabase.connection.packets.ServerExceptionPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.SuccessPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.TagsPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.exceptions.ServerExceptionPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.util.FutureUtil;
 import com.luneruniverse.minecraft.nbtdatabase.connection.util.NettyUtil;
 import com.luneruniverse.minecraft.nbtdatabase.request.EntryFilter;
@@ -117,7 +116,7 @@ public class RemoteNBTDatabaseAccess implements NBTDatabaseAccess {
 				if (responsePacketType.isInstance(response))
 					return unpacker.apply(responsePacketType.cast(response));
 				if (response instanceof ServerExceptionPacket)
-					throw new ServerException(((ServerExceptionPacket) response).getMessage());
+					throw ((ServerExceptionPacket) response).getException();
 				if (response == null)
 					throw new RequestFailedException("Request timed out");
 				throw new RequestFailedException("Request response was invalid");
