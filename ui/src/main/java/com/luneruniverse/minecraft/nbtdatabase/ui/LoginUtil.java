@@ -22,7 +22,6 @@ public class LoginUtil {
 		MinecraftAuth.LOGGER = new ILogger() {
 			@Override
 			public void info(String message) {}
-			
 			@Override
 			public void warn(String message) {
 				System.err.println("[MinecraftAuth] " + message);

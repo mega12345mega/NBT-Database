@@ -7,6 +7,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 import com.luneruniverse.minecraft.nbtdatabase.request.IllegalRequestException;
+import com.luneruniverse.minecraft.nbtdatabase.sqlbuilder.SQLParamSetter;
 
 public class ConfigManager {
 	
@@ -45,12 +46,10 @@ public class ConfigManager {
 		}
 	}
 	
-	private interface PreparedStatementSetter<T> {
-		public void set(PreparedStatement sql, int parameterIndex, T value) throws SQLException;
-	}
-	private <T> void set(String name, PreparedStatementSetter<T> setter, T value) throws SQLException {
+	private <T> void set(String name, SQLParamSetter<T> setter, T value) throws SQLException {
 		try (PreparedStatement sql = connection.prepareStatement("UPDATE `config` SET `value`=? WHERE `key`=?")) {
-			setter.set(sql, 1, value);
+			sql.setQueryTimeout(5);
+			setter.setParameter(sql, 1, value);
 			sql.setString(2, name);
 			sql.executeUpdate();
 		}
