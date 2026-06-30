@@ -5,6 +5,7 @@ import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
 
 import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
@@ -23,11 +24,15 @@ import io.netty.channel.SimpleChannelInboundHandler;
 public class ServerLoginHandler extends SimpleChannelInboundHandler<Packet> {
 	
 	private final KeyPair keys;
+	private final Consumer<Optional<LoginPacket.User>> onConnect;
 	private final byte[] challenge;
+	private boolean loginReceived;
 	
-	public ServerLoginHandler(KeyPair keys) {
+	public ServerLoginHandler(KeyPair keys, Consumer<Optional<LoginPacket.User>> onConnect) {
 		this.keys = keys;
-		this.challenge = new byte[4];
+		this.onConnect = onConnect;
+		
+		challenge = new byte[4];
 		new SecureRandom().nextBytes(challenge);
 	}
 	
@@ -48,6 +53,12 @@ public class ServerLoginHandler extends SimpleChannelInboundHandler<Packet> {
 	@Override
 	protected void channelRead0(ChannelHandlerContext ctx, Packet msg) throws Exception {
 		if (msg instanceof LoginPacket) {
+			if (loginReceived) {
+				ctx.close();
+				return;
+			}
+			loginReceived = true;
+			
 			LoginPacket login = (LoginPacket) msg;
 			
 			Cipher cipher = Cipher.getInstance(keys.getPrivate().getAlgorithm());
@@ -75,6 +86,7 @@ public class ServerLoginHandler extends SimpleChannelInboundHandler<Packet> {
 						ctx.writeAndFlush(new DisconnectPacket("Login failed: Couldn't verify with Mojang"))
 								.addListener(ChannelFutureListener.CLOSE);
 					} else if (hasJoined) {
+						onConnect.accept(user);
 						wait.setDiscard(false);
 						ctx.pipeline().remove(wait);
 					} else {
@@ -82,7 +94,8 @@ public class ServerLoginHandler extends SimpleChannelInboundHandler<Packet> {
 								.addListener(ChannelFutureListener.CLOSE);
 					}
 				});
-			}
+			} else
+				onConnect.accept(user);
 			
 			ctx.pipeline().remove(this);
 		} else

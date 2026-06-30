@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ForkJoinPool;
 import java.util.function.Function;
@@ -39,6 +41,8 @@ import com.luneruniverse.minecraft.nbtdatabase.connection.packets.RemoveTagFromE
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.RemoveTagRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.SuccessPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.TagsPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.user.ClientType;
+import com.luneruniverse.minecraft.nbtdatabase.connection.user.User;
 import com.luneruniverse.minecraft.nbtdatabase.connection.util.FutureUtil;
 import com.luneruniverse.minecraft.nbtdatabase.connection.util.NettyUtil;
 import com.luneruniverse.minecraft.nbtdatabase.request.IllegalRequestException;
@@ -67,11 +71,14 @@ public class NBTDatabaseAccessServer implements AutoCloseable {
 	
 	private final NBTDatabaseAccess database;
 	private final int port;
+	private final Map<Channel, User> users;
 	private final Channel server;
 	
 	public NBTDatabaseAccessServer(NBTDatabaseAccess database, int port) throws NoSuchAlgorithmException, IOException, InterruptedException {
 		this.database = database;
 		this.port = port;
+		
+		users = new HashMap<>();
 		
 		KeyPairGenerator keysGenerator = KeyPairGenerator.getInstance("RSA");
 		keysGenerator.initialize(1024);
@@ -102,11 +109,13 @@ public class NBTDatabaseAccessServer implements AutoCloseable {
 				.channel(NioServerSocketChannel.class)
 				.childHandler(new ChannelInitializer<SocketChannel>() {
 					protected void initChannel(SocketChannel channel) throws Exception {
+						channel.closeFuture().addListener(future -> onUserDisconnect(channel));
 						channel.pipeline().addLast(NettyByteMultiplexer.builder()
 								.addProtocol(new MagicByteProtocol("nbt", NBTProtocol.MAGIC, true, ctx -> {
 									ctx.pipeline().addAfter(
 											NBTProtocol.bind(ctx).name(), "nbt#version", new ProtocolVersionHandler(false));
-									ctx.pipeline().addAfter("nbt#version", "nbt#login", new ServerLoginHandler(keys));
+									ctx.pipeline().addAfter("nbt#version", "nbt#login", new ServerLoginHandler(keys,
+											user -> onUserConnect(channel, User.fromConnect(channel, user, ClientType.RAW_SOCKET))));
 									ctx.pipeline().addAfter("nbt#login", "nbt#handler", nbtHandler);
 								}))
 								.addProtocol(new HttpByteProtocol(ctx -> {
@@ -120,7 +129,8 @@ public class NBTDatabaseAccessServer implements AutoCloseable {
 											.addProtocol(new WebSocketHttpMessageProtocol(ctx2 -> {
 												ctx2.pipeline().addAfter(WebSocketNBTProtocol.bind(ctx2).name(),
 														"nbt#version", ProtocolVersionHandler.waitForWebSocket(false));
-												ctx2.pipeline().addAfter("nbt#version", "nbt#login", new ServerLoginHandler(keys));
+												ctx2.pipeline().addAfter("nbt#version", "nbt#login", new ServerLoginHandler(keys,
+														user -> onUserConnect(channel, User.fromConnect(channel, user, ClientType.WEB_SOCKET))));
 												ctx2.pipeline().addAfter("nbt#login", "nbt#handler", nbtHandler);
 											}))
 											.build());
@@ -135,6 +145,18 @@ public class NBTDatabaseAccessServer implements AutoCloseable {
 	
 	public int getPort() {
 		return port;
+	}
+	
+	private void onUserConnect(Channel channel, User user) {
+		users.put(channel, user);
+		System.out.println("[Server] Connected: " + user);
+	}
+	
+	private void onUserDisconnect(Channel channel) {
+		User user = users.remove(channel);
+		if (user == null)
+			return;
+		System.out.println("[Server] Disconnected: " + user);
 	}
 	
 	private <T> void respond(Packet packet, Channel channel, CompletableFuture<T> request, Function<T, Packet> packer) {

@@ -24,6 +24,7 @@ public class ClientLoginHandler extends SimpleChannelInboundHandler<Packet> {
 	private final User user;
 	private final String accessToken;
 	private final WaitHandler wait;
+	private boolean loginRequestReceived;
 	
 	public ClientLoginHandler(User user, String accessToken) {
 		this.user = user;
@@ -39,6 +40,10 @@ public class ClientLoginHandler extends SimpleChannelInboundHandler<Packet> {
 	@Override
 	protected void channelRead0(ChannelHandlerContext ctx, Packet msg) throws Exception {
 		if (msg instanceof LoginRequestPacket) {
+			if (loginRequestReceived)
+				throw new DisconnectException("Login failed: Server requested login twice");
+			loginRequestReceived = true;
+			
 			LoginRequestPacket request = (LoginRequestPacket) msg;
 			
 			KeyGenerator sharedKeyGenerator = KeyGenerator.getInstance("AES");
