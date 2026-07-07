@@ -1,4 +1,4 @@
-package com.luneruniverse.minecraft.nbtdatabase.connection;
+package com.luneruniverse.minecraft.nbtdatabase.connection.server;
 
 import java.io.IOException;
 import java.security.KeyPair;
@@ -11,8 +11,6 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.function.Function;
 
 import com.luneruniverse.minecraft.nbtdatabase.connection.access.NBTDatabaseAccess;
-import com.luneruniverse.minecraft.nbtdatabase.connection.exceptions.IllegalRequestServerException;
-import com.luneruniverse.minecraft.nbtdatabase.connection.exceptions.InternalServerException;
 import com.luneruniverse.minecraft.nbtdatabase.connection.exceptions.ServerException;
 import com.luneruniverse.minecraft.nbtdatabase.connection.netty.ExceptionHandler;
 import com.luneruniverse.minecraft.nbtdatabase.connection.netty.NBTProtocol;
@@ -20,32 +18,38 @@ import com.luneruniverse.minecraft.nbtdatabase.connection.netty.ProtocolVersionH
 import com.luneruniverse.minecraft.nbtdatabase.connection.netty.ServerLoginHandler;
 import com.luneruniverse.minecraft.nbtdatabase.connection.netty.TypedPacketHandler;
 import com.luneruniverse.minecraft.nbtdatabase.connection.netty.WebSocketNBTProtocol;
-import com.luneruniverse.minecraft.nbtdatabase.connection.packets.AddEntryRequestPacket;
-import com.luneruniverse.minecraft.nbtdatabase.connection.packets.AddTagRequestPacket;
-import com.luneruniverse.minecraft.nbtdatabase.connection.packets.AddTagToEntryRequestPacket;
-import com.luneruniverse.minecraft.nbtdatabase.connection.packets.ConfigPacket;
-import com.luneruniverse.minecraft.nbtdatabase.connection.packets.EditEntryRequestPacket;
-import com.luneruniverse.minecraft.nbtdatabase.connection.packets.EditTagRequestPacket;
-import com.luneruniverse.minecraft.nbtdatabase.connection.packets.EntriesPacket;
-import com.luneruniverse.minecraft.nbtdatabase.connection.packets.EntryIdPacket;
-import com.luneruniverse.minecraft.nbtdatabase.connection.packets.EntryNBTPacket;
-import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetConfigRequestPacket;
-import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetEntriesRequestPacket;
-import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetEntryNBTRequestPacket;
-import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetEntryRequestPacket;
-import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetTagRequestPacket;
-import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetTagsRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.Packet;
-import com.luneruniverse.minecraft.nbtdatabase.connection.packets.RemoveEntryRequestPacket;
-import com.luneruniverse.minecraft.nbtdatabase.connection.packets.RemoveTagFromEntryRequestPacket;
-import com.luneruniverse.minecraft.nbtdatabase.connection.packets.RemoveTagRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.SuccessPacket;
-import com.luneruniverse.minecraft.nbtdatabase.connection.packets.TagsPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.config.ConfigPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.config.GetConfigRequestPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.config.LockConfigRequestPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.config.SetConfigRequestPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.config.UnlockConfigRequestPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.entries.AddEntryRequestPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.entries.EditEntryRequestPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.entries.EntriesPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.entries.EntryIdPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.entries.EntryNBTPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.entries.GetEntriesRequestPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.entries.GetEntryNBTRequestPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.entries.GetEntryRequestPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.entries.LockEntryRequestPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.entries.RemoveEntryRequestPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.entries.UnlockEntryRequestPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.tags.AddTagRequestPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.tags.AddTagToEntryRequestPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.tags.EditTagRequestPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.tags.GetTagRequestPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.tags.GetTagsRequestPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.tags.LockTagRequestPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.tags.RemoveTagFromEntryRequestPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.tags.RemoveTagRequestPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.tags.TagsPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.tags.UnlockTagRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.user.ClientType;
 import com.luneruniverse.minecraft.nbtdatabase.connection.user.User;
 import com.luneruniverse.minecraft.nbtdatabase.connection.util.FutureUtil;
 import com.luneruniverse.minecraft.nbtdatabase.connection.util.NettyUtil;
-import com.luneruniverse.minecraft.nbtdatabase.request.IllegalRequestException;
 import com.luneruniverse.minecraft.nbtdatabase.ui.website.WebsiteHandler;
 import com.luneruniverse.nettymux.byteprotocol.HttpByteProtocol;
 import com.luneruniverse.nettymux.byteprotocol.MagicByteProtocol;
@@ -71,12 +75,19 @@ public class NBTDatabaseAccessServer implements AutoCloseable {
 	
 	private final NBTDatabaseAccess database;
 	private final int port;
+	private final Lock configLock;
+	private final LockCacheMap<Long> entryLocks;
+	private final LockCacheMap<String> tagLocks;
 	private final Map<Channel, User> users;
 	private final Channel server;
 	
 	public NBTDatabaseAccessServer(NBTDatabaseAccess database, int port) throws NoSuchAlgorithmException, IOException, InterruptedException {
 		this.database = database;
 		this.port = port;
+		
+		configLock = Lock.forConfig(database);
+		entryLocks = LockCacheMap.forEntries(database);
+		tagLocks = LockCacheMap.forTags(database);
 		
 		users = new HashMap<>();
 		
@@ -85,14 +96,20 @@ public class NBTDatabaseAccessServer implements AutoCloseable {
 		KeyPair keys = keysGenerator.generateKeyPair();
 		
 		TypedPacketHandler nbtHandler = new TypedPacketHandler()
-				.when(ConfigPacket.class, this::configPacket)
+				.when(LockConfigRequestPacket.class, this::lockConfigRequestPacket)
+				.when(UnlockConfigRequestPacket.class, this::unlockConfigRequestPacket)
+				.when(SetConfigRequestPacket.class, this::setConfigRequestPacket)
 				.when(GetConfigRequestPacket.class, this::getConfigRequestPacket)
+				.when(LockEntryRequestPacket.class, this::lockEntryRequestPacket)
+				.when(UnlockEntryRequestPacket.class, this::unlockEntryRequestPacket)
 				.when(AddEntryRequestPacket.class, this::addEntryRequestPacket)
 				.when(EditEntryRequestPacket.class, this::editEntryRequestPacket)
 				.when(RemoveEntryRequestPacket.class, this::removeEntryRequestPacket)
 				.when(GetEntryRequestPacket.class, this::getEntryRequestPacket)
 				.when(GetEntryNBTRequestPacket.class, this::getEntryNBTRequestPacket)
 				.when(GetEntriesRequestPacket.class, this::getEntriesRequestPacket)
+				.when(LockTagRequestPacket.class, this::lockTagRequestPacket)
+				.when(UnlockTagRequestPacket.class, this::unlockTagRequestPacket)
 				.when(AddTagRequestPacket.class, this::addTagRequestPacket)
 				.when(EditTagRequestPacket.class, this::editTagRequestPacket)
 				.when(RemoveTagRequestPacket.class, this::removeTagRequestPacket)
@@ -157,37 +174,48 @@ public class NBTDatabaseAccessServer implements AutoCloseable {
 		if (user == null)
 			return;
 		System.out.println("[Server] Disconnected: " + user);
+		
+		configLock.disconnect(channel);
+		entryLocks.disconnect(channel);
+		tagLocks.disconnect(channel);
 	}
 	
 	private <T> void respond(Packet packet, Channel channel, CompletableFuture<T> request, Function<T, Packet> packer) {
-		request.whenComplete((value, e) -> {
-			if (e != null) {
-				ServerException serverException;
-				if (e instanceof ServerException) {
-					serverException = (ServerException) e;
-				} else if (e instanceof IllegalRequestException) {
-					serverException = new IllegalRequestServerException((IllegalRequestException) e);
-				} else {
-					e.printStackTrace();
-					serverException = new InternalServerException();
-				}
-				NBTProtocol.reply(channel, packet, serverException.toPacket());
-			} else {
+		request.whenCompleteAsync((value, e) -> {
+			if (e != null)
+				NBTProtocol.reply(channel, packet, ServerException.from(e, true).toPacket());
+			else
 				NBTProtocol.reply(channel, packet, packer.apply(value));
-			}
-		});
+		}, channel.eventLoop());
 	}
 	
 	private void respondVoid(Packet packet, Channel channel, CompletableFuture<Void> request) {
 		respond(packet, channel, request, v -> new SuccessPacket());
 	}
 	
-	private void configPacket(ConfigPacket packet, Channel channel) {
-		respondVoid(packet, channel, database.setConfig(packet.getConfig()));
+	private void lockConfigRequestPacket(LockConfigRequestPacket packet, Channel channel) {
+		respondVoid(packet, channel, configLock.clientLock(channel));
+	}
+	
+	private void unlockConfigRequestPacket(UnlockConfigRequestPacket packet, Channel channel) {
+		respondVoid(packet, channel, configLock.clientUnlock(channel));
+	}
+	
+	private void setConfigRequestPacket(SetConfigRequestPacket packet, Channel channel) {
+		respondVoid(packet, channel, configLock.serverLockDuring(channel,
+				() -> database.setConfig(packet.getConfig())));
 	}
 	
 	private void getConfigRequestPacket(GetConfigRequestPacket packet, Channel channel) {
 		respond(packet, channel, database.getConfig(), ConfigPacket::new);
+	}
+	
+	private void lockEntryRequestPacket(LockEntryRequestPacket packet, Channel channel) {
+		respondVoid(packet, channel, entryLocks.clientLock(packet.getId(), channel));
+	}
+	
+	private void unlockEntryRequestPacket(UnlockEntryRequestPacket packet, Channel channel) {
+		respondVoid(packet, channel, entryLocks.clientUnlock(packet.getId(), channel));
 	}
 	
 	private void addEntryRequestPacket(AddEntryRequestPacket packet, Channel channel) {
@@ -196,12 +224,14 @@ public class NBTDatabaseAccessServer implements AutoCloseable {
 	}
 	
 	private void editEntryRequestPacket(EditEntryRequestPacket packet, Channel channel) {
-		respondVoid(packet, channel, database.editEntry(packet.getId(), packet.getName(), packet.getNbt(), packet.getType(),
-				packet.getDataVersion(), packet.getAuthorUuid(), packet.getAuthorUsername(), packet.isVerified()));
+		respondVoid(packet, channel, entryLocks.serverLockDuring(packet.getId(), channel,
+				() -> database.editEntry(packet.getId(), packet.getName(), packet.getNbt(), packet.getType(),
+						packet.getDataVersion(), packet.getAuthorUuid(), packet.getAuthorUsername(), packet.isVerified())));
 	}
 	
 	private void removeEntryRequestPacket(RemoveEntryRequestPacket packet, Channel channel) {
-		respondVoid(packet, channel, database.removeEntry(packet.getId()));
+		respondVoid(packet, channel, entryLocks.serverLockDuring(packet.getId(), channel,
+				() -> database.removeEntry(packet.getId())));
 	}
 	
 	private void getEntryRequestPacket(GetEntryRequestPacket packet, Channel channel) {
@@ -216,16 +246,27 @@ public class NBTDatabaseAccessServer implements AutoCloseable {
 		respond(packet, channel, database.getEntries(packet.getFilter(), packet.getView()), EntriesPacket::new);
 	}
 	
+	private void lockTagRequestPacket(LockTagRequestPacket packet, Channel channel) {
+		respondVoid(packet, channel, tagLocks.clientLock(packet.getName(), channel));
+	}
+	
+	private void unlockTagRequestPacket(UnlockTagRequestPacket packet, Channel channel) {
+		respondVoid(packet, channel, tagLocks.clientUnlock(packet.getName(), channel));
+	}
+	
 	private void addTagRequestPacket(AddTagRequestPacket packet, Channel channel) {
-		respondVoid(packet, channel, database.addTag(packet.getName(), packet.getColor()));
+		respondVoid(packet, channel, tagLocks.serverLockDuring(packet.getName(), channel,
+				() -> database.addTag(packet.getName(), packet.getColor())));
 	}
 	
 	private void editTagRequestPacket(EditTagRequestPacket packet, Channel channel) {
-		respondVoid(packet, channel, database.editTag(packet.getCurrentName(), packet.getName(), packet.getColor()));
+		respondVoid(packet, channel, tagLocks.serverLockDuring(packet.getCurrentName(), channel,
+				() -> database.editTag(packet.getCurrentName(), packet.getName(), packet.getColor())));
 	}
 	
 	private void removeTagRequestPacket(RemoveTagRequestPacket packet, Channel channel) {
-		respondVoid(packet, channel, database.removeTag(packet.getName()));
+		respondVoid(packet, channel, tagLocks.serverLockDuring(packet.getName(), channel,
+				() -> database.removeTag(packet.getName())));
 	}
 	
 	private void getTagRequestPacket(GetTagRequestPacket packet, Channel channel) {
@@ -237,11 +278,15 @@ public class NBTDatabaseAccessServer implements AutoCloseable {
 	}
 	
 	private void addTagToEntryRequestPacket(AddTagToEntryRequestPacket packet, Channel channel) {
-		respondVoid(packet, channel, database.addTagToEntry(packet.getEntry(), packet.getTag()));
+		respondVoid(packet, channel, tagLocks.serverLockDuring(packet.getTag(), channel,
+				() -> entryLocks.serverLockDuring(packet.getEntry(), channel,
+						() -> database.addTagToEntry(packet.getEntry(), packet.getTag()))));
 	}
 	
 	private void removeTagFromEntryRequestPacket(RemoveTagFromEntryRequestPacket packet, Channel channel) {
-		respondVoid(packet, channel, database.removeTagFromEntry(packet.getEntry(), packet.getTag()));
+		respondVoid(packet, channel, tagLocks.serverLockDuring(packet.getTag(), channel,
+				() -> entryLocks.serverLockDuring(packet.getEntry(), channel,
+						() -> database.removeTagFromEntry(packet.getEntry(), packet.getTag()))));
 	}
 	
 	public CompletableFuture<Void> closeAsync() {

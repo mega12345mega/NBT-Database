@@ -2,7 +2,7 @@ package com.luneruniverse.minecraft.nbtdatabase.connection.netty;
 
 import com.luneruniverse.minecraft.nbtdatabase.connection.exceptions.DisconnectException;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.Packet;
-import com.luneruniverse.minecraft.nbtdatabase.connection.packets.ProtocolVersionPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.login.ProtocolVersionPacket;
 
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFuture;

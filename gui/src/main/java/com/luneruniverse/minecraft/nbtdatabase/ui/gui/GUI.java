@@ -41,13 +41,13 @@ import javax.swing.UIManager;
 
 import com.luneruniverse.minecraft.nbtdatabase.DataVersion;
 import com.luneruniverse.minecraft.nbtdatabase.NBTDatabase;
-import com.luneruniverse.minecraft.nbtdatabase.connection.NBTDatabaseAccessServer;
 import com.luneruniverse.minecraft.nbtdatabase.connection.access.LocalNBTDatabaseAccess;
 import com.luneruniverse.minecraft.nbtdatabase.connection.access.NBTDatabaseAccess;
 import com.luneruniverse.minecraft.nbtdatabase.connection.access.RemoteNBTDatabaseAccess;
 import com.luneruniverse.minecraft.nbtdatabase.connection.exceptions.RequestFailedException;
 import com.luneruniverse.minecraft.nbtdatabase.connection.exceptions.ServerException;
-import com.luneruniverse.minecraft.nbtdatabase.connection.packets.LoginPacket.User;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.login.LoginPacket.User;
+import com.luneruniverse.minecraft.nbtdatabase.connection.server.NBTDatabaseAccessServer;
 import com.luneruniverse.minecraft.nbtdatabase.connection.util.FutureUtil;
 import com.luneruniverse.minecraft.nbtdatabase.request.IllegalRequestException;
 import com.luneruniverse.minecraft.nbtdatabase.ui.LoginUtil;
@@ -239,17 +239,14 @@ public class GUI implements AutoCloseable {
 	
 	private void onConnectionOpen() {
 		NBTDatabaseAccess connection = this.connection;
-		connection.getCloseFuture().whenComplete((v, e) -> {
-			if (e != null) {
-				EventQueue.invokeLater(() -> {
-					if (connection == this.connection) {
-						closeConnection();
-						updateConnectionInfo();
-						JOptionPane.showMessageDialog(frame, e.getMessage(), "Disconnected", JOptionPane.ERROR_MESSAGE);
-					}
-				});
+		connection.getCloseFuture().whenCompleteAsync((v, e) -> {
+			if (e != null && connection == this.connection) {
+				closeConnection();
+				updateConnectionInfo();
+				System.err.println("[Disconnected] " + e.getMessage());
+				JOptionPane.showMessageDialog(frame, e.getMessage(), "Disconnected", JOptionPane.ERROR_MESSAGE);
 			}
-		});
+		}, EventQueue::invokeLater);
 		((CardLayout) mainPanel.getLayout()).last(mainPanel);
 		entriesTab.refresh();
 		tagsTab.refresh();
@@ -267,31 +264,29 @@ public class GUI implements AutoCloseable {
 	
 	public <T> void whenComplete(CompletableFuture<T> future, Consumer<T> consumer) {
 		NBTDatabaseAccess connection = this.connection;
-		future.whenComplete((value, e) -> {
-			EventQueue.invokeLater(() -> {
-				if (connection != this.connection)
-					return;
-				if (e == null)
-					consumer.accept(value);
-				else {
-					if (e instanceof IllegalRequestException || e instanceof RequestFailedException) {
-						if (e instanceof IllegalRequestException) {
-							System.err.println("[Database] " + e.getMessage());
-							JOptionPane.showMessageDialog(frame, e.getMessage(), "Database Error", JOptionPane.ERROR_MESSAGE);
-						} else if (e instanceof ServerException) {
-							System.err.println("[Server] " + e.getMessage());
-							JOptionPane.showMessageDialog(frame, e.getMessage(), "Server Error", JOptionPane.ERROR_MESSAGE);
-						} else {
-							System.err.println(e.getMessage());
-							JOptionPane.showMessageDialog(frame, e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-						}
-						if (e.getCause() != null)
-							e.getCause().printStackTrace();
-					} else
-						e.printStackTrace();
-				}
-			});
-		});
+		future.whenCompleteAsync((value, e) -> {
+			if (connection != this.connection)
+				return;
+			if (e == null)
+				consumer.accept(value);
+			else {
+				if (e instanceof IllegalRequestException || e instanceof RequestFailedException) {
+					if (e instanceof IllegalRequestException) {
+						System.err.println("[Database] " + e.getMessage());
+						JOptionPane.showMessageDialog(frame, e.getMessage(), "Database Error", JOptionPane.ERROR_MESSAGE);
+					} else if (e instanceof ServerException) {
+						System.err.println("[Server] " + e.getMessage());
+						JOptionPane.showMessageDialog(frame, e.getMessage(), "Server Error", JOptionPane.ERROR_MESSAGE);
+					} else {
+						System.err.println(e.getMessage());
+						JOptionPane.showMessageDialog(frame, e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+					}
+					if (e.getCause() != null)
+						e.getCause().printStackTrace();
+				} else
+					e.printStackTrace();
+			}
+		}, EventQueue::invokeLater);
 	}
 	
 	public boolean checkConnectionExists() {

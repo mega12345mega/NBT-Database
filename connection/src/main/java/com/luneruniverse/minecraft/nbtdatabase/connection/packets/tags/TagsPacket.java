@@ -1,10 +1,11 @@
-package com.luneruniverse.minecraft.nbtdatabase.connection.packets;
+package com.luneruniverse.minecraft.nbtdatabase.connection.packets.tags;
 
 import java.util.Arrays;
 import java.util.List;
 
 import com.esotericsoftware.kryo.kryo5.serializers.FieldSerializer.NotNull;
 import com.luneruniverse.minecraft.nbtdatabase.Tag;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.Packet;
 
 public class TagsPacket extends Packet {
 	

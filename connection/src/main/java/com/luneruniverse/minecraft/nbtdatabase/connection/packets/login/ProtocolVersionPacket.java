@@ -1,4 +1,6 @@
-package com.luneruniverse.minecraft.nbtdatabase.connection.packets;
+package com.luneruniverse.minecraft.nbtdatabase.connection.packets.login;
+
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.Packet;
 
 public class ProtocolVersionPacket extends Packet {
 	

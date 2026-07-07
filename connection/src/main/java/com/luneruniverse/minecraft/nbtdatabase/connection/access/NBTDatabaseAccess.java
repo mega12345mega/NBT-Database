@@ -14,8 +14,12 @@ import com.luneruniverse.minecraft.nbtdatabase.request.TagFilter;
 
 public interface NBTDatabaseAccess extends AutoCloseable {
 	public String getName();
+	public CompletableFuture<Void> lockConfig();
+	public CompletableFuture<Void> unlockConfig();
 	public CompletableFuture<Void> setConfig(Config config);
 	public CompletableFuture<Config> getConfig();
+	public CompletableFuture<Void> lockEntry(long id);
+	public CompletableFuture<Void> unlockEntry(long id);
 	public CompletableFuture<Long> addEntry(String name, byte[] nbt, Entry.Type type, int dataVersion, UUID authorUuid, String authorUsername, boolean verified);
 	public CompletableFuture<Void> editEntry(long id, Optional<String> name, Optional<byte[]> nbt, Optional<Entry.Type> type,
 			Optional<Integer> dataVersion, Optional<UUID> authorUuid, Optional<String> authorUsername, Optional<Boolean> verified);
@@ -23,6 +27,8 @@ public interface NBTDatabaseAccess extends AutoCloseable {
 	public CompletableFuture<Entry> getEntry(long id);
 	public CompletableFuture<byte[]> getEntryNBT(long id);
 	public CompletableFuture<List<Entry>> getEntries(EntryFilter filter, EntryView view);
+	public CompletableFuture<Void> lockTag(String name);
+	public CompletableFuture<Void> unlockTag(String name);
 	public CompletableFuture<Void> addTag(String name, int color);
 	public CompletableFuture<Void> editTag(String currentName, Optional<String> name, Optional<Integer> color);
 	public CompletableFuture<Void> removeTag(String name);

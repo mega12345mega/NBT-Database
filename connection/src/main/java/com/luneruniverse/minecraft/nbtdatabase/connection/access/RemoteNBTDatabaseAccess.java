@@ -20,29 +20,36 @@ import com.luneruniverse.minecraft.nbtdatabase.connection.netty.DisconnectHandle
 import com.luneruniverse.minecraft.nbtdatabase.connection.netty.ExceptionHandler;
 import com.luneruniverse.minecraft.nbtdatabase.connection.netty.NBTProtocol;
 import com.luneruniverse.minecraft.nbtdatabase.connection.netty.ProtocolVersionHandler;
-import com.luneruniverse.minecraft.nbtdatabase.connection.packets.AddEntryRequestPacket;
-import com.luneruniverse.minecraft.nbtdatabase.connection.packets.AddTagRequestPacket;
-import com.luneruniverse.minecraft.nbtdatabase.connection.packets.AddTagToEntryRequestPacket;
-import com.luneruniverse.minecraft.nbtdatabase.connection.packets.ConfigPacket;
-import com.luneruniverse.minecraft.nbtdatabase.connection.packets.EditEntryRequestPacket;
-import com.luneruniverse.minecraft.nbtdatabase.connection.packets.EditTagRequestPacket;
-import com.luneruniverse.minecraft.nbtdatabase.connection.packets.EntriesPacket;
-import com.luneruniverse.minecraft.nbtdatabase.connection.packets.EntryIdPacket;
-import com.luneruniverse.minecraft.nbtdatabase.connection.packets.EntryNBTPacket;
-import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetConfigRequestPacket;
-import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetEntriesRequestPacket;
-import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetEntryNBTRequestPacket;
-import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetEntryRequestPacket;
-import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetTagRequestPacket;
-import com.luneruniverse.minecraft.nbtdatabase.connection.packets.GetTagsRequestPacket;
-import com.luneruniverse.minecraft.nbtdatabase.connection.packets.LoginPacket.User;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.Packet;
-import com.luneruniverse.minecraft.nbtdatabase.connection.packets.RemoveEntryRequestPacket;
-import com.luneruniverse.minecraft.nbtdatabase.connection.packets.RemoveTagFromEntryRequestPacket;
-import com.luneruniverse.minecraft.nbtdatabase.connection.packets.RemoveTagRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.SuccessPacket;
-import com.luneruniverse.minecraft.nbtdatabase.connection.packets.TagsPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.config.ConfigPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.config.GetConfigRequestPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.config.LockConfigRequestPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.config.SetConfigRequestPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.config.UnlockConfigRequestPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.entries.AddEntryRequestPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.entries.EditEntryRequestPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.entries.EntriesPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.entries.EntryIdPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.entries.EntryNBTPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.entries.GetEntriesRequestPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.entries.GetEntryNBTRequestPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.entries.GetEntryRequestPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.entries.LockEntryRequestPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.entries.RemoveEntryRequestPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.entries.UnlockEntryRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.exceptions.ServerExceptionPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.login.LoginPacket.User;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.tags.AddTagRequestPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.tags.AddTagToEntryRequestPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.tags.EditTagRequestPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.tags.GetTagRequestPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.tags.GetTagsRequestPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.tags.LockTagRequestPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.tags.RemoveTagFromEntryRequestPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.tags.RemoveTagRequestPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.tags.TagsPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.tags.UnlockTagRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.util.FutureUtil;
 import com.luneruniverse.minecraft.nbtdatabase.connection.util.NettyUtil;
 import com.luneruniverse.minecraft.nbtdatabase.request.EntryFilter;
@@ -131,13 +138,33 @@ public class RemoteNBTDatabaseAccess implements NBTDatabaseAccess {
 	}
 	
 	@Override
+	public CompletableFuture<Void> lockConfig() {
+		return requestVoid(new LockConfigRequestPacket());
+	}
+	
+	@Override
+	public CompletableFuture<Void> unlockConfig() {
+		return requestVoid(new UnlockConfigRequestPacket());
+	}
+	
+	@Override
 	public CompletableFuture<Void> setConfig(Config config) {
-		return requestVoid(new ConfigPacket(config));
+		return requestVoid(new SetConfigRequestPacket(config));
 	}
 	
 	@Override
 	public CompletableFuture<Config> getConfig() {
 		return request(new GetConfigRequestPacket(), ConfigPacket.class, ConfigPacket::getConfig);
+	}
+	
+	@Override
+	public CompletableFuture<Void> lockEntry(long id) {
+		return requestVoid(new LockEntryRequestPacket(id));
+	}
+	
+	@Override
+	public CompletableFuture<Void> unlockEntry(long id) {
+		return requestVoid(new UnlockEntryRequestPacket(id));
 	}
 	
 	@Override
@@ -169,6 +196,16 @@ public class RemoteNBTDatabaseAccess implements NBTDatabaseAccess {
 	@Override
 	public CompletableFuture<List<Entry>> getEntries(EntryFilter filter, EntryView view) {
 		return request(new GetEntriesRequestPacket(filter, view), EntriesPacket.class, EntriesPacket::getEntriesList);
+	}
+	
+	@Override
+	public CompletableFuture<Void> lockTag(String name) {
+		return requestVoid(new LockTagRequestPacket(name));
+	}
+	
+	@Override
+	public CompletableFuture<Void> unlockTag(String name) {
+		return requestVoid(new UnlockTagRequestPacket(name));
 	}
 	
 	@Override

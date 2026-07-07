@@ -13,9 +13,9 @@ import javax.crypto.spec.SecretKeySpec;
 
 import com.luneruniverse.minecraft.nbtdatabase.connection.MojangAuth;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.DisconnectPacket;
-import com.luneruniverse.minecraft.nbtdatabase.connection.packets.LoginPacket;
-import com.luneruniverse.minecraft.nbtdatabase.connection.packets.LoginRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.Packet;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.login.LoginPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.login.LoginRequestPacket;
 
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
@@ -80,7 +80,7 @@ public class ServerLoginHandler extends SimpleChannelInboundHandler<Packet> {
 				ctx.pipeline().addAfter(ctx.name(), null, wait);
 				CompletableFuture<Boolean> hasJoinedFuture = MojangAuth.hasJoinedAsync(
 						MojangAuth.generateServerId(keys.getPublic(), sharedKey), user.get().getUuid(), user.get().getUsername());
-				hasJoinedFuture.whenComplete((hasJoined, e) -> {
+				hasJoinedFuture.whenCompleteAsync((hasJoined, e) -> {
 					if (e != null) {
 						ctx.pipeline().fireExceptionCaught(e);
 						ctx.writeAndFlush(new DisconnectPacket("Login failed: Couldn't verify with Mojang"))
@@ -93,7 +93,7 @@ public class ServerLoginHandler extends SimpleChannelInboundHandler<Packet> {
 						ctx.writeAndFlush(new DisconnectPacket("Login failed: Rejected by Mojang"))
 								.addListener(ChannelFutureListener.CLOSE);
 					}
-				});
+				}, ctx.executor());
 			} else
 				onConnect.accept(user);
 			

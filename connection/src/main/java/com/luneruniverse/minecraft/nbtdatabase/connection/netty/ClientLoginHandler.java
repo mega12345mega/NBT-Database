@@ -10,10 +10,10 @@ import javax.crypto.SecretKey;
 
 import com.luneruniverse.minecraft.nbtdatabase.connection.MojangAuth;
 import com.luneruniverse.minecraft.nbtdatabase.connection.exceptions.DisconnectException;
-import com.luneruniverse.minecraft.nbtdatabase.connection.packets.LoginPacket;
-import com.luneruniverse.minecraft.nbtdatabase.connection.packets.LoginPacket.User;
-import com.luneruniverse.minecraft.nbtdatabase.connection.packets.LoginRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.Packet;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.login.LoginPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.login.LoginPacket.User;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.login.LoginRequestPacket;
 
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
@@ -55,7 +55,7 @@ public class ClientLoginHandler extends SimpleChannelInboundHandler<Packet> {
 			} else {
 				CompletableFuture<Void> joinFuture = MojangAuth.joinAsync(
 						MojangAuth.generateServerId(request.getPublicKey(), sharedKey), user.getUuid(), accessToken);
-				joinFuture.whenComplete((v, e) -> {
+				joinFuture.whenCompleteAsync((v, e) -> {
 					if (e != null) {
 						ctx.pipeline().fireExceptionCaught(e);
 						ctx.pipeline().fireExceptionCaught(new DisconnectException("Login failed: Couldn't access Mojang"));
@@ -66,7 +66,7 @@ public class ClientLoginHandler extends SimpleChannelInboundHandler<Packet> {
 							ctx.pipeline().fireExceptionCaught(e2);
 						}
 					}
-				});
+				}, ctx.executor());
 			}
 		} else
 			throw new DisconnectException("Login failed: Server didn't request login");

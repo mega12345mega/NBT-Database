@@ -20,13 +20,13 @@ import com.luneruniverse.minecraft.nbtdatabase.DataVersion;
 import com.luneruniverse.minecraft.nbtdatabase.Entry;
 import com.luneruniverse.minecraft.nbtdatabase.NBTDatabase;
 import com.luneruniverse.minecraft.nbtdatabase.Tag;
-import com.luneruniverse.minecraft.nbtdatabase.connection.NBTDatabaseAccessServer;
 import com.luneruniverse.minecraft.nbtdatabase.connection.access.LocalNBTDatabaseAccess;
 import com.luneruniverse.minecraft.nbtdatabase.connection.access.NBTDatabaseAccess;
 import com.luneruniverse.minecraft.nbtdatabase.connection.access.RemoteNBTDatabaseAccess;
 import com.luneruniverse.minecraft.nbtdatabase.connection.exceptions.RequestFailedException;
 import com.luneruniverse.minecraft.nbtdatabase.connection.exceptions.ServerException;
-import com.luneruniverse.minecraft.nbtdatabase.connection.packets.LoginPacket.User;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.login.LoginPacket.User;
+import com.luneruniverse.minecraft.nbtdatabase.connection.server.NBTDatabaseAccessServer;
 import com.luneruniverse.minecraft.nbtdatabase.connection.util.FutureUtil;
 import com.luneruniverse.minecraft.nbtdatabase.request.EntryFilter;
 import com.luneruniverse.minecraft.nbtdatabase.request.EntryView;
@@ -281,16 +281,12 @@ public class CLI implements AutoCloseable {
 	
 	private void onConnectionOpen() {
 		NBTDatabaseAccess connection = this.connection;
-		connection.getCloseFuture().whenComplete((v, e) -> {
-			if (e != null) {
-				executor.execute(() -> {
-					if (connection == this.connection) {
-						closeConnection(true);
-						System.err.println("[Disconnected] " + e.getMessage());
-					}
-				});
+		connection.getCloseFuture().whenCompleteAsync((v, e) -> {
+			if (e != null && connection == this.connection) {
+				closeConnection(true);
+				System.err.println("[Disconnected] " + e.getMessage());
 			}
-		});
+		}, executor);
 	}
 	
 	private void onConnectionClose() {}
@@ -301,27 +297,25 @@ public class CLI implements AutoCloseable {
 	
 	private <T> void whenComplete(CompletableFuture<T> future, Consumer<T> consumer) {
 		NBTDatabaseAccess connection = this.connection;
-		future.whenComplete((value, e) -> {
-			executor.execute(() -> {
-				if (connection != this.connection)
-					return;
-				if (e == null)
-					consumer.accept(value);
-				else {
-					if (e instanceof IllegalRequestException || e instanceof RequestFailedException) {
-						if (e instanceof IllegalRequestException)
-							System.err.println("[Database] " + e.getMessage());
-						else if (e instanceof ServerException)
-							System.err.println("[Server] " + e.getMessage());
-						else
-							System.err.println(e.getMessage());
-						if (e.getCause() != null)
-							e.getCause().printStackTrace();
-					} else
-						e.printStackTrace();
-				}
-			});
-		});
+		future.whenCompleteAsync((value, e) -> {
+			if (connection != this.connection)
+				return;
+			if (e == null)
+				consumer.accept(value);
+			else {
+				if (e instanceof IllegalRequestException || e instanceof RequestFailedException) {
+					if (e instanceof IllegalRequestException)
+						System.err.println("[Database] " + e.getMessage());
+					else if (e instanceof ServerException)
+						System.err.println("[Server] " + e.getMessage());
+					else
+						System.err.println(e.getMessage());
+					if (e.getCause() != null)
+						e.getCause().printStackTrace();
+				} else
+					e.printStackTrace();
+			}
+		}, executor);
 	}
 	
 	private boolean checkFileDoesntExist(File file, boolean overwrite, boolean deleteIfOverwriting) throws IOException {

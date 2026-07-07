@@ -1,4 +1,4 @@
-package com.luneruniverse.minecraft.nbtdatabase.connection.packets;
+package com.luneruniverse.minecraft.nbtdatabase.connection.packets.login;
 
 import java.security.GeneralSecurityException;
 import java.security.KeyFactory;
@@ -10,6 +10,7 @@ import com.esotericsoftware.kryo.kryo5.KryoException;
 import com.esotericsoftware.kryo.kryo5.KryoSerializable;
 import com.esotericsoftware.kryo.kryo5.io.Input;
 import com.esotericsoftware.kryo.kryo5.io.Output;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.Packet;
 
 public class LoginRequestPacket extends Packet implements KryoSerializable {
 	

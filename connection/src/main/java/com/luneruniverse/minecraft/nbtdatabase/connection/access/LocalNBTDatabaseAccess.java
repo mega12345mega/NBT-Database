@@ -35,13 +35,33 @@ public class LocalNBTDatabaseAccess implements NBTDatabaseAccess {
 	}
 	
 	@Override
+	public CompletableFuture<Void> lockConfig() {
+		return CompletableFuture.completedFuture(null);
+	}
+	
+	@Override
+	public CompletableFuture<Void> unlockConfig() {
+		return CompletableFuture.completedFuture(null);
+	}
+	
+	@Override
 	public CompletableFuture<Void> setConfig(Config config) {
 		return FutureUtil.runAsync(() -> database.getConfigManager().setConfig(config), executor);
 	}
 	
 	@Override
 	public CompletableFuture<Config> getConfig() {
-		return CompletableFuture.completedFuture(database.getConfigManager().getConfig());
+		return FutureUtil.supplyAsync(() -> database.getConfigManager().getConfig(), executor);
+	}
+	
+	@Override
+	public CompletableFuture<Void> lockEntry(long id) {
+		return CompletableFuture.completedFuture(null);
+	}
+	
+	@Override
+	public CompletableFuture<Void> unlockEntry(long id) {
+		return CompletableFuture.completedFuture(null);
 	}
 	
 	@Override
@@ -73,6 +93,16 @@ public class LocalNBTDatabaseAccess implements NBTDatabaseAccess {
 	@Override
 	public CompletableFuture<List<Entry>> getEntries(EntryFilter filter, EntryView view) {
 		return FutureUtil.supplyAsync(() -> database.getEntries(filter, view), executor);
+	}
+	
+	@Override
+	public CompletableFuture<Void> lockTag(String name) {
+		return CompletableFuture.completedFuture(null);
+	}
+	
+	@Override
+	public CompletableFuture<Void> unlockTag(String name) {
+		return CompletableFuture.completedFuture(null);
 	}
 	
 	@Override

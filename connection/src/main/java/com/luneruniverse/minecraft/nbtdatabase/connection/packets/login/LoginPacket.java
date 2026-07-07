@@ -1,13 +1,14 @@
-package com.luneruniverse.minecraft.nbtdatabase.connection.packets;
+package com.luneruniverse.minecraft.nbtdatabase.connection.packets.login;
 
 import java.util.Optional;
 import java.util.UUID;
 
 import com.esotericsoftware.kryo.kryo5.serializers.FieldSerializer.NotNull;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.Packet;
 
 public class LoginPacket extends Packet {
 	
-	public static class User {
+	public static final class User {
 		private @NotNull UUID uuid;
 		private @NotNull String username;
 		

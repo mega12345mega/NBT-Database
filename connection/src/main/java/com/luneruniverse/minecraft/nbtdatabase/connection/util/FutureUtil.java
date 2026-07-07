@@ -12,6 +12,18 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class FutureUtil {
 	
+	public static <T> CompletableFuture<T> failedFuture(Throwable throwable) {
+		CompletableFuture<T> future = new CompletableFuture<>();
+		future.completeExceptionally(throwable);
+		return future;
+	}
+	
+	public static Throwable exceptionNow(CompletableFuture<?> future) {
+		if (!future.isCompletedExceptionally())
+			return null;
+		return future.handle((value, e) -> e).join();
+	}
+	
 	public interface ThrowableSupplier<T> {
 		public T get() throws Throwable;
 	}
@@ -77,10 +89,7 @@ public class FutureUtil {
 		first.whenComplete((value, e) -> {
 			try {
 				last.run();
-				if (e != null)
-					future.completeExceptionally(e);
-				else
-					future.complete(value);
+				transferResult(first, future);
 			} catch (Throwable e2) {
 				future.completeExceptionally(e2);
 			}
@@ -111,18 +120,22 @@ public class FutureUtil {
 				future.completeExceptionally(e);
 			else {
 				try {
-					function.apply(value).whenComplete((value2, e2) -> {
-						if (e2 != null)
-							future.completeExceptionally(e2);
-						else
-							future.complete(value2);
-					});
+					transferResult(function.apply(value), future);
 				} catch (Throwable e2) {
 					future.completeExceptionally(e2);
 				}
 			}
 		});
 		return future;
+	}
+	
+	public static <T> void transferResult(CompletableFuture<T> from, CompletableFuture<T> to) {
+		from.whenComplete((value, e) -> {
+			if (e != null)
+				to.completeExceptionally(e);
+			else
+				to.complete(value);
+		});
 	}
 	
 	public static CompletableFuture<Void> shutdown(ExecutorService executor) {

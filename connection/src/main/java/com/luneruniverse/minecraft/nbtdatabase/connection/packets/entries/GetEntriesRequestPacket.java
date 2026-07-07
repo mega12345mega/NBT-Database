@@ -1,6 +1,7 @@
-package com.luneruniverse.minecraft.nbtdatabase.connection.packets;
+package com.luneruniverse.minecraft.nbtdatabase.connection.packets.entries;
 
 import com.esotericsoftware.kryo.kryo5.serializers.FieldSerializer.NotNull;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.Packet;
 import com.luneruniverse.minecraft.nbtdatabase.request.EntryFilter;
 import com.luneruniverse.minecraft.nbtdatabase.request.EntryView;
 

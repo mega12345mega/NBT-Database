@@ -2,7 +2,7 @@ package com.luneruniverse.minecraft.nbtdatabase.connection.user;
 
 import java.util.Optional;
 
-import com.luneruniverse.minecraft.nbtdatabase.connection.packets.LoginPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.login.LoginPacket;
 
 import io.netty.channel.socket.SocketChannel;
 

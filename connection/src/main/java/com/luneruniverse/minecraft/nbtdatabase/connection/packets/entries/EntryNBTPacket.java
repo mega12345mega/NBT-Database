@@ -1,4 +1,6 @@
-package com.luneruniverse.minecraft.nbtdatabase.connection.packets;
+package com.luneruniverse.minecraft.nbtdatabase.connection.packets.entries;
+
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.Packet;
 
 public class EntryNBTPacket extends Packet {
 	
