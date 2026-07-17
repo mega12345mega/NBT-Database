@@ -11,6 +11,7 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.function.Function;
 
 import com.luneruniverse.minecraft.nbtdatabase.connection.access.NBTDatabaseAccess;
+import com.luneruniverse.minecraft.nbtdatabase.connection.exceptions.AuthorizationServerException;
 import com.luneruniverse.minecraft.nbtdatabase.connection.exceptions.ServerException;
 import com.luneruniverse.minecraft.nbtdatabase.connection.netty.ExceptionHandler;
 import com.luneruniverse.minecraft.nbtdatabase.connection.netty.NBTProtocol;
@@ -36,6 +37,7 @@ import com.luneruniverse.minecraft.nbtdatabase.connection.packets.entries.GetEnt
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.entries.LockEntryRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.entries.RemoveEntryRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.entries.UnlockEntryRequestPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.exceptions.InternalServerExceptionPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.tags.AddTagRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.tags.AddTagToEntryRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.tags.EditTagRequestPacket;
@@ -46,6 +48,8 @@ import com.luneruniverse.minecraft.nbtdatabase.connection.packets.tags.RemoveTag
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.tags.RemoveTagRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.tags.TagsPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.tags.UnlockTagRequestPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.server.auth.AuthorizationCheck;
+import com.luneruniverse.minecraft.nbtdatabase.connection.server.auth.AuthorizationManager;
 import com.luneruniverse.minecraft.nbtdatabase.connection.user.ClientType;
 import com.luneruniverse.minecraft.nbtdatabase.connection.user.User;
 import com.luneruniverse.minecraft.nbtdatabase.connection.util.FutureUtil;
@@ -75,15 +79,17 @@ public class NBTDatabaseAccessServer implements AutoCloseable {
 	
 	private final NBTDatabaseAccess database;
 	private final int port;
+	private final AuthorizationManager auth;
 	private final Lock configLock;
 	private final LockCacheMap<Long> entryLocks;
 	private final LockCacheMap<String> tagLocks;
 	private final Map<Channel, User> users;
 	private final Channel server;
 	
-	public NBTDatabaseAccessServer(NBTDatabaseAccess database, int port) throws NoSuchAlgorithmException, IOException, InterruptedException {
+	public NBTDatabaseAccessServer(NBTDatabaseAccess database, int port, AuthorizationManager auth) throws IOException {
 		this.database = database;
 		this.port = port;
+		this.auth = auth;
 		
 		configLock = Lock.forConfig(database);
 		entryLocks = LockCacheMap.forEntries(database);
@@ -91,7 +97,12 @@ public class NBTDatabaseAccessServer implements AutoCloseable {
 		
 		users = new HashMap<>();
 		
-		KeyPairGenerator keysGenerator = KeyPairGenerator.getInstance("RSA");
+		KeyPairGenerator keysGenerator;
+		try {
+			keysGenerator = KeyPairGenerator.getInstance("RSA");
+		} catch (NoSuchAlgorithmException e) {
+			throw new IOException("Failed to initialize encryption", e);
+		}
 		keysGenerator.initialize(1024);
 		KeyPair keys = keysGenerator.generateKeyPair();
 		
@@ -165,6 +176,13 @@ public class NBTDatabaseAccessServer implements AutoCloseable {
 	}
 	
 	private void onUserConnect(Channel channel, User user) {
+		try {
+			auth.connect(user);
+		} catch (AuthorizationServerException e) {
+			NBTProtocol.disconnect(channel, e.getMessage());
+			return;
+		}
+		
 		users.put(channel, user);
 		System.out.println("[Server] Connected: " + user);
 	}
@@ -189,104 +207,153 @@ public class NBTDatabaseAccessServer implements AutoCloseable {
 		}, channel.eventLoop());
 	}
 	
-	private void respondVoid(Packet packet, Channel channel, CompletableFuture<Void> request) {
-		respond(packet, channel, request, v -> new SuccessPacket());
+	private <I extends Packet, O> void checkAuthAndRespond(I packet, Channel channel,
+			AuthorizationCheck<I, O> check, Function<I, CompletableFuture<O>> request, Function<O, Packet> packer) {
+		User user = users.get(channel);
+		
+		if (user == null) {
+			NBTProtocol.reply(channel, packet, new InternalServerExceptionPacket());
+			return;
+		}
+		
+		I checkedPacket;
+		try {
+			checkedPacket = check.checkRequest(user, packet);
+		} catch (AuthorizationServerException e) {
+			NBTProtocol.reply(channel, packet, e.toPacket());
+			return;
+		}
+		
+		CompletableFuture<O> requestFuture;
+		
+		ServerLock lock = check.getLock(configLock, entryLocks, tagLocks, user, checkedPacket);
+		if (lock == null) {
+			requestFuture = checkRequestDuringLockAndRun(database, check, request, user, checkedPacket);
+		} else {
+			requestFuture = lock.serverLockDuring(channel,
+					() -> checkRequestDuringLockAndRun(database, check, request, user, checkedPacket));
+		}
+		
+		respond(packet, channel, FutureUtil.thenApply(requestFuture, value -> check.checkResponse(user, value)), packer);
+	}
+	private static <I extends Packet, O> CompletableFuture<O> checkRequestDuringLockAndRun(NBTDatabaseAccess database,
+			AuthorizationCheck<I, O> check, Function<I, CompletableFuture<O>> request, User user, I checkedPacket) {
+		CompletableFuture<I> checkFuture = check.checkRequestDuringLock(database, user, checkedPacket);
+		if (checkFuture == null)
+			return request.apply(checkedPacket);
+		return FutureUtil.thenCompose(checkFuture, request::apply);
+	}
+	
+	private <I extends Packet> void checkAuthAndRespondVoid(I packet, Channel channel,
+			AuthorizationCheck<I, Void> check, Function<I, CompletableFuture<Void>> request) {
+		checkAuthAndRespond(packet, channel, check, request, v -> new SuccessPacket());
 	}
 	
 	private void lockConfigRequestPacket(LockConfigRequestPacket packet, Channel channel) {
-		respondVoid(packet, channel, configLock.clientLock(channel));
+		checkAuthAndRespondVoid(packet, channel, auth.lockConfig(),
+				request -> configLock.clientLock(channel));
 	}
 	
 	private void unlockConfigRequestPacket(UnlockConfigRequestPacket packet, Channel channel) {
-		respondVoid(packet, channel, configLock.clientUnlock(channel));
+		checkAuthAndRespondVoid(packet, channel, auth.unlockConfig(),
+				request -> configLock.clientUnlock(channel));
 	}
 	
 	private void setConfigRequestPacket(SetConfigRequestPacket packet, Channel channel) {
-		respondVoid(packet, channel, configLock.serverLockDuring(channel,
-				() -> database.setConfig(packet.getConfig())));
+		checkAuthAndRespondVoid(packet, channel, auth.setConfig(),
+				request -> database.setConfig(request.getConfig()));
 	}
 	
 	private void getConfigRequestPacket(GetConfigRequestPacket packet, Channel channel) {
-		respond(packet, channel, database.getConfig(), ConfigPacket::new);
+		checkAuthAndRespond(packet, channel, auth.getConfig(),
+				request -> database.getConfig(), ConfigPacket::new);
 	}
 	
 	private void lockEntryRequestPacket(LockEntryRequestPacket packet, Channel channel) {
-		respondVoid(packet, channel, entryLocks.clientLock(packet.getId(), channel));
+		checkAuthAndRespondVoid(packet, channel, auth.lockEntry(),
+				request -> entryLocks.clientLock(request.getId(), channel));
 	}
 	
 	private void unlockEntryRequestPacket(UnlockEntryRequestPacket packet, Channel channel) {
-		respondVoid(packet, channel, entryLocks.clientUnlock(packet.getId(), channel));
+		checkAuthAndRespondVoid(packet, channel, auth.unlockEntry(),
+				request -> entryLocks.clientUnlock(request.getId(), channel));
 	}
 	
 	private void addEntryRequestPacket(AddEntryRequestPacket packet, Channel channel) {
-		respond(packet, channel, database.addEntry(packet.getName(), packet.getNbt(), packet.getType(), packet.getDataVersion(),
-				packet.getAuthorUuid(), packet.getAuthorUsername(), packet.isVerified()), EntryIdPacket::new);
+		checkAuthAndRespond(packet, channel, auth.addEntry(),
+				request -> database.addEntry(request.getName(), request.getNbt(), request.getType(), request.getDataVersion(),
+						request.getAuthorUuid(), request.getAuthorUsername(), request.isVerified()), EntryIdPacket::new);
 	}
 	
 	private void editEntryRequestPacket(EditEntryRequestPacket packet, Channel channel) {
-		respondVoid(packet, channel, entryLocks.serverLockDuring(packet.getId(), channel,
-				() -> database.editEntry(packet.getId(), packet.getName(), packet.getNbt(), packet.getType(),
-						packet.getDataVersion(), packet.getAuthorUuid(), packet.getAuthorUsername(), packet.isVerified())));
+		checkAuthAndRespondVoid(packet, channel, auth.editEntry(),
+				request -> database.editEntry(request.getId(), request.getName(), request.getNbt(), request.getType(),
+						request.getDataVersion(), request.getAuthorUuid(), request.getAuthorUsername(), request.isVerified()));
 	}
 	
 	private void removeEntryRequestPacket(RemoveEntryRequestPacket packet, Channel channel) {
-		respondVoid(packet, channel, entryLocks.serverLockDuring(packet.getId(), channel,
-				() -> database.removeEntry(packet.getId())));
+		checkAuthAndRespondVoid(packet, channel, auth.removeEntry(),
+				request -> database.removeEntry(request.getId()));
 	}
 	
 	private void getEntryRequestPacket(GetEntryRequestPacket packet, Channel channel) {
-		respond(packet, channel, database.getEntry(packet.getId()), EntriesPacket::new);
+		checkAuthAndRespond(packet, channel, auth.getEntry(),
+				request -> database.getEntry(request.getId()), EntriesPacket::new);
 	}
 	
 	private void getEntryNBTRequestPacket(GetEntryNBTRequestPacket packet, Channel channel) {
-		respond(packet, channel, database.getEntryNBT(packet.getId()), EntryNBTPacket::new);
+		checkAuthAndRespond(packet, channel, auth.getEntryNBT(),
+				request -> database.getEntryNBT(request.getId()), EntryNBTPacket::new);
 	}
 	
 	private void getEntriesRequestPacket(GetEntriesRequestPacket packet, Channel channel) {
-		respond(packet, channel, database.getEntries(packet.getFilter(), packet.getView()), EntriesPacket::new);
+		checkAuthAndRespond(packet, channel, auth.getEntries(),
+				request -> database.getEntries(request.getFilter(), request.getView()), EntriesPacket::new);
 	}
 	
 	private void lockTagRequestPacket(LockTagRequestPacket packet, Channel channel) {
-		respondVoid(packet, channel, tagLocks.clientLock(packet.getName(), channel));
+		checkAuthAndRespondVoid(packet, channel, auth.lockTag(),
+				request -> tagLocks.clientLock(request.getName(), channel));
 	}
 	
 	private void unlockTagRequestPacket(UnlockTagRequestPacket packet, Channel channel) {
-		respondVoid(packet, channel, tagLocks.clientUnlock(packet.getName(), channel));
+		checkAuthAndRespondVoid(packet, channel, auth.unlockTag(),
+				request -> tagLocks.clientUnlock(request.getName(), channel));
 	}
 	
 	private void addTagRequestPacket(AddTagRequestPacket packet, Channel channel) {
-		respondVoid(packet, channel, tagLocks.serverLockDuring(packet.getName(), channel,
-				() -> database.addTag(packet.getName(), packet.getColor())));
+		checkAuthAndRespondVoid(packet, channel, auth.addTag(),
+				request -> database.addTag(request.getName(), request.getColor()));
 	}
 	
 	private void editTagRequestPacket(EditTagRequestPacket packet, Channel channel) {
-		respondVoid(packet, channel, tagLocks.serverLockDuring(packet.getCurrentName(), channel,
-				() -> database.editTag(packet.getCurrentName(), packet.getName(), packet.getColor())));
+		checkAuthAndRespondVoid(packet, channel, auth.editTag(),
+				request -> database.editTag(request.getCurrentName(), request.getName(), request.getColor()));
 	}
 	
 	private void removeTagRequestPacket(RemoveTagRequestPacket packet, Channel channel) {
-		respondVoid(packet, channel, tagLocks.serverLockDuring(packet.getName(), channel,
-				() -> database.removeTag(packet.getName())));
+		checkAuthAndRespondVoid(packet, channel, auth.removeTag(),
+				request -> database.removeTag(request.getName()));
 	}
 	
 	private void getTagRequestPacket(GetTagRequestPacket packet, Channel channel) {
-		respond(packet, channel, database.getTag(packet.getName()), TagsPacket::new);
+		checkAuthAndRespond(packet, channel, auth.getTag(),
+				request -> database.getTag(request.getName()), TagsPacket::new);
 	}
 	
 	private void getTagsRequestPacket(GetTagsRequestPacket packet, Channel channel) {
-		respond(packet, channel, database.getTags(packet.getFilter()), TagsPacket::new);
+		checkAuthAndRespond(packet, channel, auth.getTags(),
+				request -> database.getTags(request.getFilter()), TagsPacket::new);
 	}
 	
 	private void addTagToEntryRequestPacket(AddTagToEntryRequestPacket packet, Channel channel) {
-		respondVoid(packet, channel, tagLocks.serverLockDuring(packet.getTag(), channel,
-				() -> entryLocks.serverLockDuring(packet.getEntry(), channel,
-						() -> database.addTagToEntry(packet.getEntry(), packet.getTag()))));
+		checkAuthAndRespondVoid(packet, channel, auth.addTagToEntry(),
+				request -> database.addTagToEntry(request.getEntry(), request.getTag()));
 	}
 	
 	private void removeTagFromEntryRequestPacket(RemoveTagFromEntryRequestPacket packet, Channel channel) {
-		respondVoid(packet, channel, tagLocks.serverLockDuring(packet.getTag(), channel,
-				() -> entryLocks.serverLockDuring(packet.getEntry(), channel,
-						() -> database.removeTagFromEntry(packet.getEntry(), packet.getTag()))));
+		checkAuthAndRespondVoid(packet, channel, auth.removeTagFromEntry(),
+				request -> database.removeTagFromEntry(request.getEntry(), request.getTag()));
 	}
 	
 	public CompletableFuture<Void> closeAsync() {

@@ -10,7 +10,7 @@ import io.netty.channel.EventLoopGroup;
 
 public class NettyUtil {
 	
-	public static Channel addGroupShutdown(ChannelFuture future, EventLoopGroup group) throws IOException, InterruptedException {
+	public static Channel addGroupShutdown(ChannelFuture future, EventLoopGroup group) throws IOException {
 		boolean success = false;
 		try {
 			try {

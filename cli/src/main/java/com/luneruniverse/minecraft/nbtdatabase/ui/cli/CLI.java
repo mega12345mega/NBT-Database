@@ -3,7 +3,6 @@ package com.luneruniverse.minecraft.nbtdatabase.ui.cli;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.security.NoSuchAlgorithmException;
 import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -27,6 +26,7 @@ import com.luneruniverse.minecraft.nbtdatabase.connection.exceptions.RequestFail
 import com.luneruniverse.minecraft.nbtdatabase.connection.exceptions.ServerException;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.login.LoginPacket.User;
 import com.luneruniverse.minecraft.nbtdatabase.connection.server.NBTDatabaseAccessServer;
+import com.luneruniverse.minecraft.nbtdatabase.connection.server.auth.AllowAuthorizationManager;
 import com.luneruniverse.minecraft.nbtdatabase.connection.util.FutureUtil;
 import com.luneruniverse.minecraft.nbtdatabase.request.EntryFilter;
 import com.luneruniverse.minecraft.nbtdatabase.request.EntryView;
@@ -496,7 +496,7 @@ public class CLI implements AutoCloseable {
 			connection = new RemoteNBTDatabaseAccess(ip, port, user, accessToken == null ? null : accessToken.getAccessToken());
 			onConnectionOpen();
 			System.out.println("Opened: " + ip + ":" + port);
-		} catch (IOException | InterruptedException e) {
+		} catch (IOException e) {
 			e.printStackTrace();
 		}
 	}
@@ -515,10 +515,10 @@ public class CLI implements AutoCloseable {
 		closeServer(true);
 		
 		try {
-			server = new NBTDatabaseAccessServer(connection, port);
+			server = new NBTDatabaseAccessServer(connection, port, AllowAuthorizationManager.create());
 			onServerStart();
 			System.out.println("Started server on port " + port);
-		} catch (NoSuchAlgorithmException | IOException | InterruptedException e) {
+		} catch (IOException e) {
 			e.printStackTrace();
 		}
 	}

@@ -1,6 +1,7 @@
 package com.luneruniverse.minecraft.nbtdatabase.connection.user;
 
 import java.util.Optional;
+import java.util.UUID;
 
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.login.LoginPacket;
 
@@ -32,7 +33,8 @@ public abstract class User {
 	}
 	
 	public abstract boolean isLoggedIn();
-	public abstract Optional<LoggedInUser> asLoggedInUser();
+	public abstract boolean hasUuid(UUID uuid);
+	
 	@Override
 	public abstract String toString();
 	

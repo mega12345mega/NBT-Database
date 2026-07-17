@@ -144,4 +144,13 @@ public class LockCacheMap<K> {
 		}
 	}
 	
+	public ServerLock getServerLock(K key) {
+		return new ServerLock() {
+			@Override
+			public <T> CompletableFuture<T> serverLockDuring(Channel channel, Supplier<CompletableFuture<T>> future) {
+				return LockCacheMap.this.serverLockDuring(key, channel, future);
+			}
+		};
+	}
+	
 }

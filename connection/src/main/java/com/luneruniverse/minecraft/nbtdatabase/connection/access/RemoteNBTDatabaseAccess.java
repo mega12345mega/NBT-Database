@@ -75,7 +75,7 @@ public class RemoteNBTDatabaseAccess implements NBTDatabaseAccess {
 	private final Channel client;
 	private final ExecutorService executor;
 	
-	public RemoteNBTDatabaseAccess(String ip, int port, User user, String accessToken) throws IOException, InterruptedException {
+	public RemoteNBTDatabaseAccess(String ip, int port, User user, String accessToken) throws IOException {
 		if ((user == null) != (accessToken == null))
 			throw new IllegalArgumentException("Either both or neither of user and accessToken can be null!");
 		

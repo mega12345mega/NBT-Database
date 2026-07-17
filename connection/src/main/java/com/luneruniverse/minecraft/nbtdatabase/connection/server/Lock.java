@@ -15,7 +15,7 @@ import com.luneruniverse.minecraft.nbtdatabase.request.IllegalRequestException;
 
 import io.netty.channel.Channel;
 
-public class Lock {
+public class Lock implements ServerLock {
 	
 	private static class LockBatch {
 		
@@ -114,6 +114,7 @@ public class Lock {
 		return future;
 	}
 	
+	@Override
 	public <T> CompletableFuture<T> serverLockDuring(Channel channel, Supplier<CompletableFuture<T>> future) {
 		return FutureUtil.thenCompose(serverLock(channel), v -> FutureUtil.finallyDo(future.get(), this::serverUnlock));
 	}

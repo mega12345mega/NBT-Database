@@ -1,6 +1,5 @@
 package com.luneruniverse.minecraft.nbtdatabase.connection.user;
 
-import java.util.Optional;
 import java.util.UUID;
 
 public class LoggedInUser extends User {
@@ -28,8 +27,8 @@ public class LoggedInUser extends User {
 	}
 	
 	@Override
-	public Optional<LoggedInUser> asLoggedInUser() {
-		return Optional.of(this);
+	public boolean hasUuid(UUID uuid) {
+		return this.uuid.equals(uuid);
 	}
 	
 	@Override

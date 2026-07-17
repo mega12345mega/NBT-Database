@@ -11,11 +11,11 @@ import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 
-import com.luneruniverse.minecraft.nbtdatabase.connection.MojangAuth;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.DisconnectPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.Packet;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.login.LoginPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.login.LoginRequestPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.user.MojangAuth;
 
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;

@@ -14,7 +14,6 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
-import java.security.NoSuchAlgorithmException;
 import java.sql.SQLException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -48,6 +47,7 @@ import com.luneruniverse.minecraft.nbtdatabase.connection.exceptions.RequestFail
 import com.luneruniverse.minecraft.nbtdatabase.connection.exceptions.ServerException;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.login.LoginPacket.User;
 import com.luneruniverse.minecraft.nbtdatabase.connection.server.NBTDatabaseAccessServer;
+import com.luneruniverse.minecraft.nbtdatabase.connection.server.auth.AllowAuthorizationManager;
 import com.luneruniverse.minecraft.nbtdatabase.connection.util.FutureUtil;
 import com.luneruniverse.minecraft.nbtdatabase.request.IllegalRequestException;
 import com.luneruniverse.minecraft.nbtdatabase.ui.LoginUtil;
@@ -442,7 +442,7 @@ public class GUI implements AutoCloseable {
 		try {
 			connection = new RemoteNBTDatabaseAccess(ip, port, user, accessToken == null ? null : accessToken.getAccessToken());
 			onConnectionOpen();
-		} catch (IOException | InterruptedException e) {
+		} catch (IOException e) {
 			e.printStackTrace();
 			JOptionPane.showMessageDialog(frame, "Failed to connect to '" + ip + ":" + port + "'", "Error", JOptionPane.ERROR_MESSAGE);
 		}
@@ -497,9 +497,9 @@ public class GUI implements AutoCloseable {
 		closeServer();
 		
 		try {
-			server = new NBTDatabaseAccessServer(connection, 25560);
+			server = new NBTDatabaseAccessServer(connection, 25560, AllowAuthorizationManager.create());
 			onServerStart();
-		} catch (NoSuchAlgorithmException | IOException | InterruptedException e) {
+		} catch (IOException e) {
 			e.printStackTrace();
 			JOptionPane.showMessageDialog(frame, "Failed to start server", "Error", JOptionPane.ERROR_MESSAGE);
 		}
@@ -527,9 +527,9 @@ public class GUI implements AutoCloseable {
 		closeServer();
 		
 		try {
-			server = new NBTDatabaseAccessServer(connection, port);
+			server = new NBTDatabaseAccessServer(connection, port, AllowAuthorizationManager.create());
 			onServerStart();
-		} catch (NoSuchAlgorithmException | IOException | InterruptedException e) {
+		} catch (IOException e) {
 			e.printStackTrace();
 			JOptionPane.showMessageDialog(frame, "Failed to start server on port '" + port + "'", "Error", JOptionPane.ERROR_MESSAGE);
 		}

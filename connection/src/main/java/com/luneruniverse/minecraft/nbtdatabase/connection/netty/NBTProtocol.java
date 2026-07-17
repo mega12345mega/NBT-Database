@@ -11,6 +11,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.BiConsumer;
 
+import com.luneruniverse.minecraft.nbtdatabase.connection.packets.DisconnectPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.Packet;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.Packets;
 
@@ -60,6 +61,10 @@ public class NBTProtocol extends ChannelDuplexHandler {
 	}
 	public static Packet replyAndGetResponse(Channel channel, Packet toReply, Packet packet) throws InterruptedException {
 		return sendAndGetResponse(channel, packet.replyTo(toReply));
+	}
+	
+	public static void disconnect(Channel channel, String message) {
+		channel.writeAndFlush(new DisconnectPacket(message)).addListener(ChannelFutureListener.CLOSE);
 	}
 	
 	private final int timeout;
