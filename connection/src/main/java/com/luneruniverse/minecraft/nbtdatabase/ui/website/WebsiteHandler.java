@@ -249,7 +249,9 @@ public class WebsiteHandler extends SimpleChannelInboundHandler<FullHttpRequest>
 				
 				entriesStr.append("<a class=\"entry_download\" href=\"/entry/");
 				entriesStr.append(entry.getId());
-				entriesStr.append("\" download><img src=\"download.svg\"></a>");
+				entriesStr.append("\" download=\"");
+				entriesStr.append(Encode.forHtmlAttribute(entry.getName()));
+				entriesStr.append(".nbt\"><img src=\"download.svg\"></a>");
 				
 				entriesStr.append("</span>");
 				
@@ -339,7 +341,7 @@ public class WebsiteHandler extends SimpleChannelInboundHandler<FullHttpRequest>
 				writeError(ctx, HttpResponseStatus.BAD_REQUEST, "Entry doesn't exist: " + id);
 			return nbt;
 		}, "application/octet-stream",
-				headers -> headers.set(HttpHeaderNames.CONTENT_DISPOSITION, "attachment; filename=\"" + id + ".nbt\""));
+				headers -> headers.set(HttpHeaderNames.CONTENT_DISPOSITION, "attachment"));
 	}
 	
 	private <T> void writeDatabaseRequest(ChannelHandlerContext ctx, FullHttpRequest msg,
