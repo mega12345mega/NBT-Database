@@ -595,7 +595,7 @@ public class EntriesTab {
 			
 			JnaFileChooser chooser = new JnaFileChooser(".");
 			chooser.setTitle("Export NBT Entry");
-			chooser.setDefaultFileName(name + ".nbt");
+			chooser.setDefaultFileName(UIUtil.filterInvalidFileNameChars(name) + ".nbt");
 			chooser.addFilter("Named Binary Tag (*.nbt)", "nbt");
 			chooser.addFilter("All Files (*.*)", "*");
 			if (!chooser.showSaveDialog(frame))
