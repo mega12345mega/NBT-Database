@@ -8,11 +8,12 @@ import java.util.concurrent.CompletableFuture;
 import com.luneruniverse.minecraft.nbtdatabase.Config;
 import com.luneruniverse.minecraft.nbtdatabase.Entry;
 import com.luneruniverse.minecraft.nbtdatabase.Tag;
+import com.luneruniverse.minecraft.nbtdatabase.connection.AsyncCloseable;
 import com.luneruniverse.minecraft.nbtdatabase.request.EntryFilter;
 import com.luneruniverse.minecraft.nbtdatabase.request.EntryView;
 import com.luneruniverse.minecraft.nbtdatabase.request.TagFilter;
 
-public interface NBTDatabaseAccess extends AutoCloseable {
+public interface NBTDatabaseAccess extends AsyncCloseable {
 	public String getName();
 	public CompletableFuture<Void> lockConfig();
 	public CompletableFuture<Void> unlockConfig();
@@ -37,5 +38,4 @@ public interface NBTDatabaseAccess extends AutoCloseable {
 	public CompletableFuture<Void> addTagToEntry(long entry, String tag);
 	public CompletableFuture<Void> removeTagFromEntry(long entry, String tag);
 	public CompletableFuture<Void> getCloseFuture();
-	public CompletableFuture<Void> closeAsync();
 }

@@ -16,6 +16,7 @@ import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.sql.SQLException;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
@@ -40,6 +41,7 @@ import javax.swing.UIManager;
 
 import com.luneruniverse.minecraft.nbtdatabase.DataVersion;
 import com.luneruniverse.minecraft.nbtdatabase.NBTDatabase;
+import com.luneruniverse.minecraft.nbtdatabase.connection.AsyncCloseable;
 import com.luneruniverse.minecraft.nbtdatabase.connection.access.LocalNBTDatabaseAccess;
 import com.luneruniverse.minecraft.nbtdatabase.connection.access.NBTDatabaseAccess;
 import com.luneruniverse.minecraft.nbtdatabase.connection.access.RemoteNBTDatabaseAccess;
@@ -56,7 +58,7 @@ import com.luneruniverse.minecraft.nbtdatabase.ui.UIUtil;
 import jnafilechooser.api.JnaFileChooser;
 import net.raphimc.minecraftauth.step.java.StepMCToken.MCToken;
 
-public class GUI implements AutoCloseable {
+public class GUI implements AsyncCloseable {
 	
 	@SuppressWarnings("resource")
 	public static void main(String[] args) {
@@ -239,7 +241,7 @@ public class GUI implements AutoCloseable {
 	
 	private void onConnectionOpen() {
 		NBTDatabaseAccess connection = this.connection;
-		connection.getCloseFuture().whenCompleteAsync((v, e) -> {
+		FutureUtil.whenCompleteAsync(connection.getCloseFuture(), (v, e) -> {
 			if (e != null && connection == this.connection) {
 				closeConnection();
 				updateConnectionInfo();
@@ -264,7 +266,7 @@ public class GUI implements AutoCloseable {
 	
 	public <T> void whenComplete(CompletableFuture<T> future, Consumer<T> consumer) {
 		NBTDatabaseAccess connection = this.connection;
-		future.whenCompleteAsync((value, e) -> {
+		FutureUtil.whenCompleteAsync(future, (value, e) -> {
 			if (connection != this.connection)
 				return;
 			if (e == null)
@@ -311,7 +313,11 @@ public class GUI implements AutoCloseable {
 		closeServer();
 		
 		if (connection != null) {
-			whenComplete(connection.closeAsync(), v -> {});
+			try {
+				connection.close();
+			} catch (IOException | InterruptedException e) {
+				e.printStackTrace();
+			}
 			connection = null;
 			onConnectionClose();
 		}
@@ -328,7 +334,11 @@ public class GUI implements AutoCloseable {
 	
 	private void closeServer() {
 		if (server != null) {
-			whenComplete(server.closeAsync(), v -> {});
+			try {
+				server.close();
+			} catch (IOException | InterruptedException e) {
+				e.printStackTrace();
+			}
 			server = null;
 			onServerStop();
 		}
@@ -612,6 +622,11 @@ public class GUI implements AutoCloseable {
 	
 	public boolean isOpen() {
 		return frame.isVisible();
+	}
+	
+	@Override
+	public CompletableFuture<Void> closeAsync() {
+		return FutureUtil.runAsync(this::close, ForkJoinPool.commonPool());
 	}
 	
 	@Override

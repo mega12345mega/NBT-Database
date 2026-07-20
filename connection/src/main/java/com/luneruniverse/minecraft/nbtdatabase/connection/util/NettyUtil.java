@@ -1,12 +1,14 @@
 package com.luneruniverse.minecraft.nbtdatabase.connection.util;
 
 import java.io.IOException;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.EventLoopGroup;
+import io.netty.util.concurrent.Future;
 
 public class NettyUtil {
 	
@@ -26,6 +28,25 @@ public class NettyUtil {
 			if (!success)
 				group.shutdownGracefully(100, 100, TimeUnit.MILLISECONDS);
 		}
+	}
+	
+	public static <T> CompletableFuture<T> toJava(Future<T> future) {
+		CompletableFuture<T> output = new CompletableFuture<>();
+		future.addListener(future2 -> {
+			if (!future.isSuccess())
+				output.completeExceptionally(future.cause());
+			else
+				output.complete(future.getNow());
+		});
+		return output;
+	}
+	
+	public static void awaitClose(ChannelFuture future) throws IOException, InterruptedException {
+		future.await();
+		if (future.isCancelled())
+			throw new IOException("Channel close cancelled", future.cause());
+		if (!future.isSuccess())
+			throw new IOException("Channel close failed", future.cause());
 	}
 	
 	public static void println(ByteBuf buf) {

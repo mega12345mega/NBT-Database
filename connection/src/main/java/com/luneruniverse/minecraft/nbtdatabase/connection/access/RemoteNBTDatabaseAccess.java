@@ -251,7 +251,7 @@ public class RemoteNBTDatabaseAccess implements NBTDatabaseAccess {
 	@Override
 	public CompletableFuture<Void> closeAsync() {
 		closeFuture.complete(null);
-		return FutureUtil.finallyDo(FutureUtil.shutdown(executor), client::close);
+		return FutureUtil.finallyDoCompose(FutureUtil.shutdown(executor), () -> NettyUtil.toJava(client.close()));
 	}
 	
 	@Override
@@ -261,7 +261,7 @@ public class RemoteNBTDatabaseAccess implements NBTDatabaseAccess {
 			executor.shutdown();
 			executor.awaitTermination(Long.MAX_VALUE, TimeUnit.DAYS);
 		} finally {
-			client.close();
+			NettyUtil.awaitClose(client.close());
 		}
 	}
 	

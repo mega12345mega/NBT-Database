@@ -9,6 +9,7 @@ import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BiConsumer;
 
 public class FutureUtil {
 	
@@ -97,6 +98,28 @@ public class FutureUtil {
 		return future;
 	}
 	
+	public static <T> CompletableFuture<T> finallyDoCompose(CompletableFuture<T> first, ThrowableSupplier<CompletableFuture<Void>> last) {
+		CompletableFuture<T> future = new CompletableFuture<>();
+		first.whenComplete((value, e) -> {
+			try {
+				last.get().whenComplete((v, e2) -> {
+					if (e2 != null) {
+						if (e != null)
+							e2.addSuppressed(e);
+						future.completeExceptionally(e2);
+					} else if (e != null) {
+						future.completeExceptionally(e);
+					} else {
+						future.complete(value);
+					}
+				});
+			} catch (Throwable e2) {
+				future.completeExceptionally(e2);
+			}
+		});
+		return future;
+	}
+	
 	public static <I, O> CompletableFuture<O> thenApply(CompletableFuture<I> input, ThrowableFunction<I, O> function) {
 		CompletableFuture<O> future = new CompletableFuture<>();
 		input.whenComplete((value, e) -> {
@@ -136,6 +159,19 @@ public class FutureUtil {
 			else
 				to.complete(value);
 		});
+	}
+	
+	public static <T> void whenComplete(CompletableFuture<T> future, BiConsumer<? super T, ? super Throwable> consumer) {
+		future.whenComplete((value, e) -> {
+			try {
+				consumer.accept(value, e);
+			} catch (Throwable e2) {
+				e2.printStackTrace();
+			}
+		});
+	}
+	public static <T> void whenCompleteAsync(CompletableFuture<T> future, BiConsumer<? super T, ? super Throwable> consumer, Executor executor) {
+		whenComplete(future, (value, e) -> executor.execute(() -> consumer.accept(value, e)));
 	}
 	
 	public static CompletableFuture<Void> shutdown(ExecutorService executor) {

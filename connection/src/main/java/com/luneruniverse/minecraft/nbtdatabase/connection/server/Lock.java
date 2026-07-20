@@ -182,7 +182,7 @@ public class Lock implements ServerLock {
 		LockBatch batch = locks.peek();
 		
 		CompletableFuture<Void> accessFuture = lockAccess.get();
-		accessFuture.whenComplete((v, e) -> {
+		FutureUtil.whenComplete(accessFuture, (v, e) -> {
 			synchronized (this) {
 				FutureUtil.transferResult(accessFuture, batch.lockFuture);
 				

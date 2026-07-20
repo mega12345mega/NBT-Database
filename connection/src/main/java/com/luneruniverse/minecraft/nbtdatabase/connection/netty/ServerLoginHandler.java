@@ -16,6 +16,7 @@ import com.luneruniverse.minecraft.nbtdatabase.connection.packets.Packet;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.login.LoginPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.login.LoginRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.user.MojangAuth;
+import com.luneruniverse.minecraft.nbtdatabase.connection.util.FutureUtil;
 
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
@@ -80,7 +81,7 @@ public class ServerLoginHandler extends SimpleChannelInboundHandler<Packet> {
 				ctx.pipeline().addAfter(ctx.name(), null, wait);
 				CompletableFuture<Boolean> hasJoinedFuture = MojangAuth.hasJoinedAsync(
 						MojangAuth.generateServerId(keys.getPublic(), sharedKey), user.get().getUuid(), user.get().getUsername());
-				hasJoinedFuture.whenCompleteAsync((hasJoined, e) -> {
+				FutureUtil.whenCompleteAsync(hasJoinedFuture, (hasJoined, e) -> {
 					if (e != null) {
 						ctx.pipeline().fireExceptionCaught(e);
 						ctx.writeAndFlush(new DisconnectPacket("Login failed: Couldn't verify with Mojang"))

@@ -14,6 +14,7 @@ import com.luneruniverse.minecraft.nbtdatabase.connection.packets.login.LoginPac
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.login.LoginPacket.User;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.login.LoginRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.user.MojangAuth;
+import com.luneruniverse.minecraft.nbtdatabase.connection.util.FutureUtil;
 
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
@@ -55,7 +56,7 @@ public class ClientLoginHandler extends SimpleChannelInboundHandler<Packet> {
 			} else {
 				CompletableFuture<Void> joinFuture = MojangAuth.joinAsync(
 						MojangAuth.generateServerId(request.getPublicKey(), sharedKey), user.getUuid(), accessToken);
-				joinFuture.whenCompleteAsync((v, e) -> {
+				FutureUtil.whenCompleteAsync(joinFuture, (v, e) -> {
 					if (e != null) {
 						ctx.pipeline().fireExceptionCaught(e);
 						ctx.pipeline().fireExceptionCaught(new DisconnectException("Login failed: Couldn't access Mojang"));

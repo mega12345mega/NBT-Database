@@ -348,7 +348,7 @@ public class WebsiteHandler extends SimpleChannelInboundHandler<FullHttpRequest>
 			CompletableFuture<T> request, Function<T, byte[]> content, String contentType, Consumer<HttpHeaders> headers) {
 		boolean keepAlive = HttpUtil.isKeepAlive(msg);
 		
-		request.whenCompleteAsync((value, e) -> {
+		FutureUtil.whenCompleteAsync(request, (value, e) -> {
 			if (e != null) {
 				if (e instanceof IllegalRequestException || e instanceof IllegalRequestServerException) {
 					writeError(ctx, HttpResponseStatus.BAD_REQUEST, e.getMessage());

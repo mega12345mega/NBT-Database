@@ -1,17 +1,23 @@
 package com.luneruniverse.minecraft.nbtdatabase.ui.cli;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.sql.SQLException;
+import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Queue;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 import com.luneruniverse.minecraft.nbtdatabase.Config;
@@ -19,6 +25,7 @@ import com.luneruniverse.minecraft.nbtdatabase.DataVersion;
 import com.luneruniverse.minecraft.nbtdatabase.Entry;
 import com.luneruniverse.minecraft.nbtdatabase.NBTDatabase;
 import com.luneruniverse.minecraft.nbtdatabase.Tag;
+import com.luneruniverse.minecraft.nbtdatabase.connection.AsyncCloseable;
 import com.luneruniverse.minecraft.nbtdatabase.connection.access.LocalNBTDatabaseAccess;
 import com.luneruniverse.minecraft.nbtdatabase.connection.access.NBTDatabaseAccess;
 import com.luneruniverse.minecraft.nbtdatabase.connection.access.RemoteNBTDatabaseAccess;
@@ -49,31 +56,46 @@ import com.luneruniverse.simplecli.inputs.StringKeyInput;
 
 import net.raphimc.minecraftauth.step.java.StepMCToken.MCToken;
 
-public class CLI implements AutoCloseable {
+public class CLI implements AsyncCloseable {
 	
 	public static void main(String[] args) throws IOException {
 		LoginUtil.setMinecraftAuthLogger();
+		
+		Thread readerThread = null;
 		
 		try (CLI cli = new CLI()) {
 			for (String arg : args)
 				cli.exec(arg);
 			
-			StringBuilder line = new StringBuilder();
-			while (cli.isOpen()) {
-				while (System.in.available() > 0) {
-					char c = (char) System.in.read();
-					if (c == '\n') {
-						cli.exec(line.toString());
-						line.setLength(0);
-					} else if (c != '\r')
-						line.append(c);
+			Queue<String> queue = new ArrayDeque<>();
+			readerThread = new Thread(() -> {
+				BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+				while (!Thread.currentThread().isInterrupted()) {
+					try {
+						String line = reader.readLine();
+						if (line == null)
+							return;
+						queue.add(line);
+					} catch (IOException e) {
+						e.printStackTrace();
+						return;
+					}
 				}
-				try {
-					Thread.sleep(100);
-				} catch (InterruptedException e) {
-					break;
-				}
+			});
+			readerThread.setDaemon(true);
+			readerThread.start();
+			
+			while (cli.isOpen() && (readerThread.isAlive() || !queue.isEmpty())) {
+				while (cli.isOpen() && !queue.isEmpty())
+					cli.exec(queue.remove());
+				
+				Thread.sleep(10);
 			}
+		} catch (InterruptedException e) {
+			return;
+		} finally {
+			if (readerThread != null)
+				readerThread.interrupt();
 		}
 	}
 	
@@ -93,7 +115,7 @@ public class CLI implements AutoCloseable {
 		
 		root = new GroupCommand(null);
 		
-		root.addCommand(new SingleCommand("exit", this::close));
+		root.addCommand(new SingleCommand("exit", this::exitCmd));
 		
 		root.addCommand(new SingleCommand("login", this::loginCmd));
 		
@@ -281,12 +303,16 @@ public class CLI implements AutoCloseable {
 	
 	private void onConnectionOpen() {
 		NBTDatabaseAccess connection = this.connection;
-		connection.getCloseFuture().whenCompleteAsync((v, e) -> {
-			if (e != null && connection == this.connection) {
-				closeConnection(true);
-				System.err.println("[Disconnected] " + e.getMessage());
+		FutureUtil.whenComplete(connection.getCloseFuture(), (v, e) -> {
+			if (e != null) {
+				executor.execute(() -> {
+					if (connection == this.connection) {
+						closeConnection(true);
+						System.err.println("[Disconnected] " + e.getMessage());
+					}
+				});
 			}
-		}, executor);
+		});
 	}
 	
 	private void onConnectionClose() {}
@@ -297,7 +323,7 @@ public class CLI implements AutoCloseable {
 	
 	private <T> void whenComplete(CompletableFuture<T> future, Consumer<T> consumer) {
 		NBTDatabaseAccess connection = this.connection;
-		future.whenCompleteAsync((value, e) -> {
+		FutureUtil.whenCompleteAsync(future, (value, e) -> {
 			if (connection != this.connection)
 				return;
 			if (e == null)
@@ -380,14 +406,17 @@ public class CLI implements AutoCloseable {
 	}
 	
 	private void closeConnection(boolean silent) {
-		closeServer(silent);
+		closeServer(false);
 		
 		if (connection != null) {
-			whenComplete(connection.closeAsync(), v -> {
-				if (!silent)
-					System.out.println("Closed connection");
-			});
+			try {
+				connection.close();
+			} catch (IOException | InterruptedException e) {
+				e.printStackTrace();
+			}
 			connection = null;
+			if (!silent)
+				System.out.println("Closed connection");
 			onConnectionClose();
 		}
 		
@@ -405,13 +434,23 @@ public class CLI implements AutoCloseable {
 	
 	private void closeServer(boolean silent) {
 		if (server != null) {
-			whenComplete(server.closeAsync(), v -> {
-				if (!silent)
-					System.out.println("Closed server");
-			});
+			try {
+				server.close();
+			} catch (IOException | InterruptedException e) {
+				e.printStackTrace();
+			}
 			server = null;
+			if (!silent)
+				System.out.println("Closed server");
 			onServerStop();
 		}
+	}
+	
+	private void exitCmd() {
+		FutureUtil.whenComplete(closeAsync(), (v, e) -> {
+			if (e != null)
+				e.printStackTrace();
+		});
 	}
 	
 	private void loginCmd() {
@@ -750,9 +789,18 @@ public class CLI implements AutoCloseable {
 	}
 	
 	@Override
-	public void close() {
-		closeConnection(false);
-		executor.shutdown();
+	public CompletableFuture<Void> closeAsync() {
+		return FutureUtil.runAsync(this::close, ForkJoinPool.commonPool());
+	}
+	
+	@Override
+	public void close() throws InterruptedException {
+		try {
+			executor.shutdown();
+			executor.awaitTermination(Long.MAX_VALUE, TimeUnit.DAYS);
+		} finally {
+			closeConnection(false);
+		}
 	}
 	
 }

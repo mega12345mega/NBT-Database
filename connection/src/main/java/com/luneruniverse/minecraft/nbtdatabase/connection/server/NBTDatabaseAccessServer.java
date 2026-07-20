@@ -7,9 +7,9 @@ import java.security.NoSuchAlgorithmException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ForkJoinPool;
 import java.util.function.Function;
 
+import com.luneruniverse.minecraft.nbtdatabase.connection.AsyncCloseable;
 import com.luneruniverse.minecraft.nbtdatabase.connection.access.NBTDatabaseAccess;
 import com.luneruniverse.minecraft.nbtdatabase.connection.exceptions.AuthorizationServerException;
 import com.luneruniverse.minecraft.nbtdatabase.connection.exceptions.ServerException;
@@ -75,7 +75,7 @@ import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpServerCodec;
 
-public class NBTDatabaseAccessServer implements AutoCloseable {
+public class NBTDatabaseAccessServer implements AsyncCloseable {
 	
 	private final NBTDatabaseAccess database;
 	private final int port;
@@ -199,7 +199,7 @@ public class NBTDatabaseAccessServer implements AutoCloseable {
 	}
 	
 	private <T> void respond(Packet packet, Channel channel, CompletableFuture<T> request, Function<T, Packet> packer) {
-		request.whenCompleteAsync((value, e) -> {
+		FutureUtil.whenCompleteAsync(request, (value, e) -> {
 			if (e != null)
 				NBTProtocol.reply(channel, packet, ServerException.from(e, true).toPacket());
 			else
@@ -356,13 +356,14 @@ public class NBTDatabaseAccessServer implements AutoCloseable {
 				request -> database.removeTagFromEntry(request.getEntry(), request.getTag()));
 	}
 	
+	@Override
 	public CompletableFuture<Void> closeAsync() {
-		return FutureUtil.runAsync(server::close, ForkJoinPool.commonPool());
+		return NettyUtil.toJava(server.close());
 	}
 	
 	@Override
 	public void close() throws IOException, InterruptedException {
-		server.close();
+		NettyUtil.awaitClose(server.close());
 	}
 	
 }
