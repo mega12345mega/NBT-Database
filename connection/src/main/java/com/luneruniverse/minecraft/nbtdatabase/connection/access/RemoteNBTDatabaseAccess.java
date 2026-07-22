@@ -39,7 +39,6 @@ import com.luneruniverse.minecraft.nbtdatabase.connection.packets.entries.LockEn
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.entries.RemoveEntryRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.entries.UnlockEntryRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.exceptions.ServerExceptionPacket;
-import com.luneruniverse.minecraft.nbtdatabase.connection.packets.login.LoginPacket.User;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.tags.AddTagRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.tags.AddTagToEntryRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.tags.EditTagRequestPacket;
@@ -50,6 +49,7 @@ import com.luneruniverse.minecraft.nbtdatabase.connection.packets.tags.RemoveTag
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.tags.RemoveTagRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.tags.TagsPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.tags.UnlockTagRequestPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.user.Profile;
 import com.luneruniverse.minecraft.nbtdatabase.connection.util.FutureUtil;
 import com.luneruniverse.minecraft.nbtdatabase.connection.util.NettyUtil;
 import com.luneruniverse.minecraft.nbtdatabase.request.EntryFilter;
@@ -75,9 +75,9 @@ public class RemoteNBTDatabaseAccess implements NBTDatabaseAccess {
 	private final Channel client;
 	private final ExecutorService executor;
 	
-	public RemoteNBTDatabaseAccess(String ip, int port, User user, String accessToken) throws IOException {
-		if ((user == null) != (accessToken == null))
-			throw new IllegalArgumentException("Either both or neither of user and accessToken can be null!");
+	public RemoteNBTDatabaseAccess(String ip, int port, Profile profile, String accessToken) throws IOException {
+		if ((profile == null) != (accessToken == null))
+			throw new IllegalArgumentException("Either both or neither of profile and accessToken can be null!");
 		
 		this.ip = ip;
 		this.port = port;
@@ -97,7 +97,7 @@ public class RemoteNBTDatabaseAccess implements NBTDatabaseAccess {
 						channel.pipeline().addLast(
 								new ProtocolVersionHandler(true),
 								new DisconnectHandler(),
-								new ClientLoginHandler(user, accessToken),
+								new ClientLoginHandler(profile, accessToken),
 								new ExceptionHandler(closeFuture));
 					}
 				})

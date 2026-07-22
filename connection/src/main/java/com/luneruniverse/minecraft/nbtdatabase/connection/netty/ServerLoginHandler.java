@@ -16,6 +16,7 @@ import com.luneruniverse.minecraft.nbtdatabase.connection.packets.Packet;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.login.LoginPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.login.LoginRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.user.MojangAuth;
+import com.luneruniverse.minecraft.nbtdatabase.connection.user.Profile;
 import com.luneruniverse.minecraft.nbtdatabase.connection.util.FutureUtil;
 
 import io.netty.channel.ChannelFutureListener;
@@ -25,11 +26,11 @@ import io.netty.channel.SimpleChannelInboundHandler;
 public class ServerLoginHandler extends SimpleChannelInboundHandler<Packet> {
 	
 	private final KeyPair keys;
-	private final Consumer<Optional<LoginPacket.User>> onConnect;
+	private final Consumer<Optional<Profile>> onConnect;
 	private final byte[] challenge;
 	private boolean loginReceived;
 	
-	public ServerLoginHandler(KeyPair keys, Consumer<Optional<LoginPacket.User>> onConnect) {
+	public ServerLoginHandler(KeyPair keys, Consumer<Optional<Profile>> onConnect) {
 		this.keys = keys;
 		this.onConnect = onConnect;
 		
@@ -75,19 +76,20 @@ public class ServerLoginHandler extends SimpleChannelInboundHandler<Packet> {
 				return;
 			}
 			
-			Optional<LoginPacket.User> user = login.getUser();
-			if (user.isPresent()) {
+			Optional<Profile> profile = login.getProfile();
+			if (profile.isPresent()) {
 				WaitHandler wait = new WaitHandler(true);
 				ctx.pipeline().addAfter(ctx.name(), null, wait);
 				CompletableFuture<Boolean> hasJoinedFuture = MojangAuth.hasJoinedAsync(
-						MojangAuth.generateServerId(keys.getPublic(), sharedKey), user.get().getUuid(), user.get().getUsername());
+						MojangAuth.generateServerId(keys.getPublic(), sharedKey),
+						profile.get().getUuid(), profile.get().getUsername());
 				FutureUtil.whenCompleteAsync(hasJoinedFuture, (hasJoined, e) -> {
 					if (e != null) {
 						ctx.pipeline().fireExceptionCaught(e);
 						ctx.writeAndFlush(new DisconnectPacket("Login failed: Couldn't verify with Mojang"))
 								.addListener(ChannelFutureListener.CLOSE);
 					} else if (hasJoined) {
-						onConnect.accept(user);
+						onConnect.accept(profile);
 						wait.setDiscard(false);
 						ctx.pipeline().remove(wait);
 					} else {
@@ -96,7 +98,7 @@ public class ServerLoginHandler extends SimpleChannelInboundHandler<Packet> {
 					}
 				}, ctx.executor());
 			} else
-				onConnect.accept(user);
+				onConnect.accept(profile);
 			
 			ctx.pipeline().remove(this);
 		} else

@@ -46,6 +46,7 @@ import com.luneruniverse.minecraft.nbtdatabase.connection.packets.tags.RemoveTag
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.tags.RemoveTagRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.tags.TagsPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.tags.UnlockTagRequestPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.user.Profile;
 import com.luneruniverse.minecraft.nbtdatabase.request.EntryFilter;
 import com.luneruniverse.minecraft.nbtdatabase.request.EntryView;
 import com.luneruniverse.minecraft.nbtdatabase.request.TagFilter;
@@ -86,6 +87,7 @@ public class Packets {
 			}
 		});
 		
+		KRYO.register(Profile.class);
 		KRYO.register(Config.class);
 		KRYO.register(Entry.class);
 		KRYO.register(Entry[].class);
@@ -115,7 +117,6 @@ public class Packets {
 		
 		// Client -> Server
 		KRYO.register(LoginPacket.class);
-		KRYO.register(LoginPacket.User.class);
 		KRYO.register(LockConfigRequestPacket.class);
 		KRYO.register(UnlockConfigRequestPacket.class);
 		KRYO.register(SetConfigRequestPacket.class);

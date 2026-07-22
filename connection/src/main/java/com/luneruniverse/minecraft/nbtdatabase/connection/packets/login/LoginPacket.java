@@ -1,39 +1,19 @@
 package com.luneruniverse.minecraft.nbtdatabase.connection.packets.login;
 
 import java.util.Optional;
-import java.util.UUID;
 
 import com.esotericsoftware.kryo.kryo5.serializers.FieldSerializer.NotNull;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.Packet;
+import com.luneruniverse.minecraft.nbtdatabase.connection.user.Profile;
 
 public class LoginPacket extends Packet {
 	
-	public static final class User {
-		private @NotNull UUID uuid;
-		private @NotNull String username;
-		
-		public User(UUID uuid, String username) {
-			this.uuid = uuid;
-			this.username = username;
-		}
-		User() {
-			// Deserialization
-		}
-		
-		public UUID getUuid() {
-			return uuid;
-		}
-		public String getUsername() {
-			return username;
-		}
-	}
-	
-	private @NotNull Optional<User> user;
+	private @NotNull Optional<Profile> profile;
 	private @NotNull byte[] encryptedSharedKey;
 	private @NotNull byte[] encryptedChallenge;
 	
-	public LoginPacket(Optional<User> user, byte[] encryptedSharedKey, byte[] encryptedChallenge) {
-		this.user = user;
+	public LoginPacket(Optional<Profile> profile, byte[] encryptedSharedKey, byte[] encryptedChallenge) {
+		this.profile = profile;
 		this.encryptedSharedKey = encryptedSharedKey;
 		this.encryptedChallenge = encryptedChallenge;
 	}
@@ -41,8 +21,8 @@ public class LoginPacket extends Packet {
 		// Deserialization
 	}
 	
-	public Optional<User> getUser() {
-		return user;
+	public Optional<Profile> getProfile() {
+		return profile;
 	}
 	public byte[] getEncryptedSharedKey() {
 		return encryptedSharedKey;

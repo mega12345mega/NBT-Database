@@ -47,22 +47,21 @@ import com.luneruniverse.minecraft.nbtdatabase.connection.access.NBTDatabaseAcce
 import com.luneruniverse.minecraft.nbtdatabase.connection.access.RemoteNBTDatabaseAccess;
 import com.luneruniverse.minecraft.nbtdatabase.connection.exceptions.RequestFailedException;
 import com.luneruniverse.minecraft.nbtdatabase.connection.exceptions.ServerException;
-import com.luneruniverse.minecraft.nbtdatabase.connection.packets.login.LoginPacket.User;
 import com.luneruniverse.minecraft.nbtdatabase.connection.server.NBTDatabaseAccessServer;
 import com.luneruniverse.minecraft.nbtdatabase.connection.server.auth.AllowAuthorizationManager;
+import com.luneruniverse.minecraft.nbtdatabase.connection.user.Profile;
 import com.luneruniverse.minecraft.nbtdatabase.connection.util.FutureUtil;
 import com.luneruniverse.minecraft.nbtdatabase.request.IllegalRequestException;
 import com.luneruniverse.minecraft.nbtdatabase.ui.LoginUtil;
 import com.luneruniverse.minecraft.nbtdatabase.ui.UIUtil;
 
 import jnafilechooser.api.JnaFileChooser;
-import net.raphimc.minecraftauth.step.java.StepMCToken.MCToken;
+import net.raphimc.minecraftauth.java.model.MinecraftToken;
 
 public class GUI implements AsyncCloseable {
 	
 	@SuppressWarnings("resource")
 	public static void main(String[] args) {
-		LoginUtil.setMinecraftAuthLogger();
 		new GUI().open();
 	}
 	
@@ -83,8 +82,8 @@ public class GUI implements AsyncCloseable {
 	private final TagsTab tagsTab;
 	private final JButton refreshBtn;
 	
-	private User user;
-	private MCToken accessToken;
+	private Profile profile;
+	private MinecraftToken accessToken;
 	private NBTDatabase localDatabase;
 	private NBTDatabaseAccess connection;
 	private NBTDatabaseAccessServer server;
@@ -230,7 +229,7 @@ public class GUI implements AsyncCloseable {
 	}
 	
 	private void updateAccountMenu() {
-		accountMenu.setText(user == null ? "Account" : "Account: " + user.getUsername());
+		accountMenu.setText(profile == null ? "Account" : "Account: " + profile.getUsername());
 	}
 	
 	private void updateConnectionInfo() {
@@ -285,8 +284,10 @@ public class GUI implements AsyncCloseable {
 					}
 					if (e.getCause() != null)
 						e.getCause().printStackTrace();
-				} else
+				} else {
 					e.printStackTrace();
+					JOptionPane.showMessageDialog(frame, e.getMessage(), "Internal Error", JOptionPane.ERROR_MESSAGE);
+				}
 			}
 		}, EventQueue::invokeLater);
 	}
@@ -420,7 +421,7 @@ public class GUI implements AsyncCloseable {
 	
 	private void connectToRemoteDatabaseMenuItem() {
 		if (accessToken != null && accessToken.isExpired()) {
-			user = null;
+			profile = null;
 			accessToken = null;
 			updateAccountMenu();
 			JOptionPane.showMessageDialog(frame, "Your access token has expired; you are now logged out",
@@ -450,7 +451,7 @@ public class GUI implements AsyncCloseable {
 		closeConnection();
 		
 		try {
-			connection = new RemoteNBTDatabaseAccess(ip, port, user, accessToken == null ? null : accessToken.getAccessToken());
+			connection = new RemoteNBTDatabaseAccess(ip, port, profile, accessToken == null ? null : accessToken.getToken());
 			onConnectionOpen();
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -557,50 +558,52 @@ public class GUI implements AsyncCloseable {
 	}
 	
 	private void loginAccountMenuItem() {
-		FutureUtil.DAEMON_EXECUTOR.execute(() -> {
-			AtomicBoolean cancelled = new AtomicBoolean();
-			LoginUtil.loginWithDeviceCode(url -> {
-				switch (JOptionPane.showOptionDialog(frame, "Use this link to login: (expires in 5 minutes)\n" + url,
-						"Login", JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE, null,
-						new String[] {"Open Link", "Copy Link", "Cancel"}, null)) {
-					case -1: // Close
-						break;
-					case 0: // Open Link
-						try {
-							Desktop.getDesktop().browse(new URI(url));
-						} catch (IOException | URISyntaxException e) {
-							e.printStackTrace();
-						}
-						break;
-					case 1: // Copy Link
-						Toolkit.getDefaultToolkit().getSystemClipboard().setContents(new StringSelection(url), null);
-						break;
-					case 2: // Cancel
-						cancelled.set(true);
-						break;
-				}
-			}, session -> {
-				EventQueue.invokeLater(() -> {
-					user = new User(session.getMcProfile().getId(), session.getMcProfile().getName());
-					accessToken = session.getMcProfile().getMcToken();
-					updateAccountMenu();
-					JOptionPane.showMessageDialog(frame, "Logged in as " + user.getUsername() + " (" + user.getUuid() + ")",
-							"Login", JOptionPane.INFORMATION_MESSAGE);
-				});
-			}, () -> {
-				if (!cancelled.get())
-					JOptionPane.showMessageDialog(frame, "Login timed out", "Error", JOptionPane.ERROR_MESSAGE);
+		AtomicBoolean cancelled = new AtomicBoolean();
+		LoginUtil.loginWithDeviceCode(url -> {
+			switch (JOptionPane.showOptionDialog(frame, "Use this link to login: (expires in 5 minutes)\n" + url,
+					"Login", JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE, null,
+					new String[] {"Open Link", "Copy Link", "Cancel"}, null)) {
+				case -1: // Close
+					break;
+				case 0: // Open Link
+					try {
+						Desktop.getDesktop().browse(new URI(url));
+					} catch (IOException | URISyntaxException e) {
+						e.printStackTrace();
+						JOptionPane.showMessageDialog(frame, "Failed to open link", "Error", JOptionPane.ERROR_MESSAGE);
+					}
+					break;
+				case 1: // Copy Link
+					Toolkit.getDefaultToolkit().getSystemClipboard().setContents(new StringSelection(url), null);
+					break;
+				case 2: // Cancel
+					cancelled.set(true);
+					break;
+			}
+		}, (profile, accessToken) -> {
+			EventQueue.invokeLater(() -> {
+				this.profile = profile;
+				this.accessToken = accessToken;
+				updateAccountMenu();
+				JOptionPane.showMessageDialog(frame, "Logged in as " + profile.getUsername() + " (" + profile.getUuid() + ")",
+						"Login", JOptionPane.INFORMATION_MESSAGE);
 			});
+		}, () -> {
+			if (!cancelled.get())
+				JOptionPane.showMessageDialog(frame, "Login timed out", "Error", JOptionPane.ERROR_MESSAGE);
+		}, e -> {
+			e.printStackTrace();
+			JOptionPane.showMessageDialog(frame, "Failed to login", "Error", JOptionPane.ERROR_MESSAGE);
 		});
 	}
 	
 	private void logoutAccountMenuItem() {
-		if (user == null) {
+		if (profile == null) {
 			JOptionPane.showMessageDialog(frame, "You are already logged out", "Error", JOptionPane.ERROR_MESSAGE);
 			return;
 		}
 		
-		user = null;
+		profile = null;
 		accessToken = null;
 		updateAccountMenu();
 	}

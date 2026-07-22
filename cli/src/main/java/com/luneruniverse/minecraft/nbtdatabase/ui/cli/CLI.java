@@ -31,9 +31,9 @@ import com.luneruniverse.minecraft.nbtdatabase.connection.access.NBTDatabaseAcce
 import com.luneruniverse.minecraft.nbtdatabase.connection.access.RemoteNBTDatabaseAccess;
 import com.luneruniverse.minecraft.nbtdatabase.connection.exceptions.RequestFailedException;
 import com.luneruniverse.minecraft.nbtdatabase.connection.exceptions.ServerException;
-import com.luneruniverse.minecraft.nbtdatabase.connection.packets.login.LoginPacket.User;
 import com.luneruniverse.minecraft.nbtdatabase.connection.server.NBTDatabaseAccessServer;
 import com.luneruniverse.minecraft.nbtdatabase.connection.server.auth.AllowAuthorizationManager;
+import com.luneruniverse.minecraft.nbtdatabase.connection.user.Profile;
 import com.luneruniverse.minecraft.nbtdatabase.connection.util.FutureUtil;
 import com.luneruniverse.minecraft.nbtdatabase.request.EntryFilter;
 import com.luneruniverse.minecraft.nbtdatabase.request.EntryView;
@@ -54,13 +54,11 @@ import com.luneruniverse.simplecli.inputs.IntegerInput;
 import com.luneruniverse.simplecli.inputs.StringInput;
 import com.luneruniverse.simplecli.inputs.StringKeyInput;
 
-import net.raphimc.minecraftauth.step.java.StepMCToken.MCToken;
+import net.raphimc.minecraftauth.java.model.MinecraftToken;
 
 public class CLI implements AsyncCloseable {
 	
 	public static void main(String[] args) throws IOException {
-		LoginUtil.setMinecraftAuthLogger();
-		
 		Thread readerThread = null;
 		
 		try (CLI cli = new CLI()) {
@@ -101,8 +99,8 @@ public class CLI implements AsyncCloseable {
 	
 	private final ExecutorService executor;
 	private final GroupCommand root;
-	private User user;
-	private MCToken accessToken;
+	private Profile profile;
+	private MinecraftToken accessToken;
 	private NBTDatabase localDatabase;
 	private NBTDatabaseAccess connection;
 	private NBTDatabaseAccessServer server;
@@ -454,27 +452,29 @@ public class CLI implements AsyncCloseable {
 	}
 	
 	private void loginCmd() {
-		FutureUtil.DAEMON_EXECUTOR.execute(() -> {
-			LoginUtil.loginWithDeviceCode(url -> {
-				System.out.println("Use this link to login: (expires in 5 minutes)");
-				System.out.println(url);
-			}, session -> {
-				executor.execute(() -> {
-					user = new User(session.getMcProfile().getId(), session.getMcProfile().getName());
-					accessToken = session.getMcProfile().getMcToken();
-					System.out.println("Logged in as " + user.getUsername() + " (" + user.getUuid() + ")");
-				});
-			}, () -> System.out.println("Login timed out"));
+		LoginUtil.loginWithDeviceCode(url -> {
+			System.out.println("Use this link to login: (expires in 5 minutes)");
+			System.out.println(url);
+		}, (profile, accessToken) -> {
+			executor.execute(() -> {
+				this.profile = profile;
+				this.accessToken = accessToken;
+				System.out.println("Logged in as " + profile.getUsername() + " (" + profile.getUuid() + ")");
+			});
+		}, () -> {
+			System.out.println("Login timed out");
+		}, e -> {
+			e.printStackTrace();
 		});
 	}
 	
 	private void logoutCmd() {
-		if (user == null) {
+		if (profile == null) {
 			System.err.println("You are already logged out");
 			return;
 		}
 		
-		user = null;
+		profile = null;
 		accessToken = null;
 		System.out.println("Logged out");
 	}
@@ -522,7 +522,7 @@ public class CLI implements AsyncCloseable {
 	
 	private void openRemoteCmd(String ip, int port) {
 		if (accessToken != null && accessToken.isExpired()) {
-			user = null;
+			profile = null;
 			accessToken = null;
 			System.err.println("Your access token has expired; you are now logged out");
 			System.err.println("The connection was not opened in case you want to login again");
@@ -532,7 +532,7 @@ public class CLI implements AsyncCloseable {
 		closeConnection(true);
 		
 		try {
-			connection = new RemoteNBTDatabaseAccess(ip, port, user, accessToken == null ? null : accessToken.getAccessToken());
+			connection = new RemoteNBTDatabaseAccess(ip, port, profile, accessToken == null ? null : accessToken.getToken());
 			onConnectionOpen();
 			System.out.println("Opened: " + ip + ":" + port);
 		} catch (IOException e) {
