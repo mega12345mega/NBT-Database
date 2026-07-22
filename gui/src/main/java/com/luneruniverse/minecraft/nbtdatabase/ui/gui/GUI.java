@@ -17,6 +17,7 @@ import java.nio.file.Files;
 import java.security.NoSuchAlgorithmException;
 import java.sql.SQLException;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
 import javax.swing.Box;
@@ -54,7 +55,6 @@ import com.luneruniverse.minecraft.nbtdatabase.ui.UIUtil;
 
 import jnafilechooser.api.JnaFileChooser;
 import net.raphimc.minecraftauth.step.java.StepMCToken.MCToken;
-import net.raphimc.minecraftauth.step.java.session.StepFullJavaSession;
 
 public class GUI implements AutoCloseable {
 	
@@ -158,17 +158,9 @@ public class GUI implements AutoCloseable {
 		accountMenu.setMnemonic('A');
 		menuBar.add(accountMenu);
 		
-		JMenu loginAccountMenu = new JMenu("Login");
-		loginAccountMenu.setMnemonic('i');
-		accountMenu.add(loginAccountMenu);
-		
-		JMenuItem linkLoginAccountMenuItem = new JMenuItem("In Browser", 'B');
-		loginAccountMenu.add(linkLoginAccountMenuItem);
-		linkLoginAccountMenuItem.addActionListener(event -> linkLoginAccountMenuItem());
-		
-		JMenuItem windowLoginAccountMenuItem = new JMenuItem("In Window", 'W');
-		loginAccountMenu.add(windowLoginAccountMenuItem);
-		windowLoginAccountMenuItem.addActionListener(event -> windowLoginAccountMenuItem());
+		JMenuItem loginAccountMenuItem = new JMenuItem("Login", 'i');
+		accountMenu.add(loginAccountMenuItem);
+		loginAccountMenuItem.addActionListener(event -> loginAccountMenuItem());
 		
 		JMenuItem logoutAccountMenuItem = new JMenuItem("Logout", 'o');
 		accountMenu.add(logoutAccountMenuItem);
@@ -559,8 +551,9 @@ public class GUI implements AutoCloseable {
 		updateConnectionInfo();
 	}
 	
-	private void linkLoginAccountMenuItem() {
+	private void loginAccountMenuItem() {
 		FutureUtil.DAEMON_EXECUTOR.execute(() -> {
+			AtomicBoolean cancelled = new AtomicBoolean();
 			LoginUtil.loginWithDeviceCode(url -> {
 				switch (JOptionPane.showOptionDialog(frame, "Use this link to login: (expires in 5 minutes)\n" + url,
 						"Login", JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE, null,
@@ -578,23 +571,21 @@ public class GUI implements AutoCloseable {
 						Toolkit.getDefaultToolkit().getSystemClipboard().setContents(new StringSelection(url), null);
 						break;
 					case 2: // Cancel
+						cancelled.set(true);
 						break;
 				}
-			}, this::login, () -> {});
-		});
-	}
-	
-	private void windowLoginAccountMenuItem() {
-		FutureUtil.DAEMON_EXECUTOR.execute(() -> LoginUtil.loginWithJavaFX(this::login, () -> {}));
-	}
-	
-	private void login(StepFullJavaSession.FullJavaSession session) {
-		EventQueue.invokeLater(() -> {
-			user = new User(session.getMcProfile().getId(), session.getMcProfile().getName());
-			accessToken = session.getMcProfile().getMcToken();
-			updateAccountMenu();
-			JOptionPane.showMessageDialog(frame, "Logged in as " + user.getUsername() + " (" + user.getUuid() + ")",
-					"Login", JOptionPane.INFORMATION_MESSAGE);
+			}, session -> {
+				EventQueue.invokeLater(() -> {
+					user = new User(session.getMcProfile().getId(), session.getMcProfile().getName());
+					accessToken = session.getMcProfile().getMcToken();
+					updateAccountMenu();
+					JOptionPane.showMessageDialog(frame, "Logged in as " + user.getUsername() + " (" + user.getUuid() + ")",
+							"Login", JOptionPane.INFORMATION_MESSAGE);
+				});
+			}, () -> {
+				if (!cancelled.get())
+					JOptionPane.showMessageDialog(frame, "Login timed out", "Error", JOptionPane.ERROR_MESSAGE);
+			});
 		});
 	}
 	

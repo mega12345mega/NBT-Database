@@ -48,7 +48,6 @@ import com.luneruniverse.simplecli.inputs.StringInput;
 import com.luneruniverse.simplecli.inputs.StringKeyInput;
 
 import net.raphimc.minecraftauth.step.java.StepMCToken.MCToken;
-import net.raphimc.minecraftauth.step.java.session.StepFullJavaSession;
 
 public class CLI implements AutoCloseable {
 	
@@ -96,9 +95,7 @@ public class CLI implements AutoCloseable {
 		
 		root.addCommand(new SingleCommand("exit", this::close));
 		
-		root.addCommand(new SingleCommand("login", inputs -> loginCmd(
-				inputs.hasFlag("popup")))
-				.addFlag("popup", "p"));
+		root.addCommand(new SingleCommand("login", this::loginCmd));
 		
 		root.addCommand(new SingleCommand("logout", this::logoutCmd));
 		
@@ -423,24 +420,18 @@ public class CLI implements AutoCloseable {
 		}
 	}
 	
-	private void loginCmd(boolean popup) {
+	private void loginCmd() {
 		FutureUtil.DAEMON_EXECUTOR.execute(() -> {
-			Consumer<StepFullJavaSession.FullJavaSession> sessionConsumer = session -> {
+			LoginUtil.loginWithDeviceCode(url -> {
+				System.out.println("Use this link to login: (expires in 5 minutes)");
+				System.out.println(url);
+			}, session -> {
 				executor.execute(() -> {
 					user = new User(session.getMcProfile().getId(), session.getMcProfile().getName());
 					accessToken = session.getMcProfile().getMcToken();
 					System.out.println("Logged in as " + user.getUsername() + " (" + user.getUuid() + ")");
 				});
-			};
-			
-			if (popup) {
-				LoginUtil.loginWithJavaFX(sessionConsumer, () -> {});
-			} else {
-				LoginUtil.loginWithDeviceCode(url -> {
-					System.out.println("Use this link to login: (expires in 5 minutes)");
-					System.out.println(url);
-				}, sessionConsumer, () -> System.out.println("Login timed out"));
-			}
+			}, () -> System.out.println("Login timed out"));
 		});
 	}
 	
