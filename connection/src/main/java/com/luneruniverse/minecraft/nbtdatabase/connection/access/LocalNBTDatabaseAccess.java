@@ -29,6 +29,10 @@ public class LocalNBTDatabaseAccess implements NBTDatabaseAccess {
 		this.executor = Executors.newSingleThreadExecutor();
 	}
 	
+	public NBTDatabase getDatabase() {
+		return database;
+	}
+	
 	@Override
 	public String getName() {
 		return "[Local] " + database.getFile().getAbsolutePath();

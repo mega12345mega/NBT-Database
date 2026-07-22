@@ -16,6 +16,7 @@ import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.sql.SQLException;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
@@ -72,6 +73,8 @@ public class GUI implements AsyncCloseable {
 		return scrollPane;
 	}
 	
+	private final CompletableFuture<Void> closeFuture;
+	
 	private final JFrame frame;
 	private final JMenu accountMenu;
 	private final JLabel connectionLabel;
@@ -91,6 +94,8 @@ public class GUI implements AsyncCloseable {
 	public GUI() {
 		DataVersion.loadVersions();
 		
+		closeFuture = new CompletableFuture<>();
+		
 		try {
 			UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
 		} catch (Exception e) {
@@ -100,8 +105,11 @@ public class GUI implements AsyncCloseable {
 		frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 		frame.addWindowListener(new WindowAdapter() {
 			@Override
-			public void windowClosing(WindowEvent e) {
-				closeConnection();
+			public void windowClosing(WindowEvent event) {
+				FutureUtil.whenComplete(closeAsync(), (v, e) -> {
+					if (e != null)
+						e.printStackTrace();
+				});
 			}
 		});
 		frame.setSize(500, 500);
@@ -433,17 +441,17 @@ public class GUI implements AsyncCloseable {
 		if (address == null)
 			return;
 		int lastColon = address.lastIndexOf(':');
-		String ip;
+		String host;
 		int port;
 		if (lastColon == -1) {
-			ip = address;
+			host = address;
 			port = 25560;
 		} else {
 			try {
 				port = Integer.parseInt(address.substring(lastColon + 1));
-				ip = address.substring(0, lastColon);
+				host = address.substring(0, lastColon);
 			} catch (NumberFormatException e) {
-				ip = address;
+				host = address;
 				port = 25560;
 			}
 		}
@@ -451,11 +459,11 @@ public class GUI implements AsyncCloseable {
 		closeConnection();
 		
 		try {
-			connection = new RemoteNBTDatabaseAccess(ip, port, profile, accessToken == null ? null : accessToken.getToken());
+			connection = new RemoteNBTDatabaseAccess(host, port, profile, accessToken == null ? null : accessToken.getToken());
 			onConnectionOpen();
 		} catch (IOException e) {
 			e.printStackTrace();
-			JOptionPane.showMessageDialog(frame, "Failed to connect to '" + ip + ":" + port + "'", "Error", JOptionPane.ERROR_MESSAGE);
+			JOptionPane.showMessageDialog(frame, "Failed to connect to '" + host + ":" + port + "'", "Error", JOptionPane.ERROR_MESSAGE);
 		}
 		
 		updateConnectionInfo();
@@ -623,18 +631,38 @@ public class GUI implements AsyncCloseable {
 		frame.setVisible(true);
 	}
 	
-	public boolean isOpen() {
-		return frame.isVisible();
+	@Override
+	public CompletableFuture<Void> getCloseFuture() {
+		return closeFuture;
 	}
 	
 	@Override
 	public CompletableFuture<Void> closeAsync() {
+		closeFuture.complete(null);
 		return FutureUtil.runAsync(this::close, ForkJoinPool.commonPool());
 	}
 	
 	@Override
-	public void close() {
-		frame.dispose();
+	public void close() throws InterruptedException {
+		closeFuture.complete(null);
+		try {
+			// frame.dispose() deadlocks when called from another thread
+			if (EventQueue.isDispatchThread()) {
+				frame.dispose();
+			} else {
+				CountDownLatch disposeLatch = new CountDownLatch(1);
+				EventQueue.invokeLater(() -> {
+					try {
+						frame.dispose();
+					} finally {
+						disposeLatch.countDown();
+					}
+				});
+				disposeLatch.await();
+			}
+		} finally {
+			closeConnection();
+		}
 	}
 	
 }

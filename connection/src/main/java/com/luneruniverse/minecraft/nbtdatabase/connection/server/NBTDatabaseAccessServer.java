@@ -84,6 +84,7 @@ public class NBTDatabaseAccessServer implements AsyncCloseable {
 	private final LockCacheMap<Long> entryLocks;
 	private final LockCacheMap<String> tagLocks;
 	private final Map<Channel, User> users;
+	private final CompletableFuture<Void> closeFuture;
 	private final Channel server;
 	
 	public NBTDatabaseAccessServer(NBTDatabaseAccess database, int port, AuthorizationManager auth) throws IOException {
@@ -96,6 +97,8 @@ public class NBTDatabaseAccessServer implements AsyncCloseable {
 		tagLocks = LockCacheMap.forTags(database);
 		
 		users = new HashMap<>();
+		
+		closeFuture = new CompletableFuture<>();
 		
 		KeyPairGenerator keysGenerator;
 		try {
@@ -169,6 +172,10 @@ public class NBTDatabaseAccessServer implements AsyncCloseable {
 				})
 				.bind(port);
 		server = NettyUtil.addGroupShutdown(serverFuture, group);
+	}
+	
+	public NBTDatabaseAccess getDatabase() {
+		return database;
 	}
 	
 	public int getPort() {
@@ -357,12 +364,19 @@ public class NBTDatabaseAccessServer implements AsyncCloseable {
 	}
 	
 	@Override
+	public CompletableFuture<Void> getCloseFuture() {
+		return closeFuture;
+	}
+	
+	@Override
 	public CompletableFuture<Void> closeAsync() {
+		closeFuture.complete(null);
 		return NettyUtil.toJava(server.close());
 	}
 	
 	@Override
 	public void close() throws IOException, InterruptedException {
+		closeFuture.complete(null);
 		NettyUtil.awaitClose(server.close());
 	}
 	

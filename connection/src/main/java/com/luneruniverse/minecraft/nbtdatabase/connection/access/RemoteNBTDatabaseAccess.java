@@ -69,17 +69,17 @@ import io.netty.channel.socket.nio.NioSocketChannel;
 
 public class RemoteNBTDatabaseAccess implements NBTDatabaseAccess {
 	
-	private final String ip;
+	private final String host;
 	private final int port;
 	private final CompletableFuture<Void> closeFuture;
 	private final Channel client;
 	private final ExecutorService executor;
 	
-	public RemoteNBTDatabaseAccess(String ip, int port, Profile profile, String accessToken) throws IOException {
+	public RemoteNBTDatabaseAccess(String host, int port, Profile profile, String accessToken) throws IOException {
 		if ((profile == null) != (accessToken == null))
 			throw new IllegalArgumentException("Either both or neither of profile and accessToken can be null!");
 		
-		this.ip = ip;
+		this.host = host;
 		this.port = port;
 		
 		closeFuture = new CompletableFuture<>();
@@ -101,19 +101,27 @@ public class RemoteNBTDatabaseAccess implements NBTDatabaseAccess {
 								new ExceptionHandler(closeFuture));
 					}
 				})
-				.connect(ip, port);
+				.connect(host, port);
 		client = NettyUtil.addGroupShutdown(clientFuture, group);
 		client.closeFuture().addListener(future -> closeFuture.completeExceptionally(new DisconnectException("Connection lost")));
 		
 		executor = Executors.newSingleThreadExecutor();
 	}
-	public RemoteNBTDatabaseAccess(String ip, int port) throws IOException, InterruptedException {
-		this(ip, port, null, null);
+	public RemoteNBTDatabaseAccess(String host, int port) throws IOException, InterruptedException {
+		this(host, port, null, null);
+	}
+	
+	public String getHost() {
+		return host;
+	}
+	
+	public int getPort() {
+		return port;
 	}
 	
 	@Override
 	public String getName() {
-		return "[Remote] " + ip + ":" + port;
+		return "[Remote] " + host + ":" + port;
 	}
 	
 	private <T, P> CompletableFuture<T> request(Packet packet, Class<P> responsePacketType, Function<P, T> unpacker) {

@@ -37,5 +37,4 @@ public interface NBTDatabaseAccess extends AsyncCloseable {
 	public CompletableFuture<List<Tag>> getTags(TagFilter filter);
 	public CompletableFuture<Void> addTagToEntry(long entry, String tag);
 	public CompletableFuture<Void> removeTagFromEntry(long entry, String tag);
-	public CompletableFuture<Void> getCloseFuture();
 }

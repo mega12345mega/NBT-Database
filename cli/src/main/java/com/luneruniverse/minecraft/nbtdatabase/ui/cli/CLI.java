@@ -97,6 +97,7 @@ public class CLI implements AsyncCloseable {
 		}
 	}
 	
+	private final CompletableFuture<Void> closeFuture;
 	private final ExecutorService executor;
 	private final GroupCommand root;
 	private Profile profile;
@@ -109,6 +110,7 @@ public class CLI implements AsyncCloseable {
 	public CLI() {
 		DataVersion.loadVersions();
 		
+		closeFuture = new CompletableFuture<>();
 		executor = Executors.newSingleThreadExecutor();
 		
 		root = new GroupCommand(null);
@@ -128,8 +130,8 @@ public class CLI implements AsyncCloseable {
 						new File(inputs.getArgument("file", String.class))))
 						.addArgument("file", new StringInput()))
 				.addCommand(new SingleCommand("remote", inputs -> openRemoteCmd(
-						inputs.getArgument("ip", String.class), inputs.getArgument("port", Integer.class)))
-						.addArgument("ip", new StringInput()).addArgument("port", new IntegerInput())));
+						inputs.getArgument("host", String.class), inputs.getArgument("port", Integer.class)))
+						.addArgument("host", new StringInput()).addArgument("port", new IntegerInput())));
 		
 		root.addCommand(new SingleCommand("close", this::closeCmd));
 		
@@ -520,7 +522,7 @@ public class CLI implements AsyncCloseable {
 		}
 	}
 	
-	private void openRemoteCmd(String ip, int port) {
+	private void openRemoteCmd(String host, int port) {
 		if (accessToken != null && accessToken.isExpired()) {
 			profile = null;
 			accessToken = null;
@@ -532,9 +534,9 @@ public class CLI implements AsyncCloseable {
 		closeConnection(true);
 		
 		try {
-			connection = new RemoteNBTDatabaseAccess(ip, port, profile, accessToken == null ? null : accessToken.getToken());
+			connection = new RemoteNBTDatabaseAccess(host, port, profile, accessToken == null ? null : accessToken.getToken());
 			onConnectionOpen();
-			System.out.println("Opened: " + ip + ":" + port);
+			System.out.println("Opened: " + host + ":" + port);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -784,17 +786,20 @@ public class CLI implements AsyncCloseable {
 		return results;
 	}
 	
-	public boolean isOpen() {
-		return !executor.isShutdown();
+	@Override
+	public CompletableFuture<Void> getCloseFuture() {
+		return closeFuture;
 	}
 	
 	@Override
 	public CompletableFuture<Void> closeAsync() {
+		closeFuture.complete(null);
 		return FutureUtil.runAsync(this::close, ForkJoinPool.commonPool());
 	}
 	
 	@Override
 	public void close() throws InterruptedException {
+		closeFuture.complete(null);
 		try {
 			executor.shutdown();
 			executor.awaitTermination(Long.MAX_VALUE, TimeUnit.DAYS);
