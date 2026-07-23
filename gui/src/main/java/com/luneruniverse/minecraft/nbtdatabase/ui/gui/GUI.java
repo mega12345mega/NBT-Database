@@ -441,6 +441,13 @@ public class GUI implements AsyncCloseable {
 				"Connect To Remote", JOptionPane.QUESTION_MESSAGE);
 		if (address == null)
 			return;
+		
+		boolean ssl = address.startsWith("nbts://");
+		if (ssl)
+			address = address.substring("nbts://".length());
+		else if (address.startsWith("nbt://"))
+			address = address.substring("nbt://".length());
+		
 		int lastColon = address.lastIndexOf(':');
 		String host;
 		int port;
@@ -460,7 +467,7 @@ public class GUI implements AsyncCloseable {
 		closeConnection();
 		
 		try {
-			connection = new RemoteNBTDatabaseAccess(host, port, profile, accessToken == null ? null : accessToken.getToken());
+			connection = new RemoteNBTDatabaseAccess(host, port, ssl, profile, accessToken == null ? null : accessToken.getToken());
 			onConnectionOpen();
 		} catch (IOException e) {
 			e.printStackTrace();

@@ -27,6 +27,7 @@ import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 
 public class NBTProtocol extends ChannelDuplexHandler {
 	
+	public static final String ALPN_NAME = "nbt";
 	public static final byte[] MAGIC = "nbt".getBytes(StandardCharsets.US_ASCII);
 	public static final int PROTOCOL_VERSION = 2;
 	private static final int TIMEOUT = 5000;

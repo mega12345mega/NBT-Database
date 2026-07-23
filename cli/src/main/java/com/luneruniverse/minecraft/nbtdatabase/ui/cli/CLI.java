@@ -131,9 +131,11 @@ public class CLI implements AsyncCloseable {
 						.addArgument("file", new StringInput()))
 				.addCommand(new SingleCommand("remote", inputs -> openRemoteCmd(
 						inputs.getArgument("host", String.class),
-						inputs.hasFlag("port") ? inputs.getFlag("port", Integer.class) : NBTDatabase.DEFAULT_PORT))
+						inputs.hasFlag("port") ? inputs.getFlag("port", Integer.class) : NBTDatabase.DEFAULT_PORT,
+						inputs.hasFlag("ssl")))
 						.addArgument("host", new StringInput())
-						.addFlag("port", "p", new IntegerInput())));
+						.addFlag("port", "p", new IntegerInput())
+						.addFlag("ssl", "s")));
 		
 		root.addCommand(new SingleCommand("close", this::closeCmd));
 		
@@ -524,7 +526,7 @@ public class CLI implements AsyncCloseable {
 		}
 	}
 	
-	private void openRemoteCmd(String host, int port) {
+	private void openRemoteCmd(String host, int port, boolean ssl) {
 		if (accessToken != null && accessToken.isExpired()) {
 			profile = null;
 			accessToken = null;
@@ -536,7 +538,7 @@ public class CLI implements AsyncCloseable {
 		closeConnection(true);
 		
 		try {
-			connection = new RemoteNBTDatabaseAccess(host, port, profile, accessToken == null ? null : accessToken.getToken());
+			connection = new RemoteNBTDatabaseAccess(host, port, ssl, profile, accessToken == null ? null : accessToken.getToken());
 			onConnectionOpen();
 			System.out.println("Opened: " + host + ":" + port);
 		} catch (IOException e) {

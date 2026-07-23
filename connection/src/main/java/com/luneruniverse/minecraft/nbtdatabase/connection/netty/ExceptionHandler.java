@@ -3,6 +3,8 @@ package com.luneruniverse.minecraft.nbtdatabase.connection.netty;
 import java.security.GeneralSecurityException;
 import java.util.concurrent.CompletableFuture;
 
+import javax.net.ssl.SSLException;
+
 import com.luneruniverse.minecraft.nbtdatabase.connection.exceptions.DisconnectException;
 import com.luneruniverse.nettymux.InvalidProtocolException;
 
@@ -25,6 +27,11 @@ public class ExceptionHandler extends ChannelInboundHandlerAdapter {
 		if (cause instanceof InvalidProtocolException || cause.getCause() instanceof InvalidProtocolException) {
 			ctx.close();
 			return;
+		}
+		
+		if (cause instanceof SSLException) {
+			cause.printStackTrace();
+			cause = new DisconnectException("Login failed: SSL failed");
 		}
 		
 		if (cause instanceof GeneralSecurityException) {

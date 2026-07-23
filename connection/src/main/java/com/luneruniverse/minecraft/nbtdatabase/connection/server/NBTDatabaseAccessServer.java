@@ -48,6 +48,7 @@ import com.luneruniverse.minecraft.nbtdatabase.connection.packets.tags.RemoveTag
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.tags.RemoveTagRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.tags.TagsPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.tags.UnlockTagRequestPacket;
+import com.luneruniverse.minecraft.nbtdatabase.connection.server.auth.AllowAuthorizationManager;
 import com.luneruniverse.minecraft.nbtdatabase.connection.server.auth.AuthorizationCheck;
 import com.luneruniverse.minecraft.nbtdatabase.connection.server.auth.AuthorizationManager;
 import com.luneruniverse.minecraft.nbtdatabase.connection.user.ClientType;
@@ -74,6 +75,10 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpServerCodec;
+import io.netty.handler.ssl.ApplicationProtocolConfig;
+import io.netty.handler.ssl.ApplicationProtocolNames;
+import io.netty.handler.ssl.SslContext;
+import io.netty.handler.ssl.SslContextBuilder;
 
 public class NBTDatabaseAccessServer implements AsyncCloseable {
 	
@@ -87,7 +92,7 @@ public class NBTDatabaseAccessServer implements AsyncCloseable {
 	private final CompletableFuture<Void> closeFuture;
 	private final Channel server;
 	
-	public NBTDatabaseAccessServer(NBTDatabaseAccess database, int port, AuthorizationManager auth) throws IOException {
+	public NBTDatabaseAccessServer(NBTDatabaseAccess database, int port, SslContextBuilder sslBuilder, AuthorizationManager auth) throws IOException {
 		this.database = database;
 		this.port = port;
 		this.auth = auth;
@@ -99,6 +104,19 @@ public class NBTDatabaseAccessServer implements AsyncCloseable {
 		users = new HashMap<>();
 		
 		closeFuture = new CompletableFuture<>();
+		
+		SslContext ssl;
+		if (sslBuilder == null) {
+			ssl = null;
+		} else {
+			ssl = sslBuilder
+					.applicationProtocolConfig(new ApplicationProtocolConfig(
+							ApplicationProtocolConfig.Protocol.ALPN,
+							ApplicationProtocolConfig.SelectorFailureBehavior.NO_ADVERTISE,
+							ApplicationProtocolConfig.SelectedListenerFailureBehavior.FATAL_ALERT,
+							NBTProtocol.ALPN_NAME, ApplicationProtocolNames.HTTP_1_1))
+					.build();
+		}
 		
 		KeyPairGenerator keysGenerator;
 		try {
@@ -141,10 +159,16 @@ public class NBTDatabaseAccessServer implements AsyncCloseable {
 				.childHandler(new ChannelInitializer<SocketChannel>() {
 					protected void initChannel(SocketChannel channel) throws Exception {
 						channel.closeFuture().addListener(future -> onUserDisconnect(channel));
-						channel.pipeline().addLast(NettyByteMultiplexer.builder()
+						
+						NettyByteMultiplexer.Builder nettyMuxBuilder = NettyByteMultiplexer.builder();
+						if (ssl != null)
+							nettyMuxBuilder.optionalSsl(ssl);
+						
+						channel.pipeline().addLast(
+								nettyMuxBuilder
 								.addProtocol(new MagicByteProtocol("nbt", NBTProtocol.MAGIC, true, ctx -> {
 									ctx.pipeline().addAfter(
-											NBTProtocol.bind(ctx).name(), "nbt#version", new ProtocolVersionHandler(false));
+											NBTProtocol.bind(ctx).name(), "nbt#version", ProtocolVersionHandler.forNbtServer());
 									ctx.pipeline().addAfter("nbt#version", "nbt#login", new ServerLoginHandler(keys,
 											user -> onUserConnect(channel, User.fromConnect(channel, user, ClientType.RAW_SOCKET))));
 									ctx.pipeline().addAfter("nbt#login", "nbt#handler", nbtHandler);
@@ -159,7 +183,7 @@ public class NBTDatabaseAccessServer implements AsyncCloseable {
 											}))
 											.addProtocol(new WebSocketHttpMessageProtocol(ctx2 -> {
 												ctx2.pipeline().addAfter(WebSocketNBTProtocol.bind(ctx2).name(),
-														"nbt#version", ProtocolVersionHandler.waitForWebSocket(false));
+														"nbt#version", ProtocolVersionHandler.forWebSocketServer());
 												ctx2.pipeline().addAfter("nbt#version", "nbt#login", new ServerLoginHandler(keys,
 														user -> onUserConnect(channel, User.fromConnect(channel, user, ClientType.WEB_SOCKET))));
 												ctx2.pipeline().addAfter("nbt#login", "nbt#handler", nbtHandler);
@@ -167,11 +191,18 @@ public class NBTDatabaseAccessServer implements AsyncCloseable {
 											.build());
 								}))
 								.build());
+						
 						channel.pipeline().addLast(new ExceptionHandler(null));
 					}
 				})
 				.bind(port);
 		server = NettyUtil.addGroupShutdown(serverFuture, group);
+	}
+	public NBTDatabaseAccessServer(NBTDatabaseAccess database, int port, AuthorizationManager auth) throws IOException {
+		this(database, port, null, auth);
+	}
+	public NBTDatabaseAccessServer(NBTDatabaseAccess database, int port) throws IOException {
+		this(database, port, AllowAuthorizationManager.create());
 	}
 	
 	public NBTDatabaseAccess getDatabase() {

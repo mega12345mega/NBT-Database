@@ -1,5 +1,6 @@
 package com.luneruniverse.minecraft.nbtdatabase.connection.netty;
 
+import java.security.GeneralSecurityException;
 import java.security.KeyPair;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
@@ -70,7 +71,10 @@ public class ServerLoginHandler extends SimpleChannelInboundHandler<Packet> {
 			
 			ctx.pipeline().addBefore("nbt#length", null, new EncryptionHandler(sharedKey));
 			
-			if (!MessageDigest.isEqual(challenge, cipher.doFinal(login.getEncryptedChallenge()))) {
+			try {
+				if (!MessageDigest.isEqual(challenge, cipher.doFinal(login.getEncryptedChallenge())))
+					throw new GeneralSecurityException();
+			} catch (GeneralSecurityException e) {
 				ctx.writeAndFlush(new DisconnectPacket("Login failed: Invalid challenge"))
 						.addListener(ChannelFutureListener.CLOSE);
 				return;

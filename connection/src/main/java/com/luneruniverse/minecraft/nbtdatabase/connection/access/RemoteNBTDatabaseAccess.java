@@ -60,12 +60,16 @@ import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandlerAdapter;
+import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.MultiThreadIoEventLoopGroup;
 import io.netty.channel.nio.NioIoHandler;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
+import io.netty.handler.ssl.ApplicationProtocolConfig;
+import io.netty.handler.ssl.ApplicationProtocolNegotiationHandler;
+import io.netty.handler.ssl.SslContextBuilder;
 
 public class RemoteNBTDatabaseAccess implements NBTDatabaseAccess {
 	
@@ -75,7 +79,7 @@ public class RemoteNBTDatabaseAccess implements NBTDatabaseAccess {
 	private final Channel client;
 	private final ExecutorService executor;
 	
-	public RemoteNBTDatabaseAccess(String host, int port, Profile profile, String accessToken) throws IOException {
+	public RemoteNBTDatabaseAccess(String host, int port, boolean ssl, Profile profile, String accessToken) throws IOException {
 		if ((profile == null) != (accessToken == null))
 			throw new IllegalArgumentException("Either both or neither of profile and accessToken can be null!");
 		
@@ -91,11 +95,36 @@ public class RemoteNBTDatabaseAccess implements NBTDatabaseAccess {
 				.handler(new ChannelInitializer<SocketChannel>() {
 					@Override
 					protected void initChannel(SocketChannel channel) throws Exception {
+						ProtocolVersionHandler protocolVersionHandler = ProtocolVersionHandler.forNbtClient();
+						
+						if (ssl) {
+							channel.pipeline().addLast(SslContextBuilder.forClient()
+									.applicationProtocolConfig(new ApplicationProtocolConfig(
+											ApplicationProtocolConfig.Protocol.ALPN,
+											ApplicationProtocolConfig.SelectorFailureBehavior.NO_ADVERTISE,
+											ApplicationProtocolConfig.SelectedListenerFailureBehavior.FATAL_ALERT,
+											NBTProtocol.ALPN_NAME))
+									.build().newHandler(channel.alloc(), host, port));
+							
+							channel.pipeline().addLast(new ApplicationProtocolNegotiationHandler("") {
+								@Override
+								protected void configurePipeline(ChannelHandlerContext ctx, String selectedProtocol) {
+									if (selectedProtocol.equals(NBTProtocol.ALPN_NAME))
+										protocolVersionHandler.dontSendMagic();
+									else
+										protocolVersionHandler.sendMagic();
+								}
+							});
+						} else {
+							protocolVersionHandler.sendMagic();
+						}
+						
 						channel.pipeline().addLast("dummy", new ChannelHandlerAdapter() {});
 						NBTProtocol.bind(channel.pipeline().context("dummy"));
 						channel.pipeline().remove("dummy");
+						
 						channel.pipeline().addLast(
-								new ProtocolVersionHandler(true),
+								protocolVersionHandler,
 								new DisconnectHandler(),
 								new ClientLoginHandler(profile, accessToken),
 								new ExceptionHandler(closeFuture));
@@ -107,8 +136,8 @@ public class RemoteNBTDatabaseAccess implements NBTDatabaseAccess {
 		
 		executor = Executors.newSingleThreadExecutor();
 	}
-	public RemoteNBTDatabaseAccess(String host, int port) throws IOException, InterruptedException {
-		this(host, port, null, null);
+	public RemoteNBTDatabaseAccess(String host, int port, boolean ssl) throws IOException, InterruptedException {
+		this(host, port, ssl, null, null);
 	}
 	
 	public String getHost() {
