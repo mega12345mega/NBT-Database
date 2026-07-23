@@ -36,6 +36,7 @@ import net.querz.nbt.tag.StringTag;
 
 public class NBTDatabase implements AutoCloseable {
 	
+	public static final int DEFAULT_PORT = 28260;
 	public static final int MAGIC;
 	static {
 		byte[] magicBytes = "nbt".getBytes(StandardCharsets.US_ASCII);

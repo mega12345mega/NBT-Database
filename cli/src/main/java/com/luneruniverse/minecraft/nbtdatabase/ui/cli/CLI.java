@@ -130,15 +130,17 @@ public class CLI implements AsyncCloseable {
 						new File(inputs.getArgument("file", String.class))))
 						.addArgument("file", new StringInput()))
 				.addCommand(new SingleCommand("remote", inputs -> openRemoteCmd(
-						inputs.getArgument("host", String.class), inputs.getArgument("port", Integer.class)))
-						.addArgument("host", new StringInput()).addArgument("port", new IntegerInput())));
+						inputs.getArgument("host", String.class),
+						inputs.hasFlag("port") ? inputs.getFlag("port", Integer.class) : NBTDatabase.DEFAULT_PORT))
+						.addArgument("host", new StringInput())
+						.addFlag("port", "p", new IntegerInput())));
 		
 		root.addCommand(new SingleCommand("close", this::closeCmd));
 		
 		root.addCommand(new GroupCommand("server")
 				.addCommand(new SingleCommand("start", inputs -> serverStartCmd(
-						inputs.getArgument("port", Integer.class)))
-						.addArgument("port", new IntegerInput()))
+						inputs.hasFlag("port") ? inputs.getFlag("port", Integer.class) : NBTDatabase.DEFAULT_PORT))
+						.addFlag("port", "p", new IntegerInput()))
 				.addCommand(new SingleCommand("stop", this::serverStopCmd)));
 		
 		root.addCommand(new GroupCommand("config")

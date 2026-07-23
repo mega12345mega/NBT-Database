@@ -17,7 +17,7 @@ An option in the GUI, command in the CLI, and `:connection` module allow you to 
 You can then connect to the server with all of those, and additionally, you can put the server address into a browser.
 Note that WebSockets are also supported, but you would have to implement the protocol yourself.
 
-**The standard port is 25560, which should be used whenever possible!**
+**The standard port is 28260, which should be used whenever possible!**
 
 If you only need to work with local `.db` files directly, you can just use the `:file` module.
 

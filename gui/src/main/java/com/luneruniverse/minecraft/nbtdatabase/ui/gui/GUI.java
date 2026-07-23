@@ -151,7 +151,7 @@ public class GUI implements AsyncCloseable {
 		startServerMenu.setMnemonic('S');
 		serverMenu.add(startServerMenu);
 		
-		JMenuItem defaultPortStartServerMenuItem = new JMenuItem("Port 25560", 'P');
+		JMenuItem defaultPortStartServerMenuItem = new JMenuItem("Port " + NBTDatabase.DEFAULT_PORT, 'P');
 		startServerMenu.add(defaultPortStartServerMenuItem);
 		defaultPortStartServerMenuItem.addActionListener(event -> defaultPortStartServerMenuItem());
 		
@@ -436,7 +436,8 @@ public class GUI implements AsyncCloseable {
 					"Error", JOptionPane.ERROR_MESSAGE);
 		}
 		
-		String address = JOptionPane.showInputDialog(frame, "Enter address:\n(Port will default to 25560)",
+		String address = JOptionPane.showInputDialog(frame,
+				"Enter address:\n(Port will default to " + NBTDatabase.DEFAULT_PORT + ")",
 				"Connect To Remote", JOptionPane.QUESTION_MESSAGE);
 		if (address == null)
 			return;
@@ -445,14 +446,14 @@ public class GUI implements AsyncCloseable {
 		int port;
 		if (lastColon == -1) {
 			host = address;
-			port = 25560;
+			port = NBTDatabase.DEFAULT_PORT;
 		} else {
 			try {
 				port = Integer.parseInt(address.substring(lastColon + 1));
 				host = address.substring(0, lastColon);
 			} catch (NumberFormatException e) {
 				host = address;
-				port = 25560;
+				port = NBTDatabase.DEFAULT_PORT;
 			}
 		}
 		
@@ -516,7 +517,7 @@ public class GUI implements AsyncCloseable {
 		closeServer();
 		
 		try {
-			server = new NBTDatabaseAccessServer(connection, 25560, AllowAuthorizationManager.create());
+			server = new NBTDatabaseAccessServer(connection, NBTDatabase.DEFAULT_PORT, AllowAuthorizationManager.create());
 			onServerStart();
 		} catch (IOException e) {
 			e.printStackTrace();
