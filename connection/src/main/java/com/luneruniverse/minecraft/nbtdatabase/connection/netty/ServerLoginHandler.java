@@ -23,6 +23,7 @@ import com.luneruniverse.minecraft.nbtdatabase.connection.util.FutureUtil;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
+import io.netty.handler.ssl.SslHandler;
 
 public class ServerLoginHandler extends SimpleChannelInboundHandler<Packet> {
 	
@@ -69,7 +70,8 @@ public class ServerLoginHandler extends SimpleChannelInboundHandler<Packet> {
 			
 			SecretKey sharedKey = new SecretKeySpec(cipher.doFinal(login.getEncryptedSharedKey()), "AES");
 			
-			ctx.pipeline().addBefore("nbt#length", null, new EncryptionHandler(sharedKey));
+			if (ctx.pipeline().get(SslHandler.class) == null)
+				ctx.pipeline().addBefore("nbt#length", null, new EncryptionHandler(sharedKey));
 			
 			try {
 				if (!MessageDigest.isEqual(challenge, cipher.doFinal(login.getEncryptedChallenge())))

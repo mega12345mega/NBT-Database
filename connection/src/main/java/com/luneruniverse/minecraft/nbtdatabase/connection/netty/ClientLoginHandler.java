@@ -19,6 +19,7 @@ import com.luneruniverse.minecraft.nbtdatabase.connection.util.FutureUtil;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
+import io.netty.handler.ssl.SslHandler;
 
 public class ClientLoginHandler extends SimpleChannelInboundHandler<Packet> {
 	
@@ -82,7 +83,8 @@ public class ClientLoginHandler extends SimpleChannelInboundHandler<Packet> {
 				.addListener(ChannelFutureListener.FIRE_EXCEPTION_ON_FAILURE)
 				.addListener(future -> {
 					if (future.isSuccess()) {
-						ctx.pipeline().addBefore("nbt#length", null, new EncryptionHandler(sharedKey));
+						if (ctx.pipeline().get(SslHandler.class) == null)
+							ctx.pipeline().addBefore("nbt#length", null, new EncryptionHandler(sharedKey));
 						ctx.pipeline().remove(this);
 						wait.setDiscard(false);
 						ctx.pipeline().remove(wait);
