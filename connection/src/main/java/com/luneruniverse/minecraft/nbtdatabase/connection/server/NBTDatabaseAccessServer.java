@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -48,13 +50,13 @@ import com.luneruniverse.minecraft.nbtdatabase.connection.packets.tags.RemoveTag
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.tags.RemoveTagRequestPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.tags.TagsPacket;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.tags.UnlockTagRequestPacket;
-import com.luneruniverse.minecraft.nbtdatabase.connection.server.auth.AllowAuthorizationManager;
 import com.luneruniverse.minecraft.nbtdatabase.connection.server.auth.AuthorizationCheck;
 import com.luneruniverse.minecraft.nbtdatabase.connection.server.auth.AuthorizationManager;
 import com.luneruniverse.minecraft.nbtdatabase.connection.user.ClientType;
 import com.luneruniverse.minecraft.nbtdatabase.connection.user.User;
 import com.luneruniverse.minecraft.nbtdatabase.connection.util.FutureUtil;
 import com.luneruniverse.minecraft.nbtdatabase.connection.util.NettyUtil;
+import com.luneruniverse.minecraft.nbtdatabase.ui.website.DisabledWebsiteHandler;
 import com.luneruniverse.minecraft.nbtdatabase.ui.website.WebsiteHandler;
 import com.luneruniverse.nettymux.byteprotocol.HttpByteProtocol;
 import com.luneruniverse.nettymux.byteprotocol.MagicByteProtocol;
@@ -66,6 +68,7 @@ import com.luneruniverse.nettymux.messageprotocol.WebSocketHttpMessageProtocol;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.MultiThreadIoEventLoopGroup;
@@ -78,7 +81,6 @@ import io.netty.handler.codec.http.HttpServerCodec;
 import io.netty.handler.ssl.ApplicationProtocolConfig;
 import io.netty.handler.ssl.ApplicationProtocolNames;
 import io.netty.handler.ssl.SslContext;
-import io.netty.handler.ssl.SslContextBuilder;
 
 public class NBTDatabaseAccessServer implements AsyncCloseable {
 	
@@ -92,10 +94,10 @@ public class NBTDatabaseAccessServer implements AsyncCloseable {
 	private final CompletableFuture<Void> closeFuture;
 	private final Channel server;
 	
-	public NBTDatabaseAccessServer(NBTDatabaseAccess database, int port, SslContextBuilder sslBuilder, AuthorizationManager auth) throws IOException {
+	public NBTDatabaseAccessServer(NBTDatabaseAccess database, int port, ServerConfig config) throws IOException {
 		this.database = database;
 		this.port = port;
-		this.auth = auth;
+		this.auth = config.getAuthorizationManager();
 		
 		configLock = Lock.forConfig(database);
 		entryLocks = LockCacheMap.forEntries(database);
@@ -104,19 +106,6 @@ public class NBTDatabaseAccessServer implements AsyncCloseable {
 		users = new HashMap<>();
 		
 		closeFuture = new CompletableFuture<>();
-		
-		SslContext ssl;
-		if (sslBuilder == null) {
-			ssl = null;
-		} else {
-			ssl = sslBuilder
-					.applicationProtocolConfig(new ApplicationProtocolConfig(
-							ApplicationProtocolConfig.Protocol.ALPN,
-							ApplicationProtocolConfig.SelectorFailureBehavior.NO_ADVERTISE,
-							ApplicationProtocolConfig.SelectedListenerFailureBehavior.FATAL_ALERT,
-							NBTProtocol.ALPN_NAME, ApplicationProtocolNames.HTTP_1_1))
-					.build();
-		}
 		
 		KeyPairGenerator keysGenerator;
 		try {
@@ -150,9 +139,9 @@ public class NBTDatabaseAccessServer implements AsyncCloseable {
 				.when(AddTagToEntryRequestPacket.class, this::addTagToEntryRequestPacket)
 				.when(RemoveTagFromEntryRequestPacket.class, this::removeTagFromEntryRequestPacket);
 		
-		WebsiteHandler websiteHandler = new WebsiteHandler(database);
+		ChannelHandler websiteHandler = config.isWebsiteEnabled() ? new WebsiteHandler(database) : new DisabledWebsiteHandler();
 		
-		EventLoopGroup group = new MultiThreadIoEventLoopGroup(3, NioIoHandler.newFactory());
+		EventLoopGroup group = new MultiThreadIoEventLoopGroup(config.getThreads(), NioIoHandler.newFactory());
 		ChannelFuture serverFuture = new ServerBootstrap()
 				.group(group)
 				.channel(NioServerSocketChannel.class)
@@ -161,8 +150,20 @@ public class NBTDatabaseAccessServer implements AsyncCloseable {
 						channel.closeFuture().addListener(future -> onUserDisconnect(channel));
 						
 						NettyByteMultiplexer.Builder nettyMuxBuilder = NettyByteMultiplexer.builder();
-						if (ssl != null)
-							nettyMuxBuilder.optionalSsl(ssl);
+						if (config.getSslBuilder() != null) {
+							SslContext ssl = config.getSslBuilder()
+									.applicationProtocolConfig(new ApplicationProtocolConfig(
+											ApplicationProtocolConfig.Protocol.ALPN,
+											ApplicationProtocolConfig.SelectorFailureBehavior.NO_ADVERTISE,
+											ApplicationProtocolConfig.SelectedListenerFailureBehavior.FATAL_ALERT,
+											NBTProtocol.ALPN_NAME, ApplicationProtocolNames.HTTP_1_1))
+									.build();
+							
+							if (config.isSslRequired())
+								nettyMuxBuilder.forceSsl(ssl);
+							else
+								nettyMuxBuilder.optionalSsl(ssl);
+						}
 						
 						channel.pipeline().addLast(
 								nettyMuxBuilder
@@ -198,11 +199,8 @@ public class NBTDatabaseAccessServer implements AsyncCloseable {
 				.bind(port);
 		server = NettyUtil.addGroupShutdown(serverFuture, group);
 	}
-	public NBTDatabaseAccessServer(NBTDatabaseAccess database, int port, AuthorizationManager auth) throws IOException {
-		this(database, port, null, auth);
-	}
 	public NBTDatabaseAccessServer(NBTDatabaseAccess database, int port) throws IOException {
-		this(database, port, AllowAuthorizationManager.create());
+		this(database, port, ServerConfig.builder().build());
 	}
 	
 	public NBTDatabaseAccess getDatabase() {
@@ -211,6 +209,10 @@ public class NBTDatabaseAccessServer implements AsyncCloseable {
 	
 	public int getPort() {
 		return port;
+	}
+	
+	public Collection<User> getUsers() {
+		return Collections.unmodifiableCollection(users.values());
 	}
 	
 	private void onUserConnect(Channel channel, User user) {

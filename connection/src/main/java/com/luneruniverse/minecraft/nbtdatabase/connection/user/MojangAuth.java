@@ -69,7 +69,7 @@ public class MojangAuth {
 					return false;
 				InputStream in = response.getEntity().getContent();
 				try {
-					JsonObject obj = new Gson().fromJson(new InputStreamReader(in), JsonObject.class);
+					JsonObject obj = GSON.fromJson(new InputStreamReader(in), JsonObject.class);
 					JsonElement id = obj.get("id");
 					return id != null && id.isJsonPrimitive() && id.getAsJsonPrimitive().isString() &&
 							id.getAsString().equals(uuid.toString().replace("-", ""));

@@ -1,9 +1,13 @@
 package com.luneruniverse.minecraft.nbtdatabase.connection.server.auth.permission;
 
+import java.io.File;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
+
+import org.spongepowered.configurate.ConfigurationNode;
+import org.spongepowered.configurate.serialize.SerializationException;
 
 import com.luneruniverse.minecraft.nbtdatabase.Config;
 import com.luneruniverse.minecraft.nbtdatabase.Entry;
@@ -46,6 +50,10 @@ public class PermissionAuthorizationManager implements AuthorizationManager {
 	
 	public static AuthorizationManager create(PermissionManager perms) {
 		return new CachedAuthorizationManager(new PermissionAuthorizationManager(perms));
+	}
+	
+	public static AuthorizationManager deserialize(File parent, ConfigurationNode node) throws SerializationException {
+		return create(PermissionManagers.deserialize(parent, node));
 	}
 	
 	private final PermissionManager perms;

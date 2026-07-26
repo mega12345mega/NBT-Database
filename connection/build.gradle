@@ -5,5 +5,7 @@ dependencies {
 	implementation libs.owasp.encoder
 	implementation libs.apache.httpclient
 	implementation libs.google.gson
+	api libs.configurate.core
+	api libs.configurate.yaml
 	api libs.mega12345mega.simplecli
 }

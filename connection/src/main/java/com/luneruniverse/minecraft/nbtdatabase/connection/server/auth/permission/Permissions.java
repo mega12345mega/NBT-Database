@@ -17,26 +17,31 @@ public class Permissions {
 		return Collections.unmodifiableSet(PERMISSIONS);
 	}
 	
-	public static Set<String> getMatchedPermissionsOrRole(String groupOrRole) {
-		Role role = Roles.getRole(groupOrRole);
+	public static Set<String> getMatched(String matcher) throws NoPermissionMatchedException {
+		Role role = Roles.getRole(matcher);
 		if (role != null)
 			return role.getPermissions();
-		return getMatchedPermissions(groupOrRole);
+		return getMatchedIgnoringRoles(matcher);
 	}
 	
-	public static Set<String> getMatchedPermissions(String group) {
-		return Collections.unmodifiableSet(PERMISSIONS.stream()
-				.filter(permission -> matches(group, permission)).collect(Collectors.toSet()));
+	public static Set<String> getMatchedIgnoringRoles(String matcher) throws NoPermissionMatchedException {
+		Set<String> permissions = Collections.unmodifiableSet(PERMISSIONS.stream()
+				.filter(permission -> matches(matcher, permission)).collect(Collectors.toSet()));
+		
+		if (permissions.isEmpty())
+			throw new NoPermissionMatchedException(matcher);
+		
+		return permissions;
 	}
 	
-	public static boolean matches(String group, String permission) {
-		if (group.equals(permission))
+	public static boolean matches(String matcher, String permission) {
+		if (matcher.equals(permission))
 			return true;
 		
-		if (!group.endsWith("/"))
-			group += "/";
+		if (!matcher.endsWith("/"))
+			matcher += "/";
 		
-		return permission.startsWith(group);
+		return permission.startsWith(matcher);
 	}
 	
 	public static final String CONNECT = r("/connect");

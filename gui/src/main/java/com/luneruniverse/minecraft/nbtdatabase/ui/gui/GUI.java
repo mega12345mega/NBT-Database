@@ -49,7 +49,6 @@ import com.luneruniverse.minecraft.nbtdatabase.connection.access.RemoteNBTDataba
 import com.luneruniverse.minecraft.nbtdatabase.connection.exceptions.RequestFailedException;
 import com.luneruniverse.minecraft.nbtdatabase.connection.exceptions.ServerException;
 import com.luneruniverse.minecraft.nbtdatabase.connection.server.NBTDatabaseAccessServer;
-import com.luneruniverse.minecraft.nbtdatabase.connection.server.auth.AllowAuthorizationManager;
 import com.luneruniverse.minecraft.nbtdatabase.connection.user.Profile;
 import com.luneruniverse.minecraft.nbtdatabase.connection.util.FutureUtil;
 import com.luneruniverse.minecraft.nbtdatabase.request.IllegalRequestException;
@@ -318,7 +317,7 @@ public class GUI implements AsyncCloseable {
 		return false;
 	}
 	
-	private void closeConnection() {
+	private synchronized void closeConnection() {
 		closeServer();
 		
 		if (connection != null) {
@@ -341,7 +340,7 @@ public class GUI implements AsyncCloseable {
 		}
 	}
 	
-	private void closeServer() {
+	private synchronized void closeServer() {
 		if (server != null) {
 			try {
 				server.close();
@@ -524,7 +523,7 @@ public class GUI implements AsyncCloseable {
 		closeServer();
 		
 		try {
-			server = new NBTDatabaseAccessServer(connection, NBTDatabase.DEFAULT_PORT, AllowAuthorizationManager.create());
+			server = new NBTDatabaseAccessServer(connection, NBTDatabase.DEFAULT_PORT);
 			onServerStart();
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -554,7 +553,7 @@ public class GUI implements AsyncCloseable {
 		closeServer();
 		
 		try {
-			server = new NBTDatabaseAccessServer(connection, port, AllowAuthorizationManager.create());
+			server = new NBTDatabaseAccessServer(connection, port);
 			onServerStart();
 		} catch (IOException e) {
 			e.printStackTrace();

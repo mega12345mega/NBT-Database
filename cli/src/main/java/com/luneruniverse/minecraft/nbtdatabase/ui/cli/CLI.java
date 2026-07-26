@@ -32,7 +32,6 @@ import com.luneruniverse.minecraft.nbtdatabase.connection.access.RemoteNBTDataba
 import com.luneruniverse.minecraft.nbtdatabase.connection.exceptions.RequestFailedException;
 import com.luneruniverse.minecraft.nbtdatabase.connection.exceptions.ServerException;
 import com.luneruniverse.minecraft.nbtdatabase.connection.server.NBTDatabaseAccessServer;
-import com.luneruniverse.minecraft.nbtdatabase.connection.server.auth.AllowAuthorizationManager;
 import com.luneruniverse.minecraft.nbtdatabase.connection.user.Profile;
 import com.luneruniverse.minecraft.nbtdatabase.connection.util.FutureUtil;
 import com.luneruniverse.minecraft.nbtdatabase.request.EntryFilter;
@@ -409,7 +408,7 @@ public class CLI implements AsyncCloseable {
 		return false;
 	}
 	
-	private void closeConnection(boolean silent) {
+	private synchronized void closeConnection(boolean silent) {
 		closeServer(false);
 		
 		if (connection != null) {
@@ -436,7 +435,7 @@ public class CLI implements AsyncCloseable {
 		}
 	}
 	
-	private void closeServer(boolean silent) {
+	private synchronized void closeServer(boolean silent) {
 		if (server != null) {
 			try {
 				server.close();
@@ -560,7 +559,7 @@ public class CLI implements AsyncCloseable {
 		closeServer(true);
 		
 		try {
-			server = new NBTDatabaseAccessServer(connection, port, AllowAuthorizationManager.create());
+			server = new NBTDatabaseAccessServer(connection, port);
 			onServerStart();
 			System.out.println("Started server on port " + port);
 		} catch (IOException e) {

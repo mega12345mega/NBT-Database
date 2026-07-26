@@ -14,12 +14,16 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+import org.spongepowered.configurate.ConfigurationNode;
+import org.spongepowered.configurate.serialize.SerializationException;
+
 import com.luneruniverse.minecraft.nbtdatabase.connection.user.LoggedInUser;
 import com.luneruniverse.minecraft.nbtdatabase.connection.user.User;
+import com.luneruniverse.minecraft.nbtdatabase.connection.util.ConfigurateUtil;
 
 public class UserMapPermissionManager implements PermissionManager {
 	
-	public static UserMapPermissionManager fromInputStream(InputStream in) throws IOException {
+	public static UserMapPermissionManager fromInputStream(InputStream in) throws IOException, NoPermissionMatchedException {
 		Set<String> globalPermissions = new HashSet<>();
 		Map<UUID, Map<String, Boolean>> userPermissions = new HashMap<>();
 		
@@ -32,7 +36,7 @@ public class UserMapPermissionManager implements PermissionManager {
 			
 			String[] parts = line.split("\\s+");
 			if (parts.length != 3)
-				throw new IOException("Expected: (anyone|guest|<uuid>) (<permission>|<role>) (false|true)");
+				throw new IOException("Expected: (anyone|guest|<uuid>) (<permission matcher>) (false|true)");
 			
 			boolean anyone;
 			UUID uuid;
@@ -51,36 +55,48 @@ public class UserMapPermissionManager implements PermissionManager {
 				throw new IOException("Not a uuid or 'guest' or 'anyone': " + parts[0]);
 			}
 			
-			String permOrRole = parts[1];
+			String matcher = parts[1];
 			
 			boolean value = parts[2].equals("true");
 			if (!value && !parts[2].equals("false"))
 				throw new IOException("Not 'false' or 'true': " + parts[2]);
 			
 			if (anyone) {
-				for (String matchedPermission : Permissions.getMatchedPermissionsOrRole(permOrRole)) {
+				for (String permission : Permissions.getMatched(matcher)) {
 					if (value)
-						globalPermissions.add(matchedPermission);
+						globalPermissions.add(permission);
 					else
-						globalPermissions.remove(matchedPermission);
+						globalPermissions.remove(permission);
 					
-					userPermissions.values().forEach(permMap -> permMap.remove(matchedPermission));
+					userPermissions.values().forEach(permMap -> permMap.remove(permission));
 				}
 			} else {
 				Map<String, Boolean> permMap = userPermissions.computeIfAbsent(uuid, key -> new HashMap<>());
-				for (String matchedPermission : Permissions.getMatchedPermissionsOrRole(permOrRole))
-					permMap.put(matchedPermission, value);
+				for (String permission : Permissions.getMatched(matcher))
+					permMap.put(permission, value);
 			}
 		}
 		
 		return new UserMapPermissionManager(globalPermissions, userPermissions);
 	}
-	public static UserMapPermissionManager fromString(String string) throws IOException {
+	public static UserMapPermissionManager fromString(String string) throws IOException, NoPermissionMatchedException {
 		return fromInputStream(new ByteArrayInputStream(string.getBytes(StandardCharsets.UTF_8)));
 	}
-	public static UserMapPermissionManager fromFile(File file) throws IOException {
+	public static UserMapPermissionManager fromFile(File file) throws IOException, NoPermissionMatchedException {
 		try (FileInputStream in = new FileInputStream(file)) {
 			return fromInputStream(in);
+		}
+	}
+	
+	public static UserMapPermissionManager deserialize(File parent, ConfigurationNode node) throws SerializationException {
+		File permissionsFile = ConfigurateUtil.requireExistingFile(parent, node.node("permissions_file"));
+		
+		try {
+			return fromFile(permissionsFile);
+		} catch (NoPermissionMatchedException e) {
+			throw new SerializationException(node.node("permissions_file"), String.class, e.getMessage());
+		} catch (IOException e) {
+			throw new SerializationException(node.node("permissions_file"), String.class, "Failed to read file", e);
 		}
 	}
 	
