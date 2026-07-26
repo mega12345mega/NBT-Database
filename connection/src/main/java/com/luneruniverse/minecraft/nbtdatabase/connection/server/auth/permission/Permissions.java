@@ -75,6 +75,7 @@ public class Permissions {
 	public static final String ENTRY_AUTHOR_SELF_USERNAME = r("/entry/author/self/username");
 	public static final String ENTRY_AUTHOR_ANYONE_UUID = r("/entry/author/anyone/uuid");
 	public static final String ENTRY_AUTHOR_ANYONE_USERNAME = r("/entry/author/anyone/username");
+	public static final String ENTRY_AUTHOR_INCORRECT_USERNAME = r("/entry/author/incorrect_username");
 	
 	public static final String ENTRY_VERIFIED_SELF_ADD_VERIFY = r("/entry/verified/self/add/verify");
 	public static final String ENTRY_VERIFIED_SELF_ADD_UNVERIFY = r("/entry/verified/self/add/unverify");

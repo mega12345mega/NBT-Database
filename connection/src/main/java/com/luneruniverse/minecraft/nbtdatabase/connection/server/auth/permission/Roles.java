@@ -27,7 +27,7 @@ public class Roles {
 			"/connect",
 			"/config/list",
 			"/entry/anyone",
-			"/entry/author",
+			"/entry/author/anyone",
 			"/entry/verified/self/add/verify",
 			"/entry/verified/self/edit/verify",
 			"/entry/verified/anyone/add/unverify",

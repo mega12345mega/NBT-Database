@@ -39,6 +39,7 @@ import com.luneruniverse.minecraft.nbtdatabase.connection.packets.tags.UnlockTag
 import com.luneruniverse.minecraft.nbtdatabase.connection.server.Lock;
 import com.luneruniverse.minecraft.nbtdatabase.connection.server.LockCacheMap;
 import com.luneruniverse.minecraft.nbtdatabase.connection.server.ServerLock;
+import com.luneruniverse.minecraft.nbtdatabase.connection.server.UsernameCache;
 import com.luneruniverse.minecraft.nbtdatabase.connection.server.auth.AuthorizationCheck;
 import com.luneruniverse.minecraft.nbtdatabase.connection.server.auth.AuthorizationManager;
 import com.luneruniverse.minecraft.nbtdatabase.connection.server.auth.CachedAuthorizationManager;
@@ -57,9 +58,11 @@ public class PermissionAuthorizationManager implements AuthorizationManager {
 	}
 	
 	private final PermissionManager perms;
+	private final UsernameCache usernameCache;
 	
 	private PermissionAuthorizationManager(PermissionManager perms) {
 		this.perms = perms;
+		this.usernameCache = new UsernameCache();
 	}
 	
 	private boolean hasPermission(User user, String permission) {
@@ -112,8 +115,24 @@ public class PermissionAuthorizationManager implements AuthorizationManager {
 		};
 	}
 	
+	private <I extends Packet> CompletableFuture<I> entryUsernameCheckFuture(User user, UUID uuid, String username, I request) {
+		if (hasPermission(user, Permissions.ENTRY_AUTHOR_INCORRECT_USERNAME))
+			return CompletableFuture.completedFuture(request);
+		
+		return FutureUtil.thenApply(usernameCache.getUsername(uuid), correctUsername -> {
+			if (correctUsername == null || !correctUsername.equals(username))
+				hasPermissionOrThrow(user, Permissions.ENTRY_AUTHOR_INCORRECT_USERNAME);
+			return request;
+		});
+	}
+	
 	@Override
 	public void connect(User user) throws AuthorizationServerException {
+		if (user.isLoggedIn()) {
+			LoggedInUser loggedInUser = (LoggedInUser) user;
+			usernameCache.cache(loggedInUser.getUuid(), loggedInUser.getUsername());
+		}
+		
 		hasPermissionOrThrow(user, Permissions.CONNECT);
 	}
 	
@@ -163,6 +182,10 @@ public class PermissionAuthorizationManager implements AuthorizationManager {
 				}
 				return request;
 			}
+			@Override
+			public CompletableFuture<AddEntryRequestPacket> checkRequestDuringLock(NBTDatabaseAccess access, User user, AddEntryRequestPacket request) {
+				return entryUsernameCheckFuture(user, request.getAuthorUuid(), request.getAuthorUsername(), request);
+			}
 		};
 	}
 	
@@ -195,9 +218,11 @@ public class PermissionAuthorizationManager implements AuthorizationManager {
 			}
 			@Override
 			public CompletableFuture<EditEntryRequestPacket> checkRequestDuringLock(NBTDatabaseAccess access, User user, EditEntryRequestPacket request) {
-				return FutureUtil.thenApply(access.getEntry(request.getId()), entry -> {
+				return FutureUtil.thenCompose(access.getEntry(request.getId()), entry -> {
+					UUID newAuthorUuid = request.getAuthorUuid().orElse(entry.getAuthorUuid());
+					
 					boolean fromSelf = user.hasUuid(entry.getAuthorUuid());
-					boolean toSelf = user.hasUuid(request.getAuthorUuid().orElse(entry.getAuthorUuid()));
+					boolean toSelf = user.hasUuid(newAuthorUuid);
 					
 					if (request.getAuthorUuid().isPresent()) {
 						boolean toVerified = request.isVerified().orElse(entry.isVerified());
@@ -266,7 +291,11 @@ public class PermissionAuthorizationManager implements AuthorizationManager {
 							hasPermissionOrThrow(user, Permissions.ENTRY_AUTHOR_ANYONE_USERNAME);
 					}
 					
-					return request;
+					if (request.getAuthorUuid().isPresent() || request.getAuthorUsername().isPresent()) {
+						return entryUsernameCheckFuture(
+								user, newAuthorUuid, request.getAuthorUsername().orElse(entry.getAuthorUsername()), request);
+					}
+					return CompletableFuture.completedFuture(request);
 				});
 			}
 		};
