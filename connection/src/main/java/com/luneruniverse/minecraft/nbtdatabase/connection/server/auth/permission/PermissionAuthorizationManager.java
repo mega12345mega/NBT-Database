@@ -53,8 +53,8 @@ public class PermissionAuthorizationManager implements AuthorizationManager {
 		return new CachedAuthorizationManager(new PermissionAuthorizationManager(perms));
 	}
 	
-	public static AuthorizationManager deserialize(File parent, ConfigurationNode node) throws SerializationException {
-		return create(PermissionManagers.deserialize(parent, node));
+	public static AuthorizationManager deserialize(File serverRoot, ConfigurationNode node) throws SerializationException {
+		return create(PermissionManagers.deserialize(serverRoot, node));
 	}
 	
 	private final PermissionManager perms;

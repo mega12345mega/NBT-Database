@@ -88,8 +88,8 @@ public class UserMapPermissionManager implements PermissionManager {
 		}
 	}
 	
-	public static UserMapPermissionManager deserialize(File parent, ConfigurationNode node) throws SerializationException {
-		File permissionsFile = ConfigurateUtil.requireExistingFile(parent, node.node("permissions_file"));
+	public static UserMapPermissionManager deserialize(File serverRoot, ConfigurationNode node) throws SerializationException {
+		File permissionsFile = ConfigurateUtil.requireExistingFile(serverRoot, node.node("permissions_file"));
 		
 		try {
 			return fromFile(permissionsFile);

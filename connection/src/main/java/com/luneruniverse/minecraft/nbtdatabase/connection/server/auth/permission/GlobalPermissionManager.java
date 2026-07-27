@@ -21,7 +21,7 @@ public class GlobalPermissionManager implements PermissionManager {
 		return new GlobalPermissionManager(permissions);
 	}
 	
-	public static GlobalPermissionManager deserialize(File parent, ConfigurationNode node) throws SerializationException {
+	public static GlobalPermissionManager deserialize(File serverRoot, ConfigurationNode node) throws SerializationException {
 		try {
 			return fromMatchers(ConfigurateUtil.require(node.node("permissions"), String[].class,
 					"Expected list of permission matchers"));

@@ -1,12 +1,12 @@
 package com.luneruniverse.minecraft.nbtdatabase.connection.server.auth.permission;
 
 import java.util.Collections;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 public class Roles {
 	
-	private static final Map<String, Role> ROLES = new HashMap<>();
+	private static final Map<String, Role> ROLES = new LinkedHashMap<>();
 	private static Role r(Role role) {
 		ROLES.put(role.getName(), role);
 		return role;

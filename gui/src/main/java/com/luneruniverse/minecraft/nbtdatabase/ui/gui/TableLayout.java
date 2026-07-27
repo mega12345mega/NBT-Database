@@ -19,7 +19,7 @@ import javax.swing.SizeRequirements;
 public class TableLayout implements LayoutManager, Serializable {
 	
 	public static TableLayout ofRows(int rows, int hgap, int vgap) {
-		return new TableLayout(rows, false, hgap, vgap);
+		return new TableLayout(rows, false, hgap, vgap, false);
 	}
 	public static TableLayout ofRows(int rows, int gap) {
 		return ofRows(rows, gap, gap);
@@ -29,7 +29,7 @@ public class TableLayout implements LayoutManager, Serializable {
 	}
 	
 	public static TableLayout ofColumns(int columns, int hgap, int vgap) {
-		return new TableLayout(columns, true, hgap, vgap);
+		return new TableLayout(columns, true, hgap, vgap, false);
 	}
 	public static TableLayout ofColumns(int columns, int gap) {
 		return ofColumns(columns, gap, gap);
@@ -42,16 +42,22 @@ public class TableLayout implements LayoutManager, Serializable {
 	private final boolean verticalGroups;
 	private final int hgap;
 	private final int vgap;
+	private final boolean columnMajor;
 	private final SizeRequirements hgapRequirements;
 	private final SizeRequirements vgapRequirements;
 	
-	private TableLayout(int groups, boolean verticalGroups, int hgap, int vgap) {
+	private TableLayout(int groups, boolean verticalGroups, int hgap, int vgap, boolean columnMajor) {
 		this.groups = groups;
 		this.verticalGroups = verticalGroups;
 		this.hgap = hgap;
 		this.vgap = vgap;
+		this.columnMajor = columnMajor;
 		this.hgapRequirements = new SizeRequirements(hgap, hgap, hgap, 0);
 		this.vgapRequirements = new SizeRequirements(vgap, vgap, vgap, 0);
+	}
+	
+	public TableLayout columnMajor() {
+		return new TableLayout(groups, verticalGroups, hgap, vgap, true);
 	}
 	
 	@Override
@@ -128,8 +134,16 @@ public class TableLayout implements LayoutManager, Serializable {
 				yPositions[i] = insets.top + rowOffsets[i * 2];
 			
 			for (int i = 0; i < parent.getComponentCount(); i++) {
-				int x = i % counts.columns;
-				int y = i / counts.columns;
+				int x;
+				int y;
+				if (columnMajor) {
+					x = i / counts.rows;
+					y = i % counts.rows;
+				} else {
+					x = i % counts.columns;
+					y = i / counts.columns;
+				}
+				
 				parent.getComponent(i).setBounds(xPositions[x], yPositions[y], columnSpans[x * 2], rowSpans[y * 2]);
 			}
 		}
@@ -168,8 +182,16 @@ public class TableLayout implements LayoutManager, Serializable {
 		int[] rowHeights = new int[counts.rows];
 		int[] columnWidths = new int[counts.columns];
 		for (int i = 0; i < parent.getComponentCount(); i++) {
-			int x = i % counts.columns;
-			int y = i / counts.columns;
+			int x;
+			int y;
+			if (columnMajor) {
+				x = i / counts.rows;
+				y = i % counts.rows;
+			} else {
+				x = i % counts.columns;
+				y = i / counts.columns;
+			}
+			
 			Dimension size = componentSize.apply(parent.getComponent(i));
 			if (columnWidths[x] < size.width)
 				columnWidths[x] = size.width;

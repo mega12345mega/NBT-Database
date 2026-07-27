@@ -1,13 +1,13 @@
 package com.luneruniverse.minecraft.nbtdatabase.connection.server.auth.permission;
 
 import java.util.Collections;
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 public class Permissions {
 	
-	private static final Set<String> PERMISSIONS = new HashSet<>();
+	private static final Set<String> PERMISSIONS = new LinkedHashSet<>();
 	private static String r(String permission) {
 		PERMISSIONS.add(permission);
 		return permission;

@@ -2,12 +2,8 @@ package com.luneruniverse.minecraft.nbtdatabase.connection.server;
 
 import java.io.File;
 
-import org.spongepowered.configurate.ConfigurateException;
 import org.spongepowered.configurate.ConfigurationNode;
-import org.spongepowered.configurate.ConfigurationOptions;
-import org.spongepowered.configurate.loader.ConfigurationLoader;
 import org.spongepowered.configurate.serialize.SerializationException;
-import org.spongepowered.configurate.yaml.YamlConfigurationLoader;
 
 import com.luneruniverse.minecraft.nbtdatabase.connection.server.auth.AllowAuthorizationManager;
 import com.luneruniverse.minecraft.nbtdatabase.connection.server.auth.AuthorizationManager;
@@ -34,29 +30,35 @@ public class ServerConfig {
 			websiteEnabled = false;
 		}
 		
-		public void threads(int threads) {
+		public Builder threads(int threads) {
 			this.threads = threads;
+			return this;
 		}
 		
-		public void requireSsl(SslContextBuilder sslBuilder) {
+		public Builder requireSsl(SslContextBuilder sslBuilder) {
 			this.sslRequired = true;
 			this.sslBuilder = sslBuilder;
+			return this;
 		}
-		public void optionalSsl(SslContextBuilder sslBuilder) {
+		public Builder optionalSsl(SslContextBuilder sslBuilder) {
 			this.sslRequired = false;
 			this.sslBuilder = sslBuilder;
+			return this;
 		}
-		public void noSsl() {
+		public Builder noSsl() {
 			this.sslRequired = false;
 			this.sslBuilder = null;
+			return this;
 		}
 		
-		public void authorizationManager(AuthorizationManager authorizationManager) {
+		public Builder authorizationManager(AuthorizationManager authorizationManager) {
 			this.authorizationManager = authorizationManager;
+			return this;
 		}
 		
-		public void websiteEnabled(boolean websiteEnabled) {
+		public Builder websiteEnabled(boolean websiteEnabled) {
 			this.websiteEnabled = websiteEnabled;
+			return this;
 		}
 		
 		public ServerConfig build() {
@@ -74,9 +76,7 @@ public class ServerConfig {
 		return new Builder();
 	}
 	
-	public static ServerConfig fromConfigurationLoader(File parent, ConfigurationLoader<? extends ConfigurationNode> loader) throws ConfigurateException {
-		ConfigurationNode node = loader.load(ConfigurationOptions.defaults().shouldCopyDefaults(false).implicitInitialization(false));
-		
+	public static ServerConfig fromNode(File serverRoot, ConfigurationNode node) throws SerializationException {
 		Builder builder = builder();
 		
 		ConfigurationNode threadsNode = node.node("threads");
@@ -89,8 +89,8 @@ public class ServerConfig {
 			switch (sslMode) {
 				case "required":
 				case "optional":
-					File chainFile = ConfigurateUtil.requireExistingFile(parent, sslNode.node("chain_file"));
-					File privateKeyFile = ConfigurateUtil.requireExistingFile(parent, sslNode.node("private_key_file"));
+					File chainFile = ConfigurateUtil.requireExistingFile(serverRoot, sslNode.node("chain_file"));
+					File privateKeyFile = ConfigurateUtil.requireExistingFile(serverRoot, sslNode.node("private_key_file"));
 					String privateKeyPassEnvVar = sslNode.node("private_key_pass_env_var").getString();
 					
 					SslContextBuilder sslBuilder;
@@ -123,16 +123,13 @@ public class ServerConfig {
 		
 		ConfigurationNode authorizationNode = node.node("authorization");
 		if (!authorizationNode.virtual())
-			builder.authorizationManager(AuthorizationManagers.deserialize(parent, authorizationNode));
+			builder.authorizationManager(AuthorizationManagers.deserialize(serverRoot, authorizationNode));
 		
 		ConfigurationNode websiteEnabledNode = node.node("website_enabled");
 		if (!websiteEnabledNode.virtual())
 			builder.websiteEnabled(ConfigurateUtil.requireBoolean(websiteEnabledNode));
 		
 		return builder.build();
-	}
-	public static ServerConfig fromYamlFile(File file) throws ConfigurateException {
-		return fromConfigurationLoader(file.getAbsoluteFile().getParentFile(), YamlConfigurationLoader.builder().file(file).build());
 	}
 	
 	private final int threads;

@@ -2,10 +2,14 @@ package com.luneruniverse.minecraft.nbtdatabase.connection.util;
 
 import java.io.File;
 import java.util.Collection;
+import java.util.Map;
 import java.util.function.Predicate;
 
+import org.spongepowered.configurate.ConfigurateException;
 import org.spongepowered.configurate.ConfigurationNode;
+import org.spongepowered.configurate.loader.ParsingException;
 import org.spongepowered.configurate.serialize.SerializationException;
+import org.spongepowered.configurate.yaml.YamlConfigurationLoader;
 
 public class ConfigurateUtil {
 	
@@ -55,6 +59,87 @@ public class ConfigurateUtil {
 		if (!file.exists())
 			throw new SerializationException(node, String.class, "File doesn't exist");
 		return file;
+	}
+	
+	public static void mergeOverriding(ConfigurationNode base, ConfigurationNode modifiers) {
+		if (!base.isMap() || !modifiers.isMap()) {
+			if (!modifiers.isNull())
+				base.from(modifiers);
+			return;
+		}
+		
+		for (Map.Entry<Object, ? extends ConfigurationNode> modifier : modifiers.childrenMap().entrySet())
+			mergeOverriding(base.node(modifier.getKey()), modifier.getValue());
+	}
+	
+	public static ConfigurationNode parseYamlFile(File file) throws ConfigurateException {
+		return YamlConfigurationLoader.builder().file(file).build().load();
+	}
+	
+	public static ConfigurationNode parseYamlString(String str) throws ConfigurateException {
+		return YamlConfigurationLoader.builder().buildAndLoadString(str);
+	}
+	
+	public static ConfigurationNode parseInlineYamlString(String str) throws ConfigurateException {
+		ConfigurationNode node = YamlConfigurationLoader.builder().build().createNode();
+		
+		int charIndex = 0;
+		int keyIndex = 0;
+		StringBuilder keyBuilder = new StringBuilder();
+		StringBuilder valueBuilder = new StringBuilder();
+		StringBuilder currentBuilder = keyBuilder;
+		boolean escaped = false;
+		
+		for (char c : str.toCharArray()) {
+			charIndex++;
+			if (escaped) {
+				currentBuilder.append(c);
+			} else if (c == '\\') {
+				escaped = true;
+			} else if (c == ':') {
+				if (currentBuilder == valueBuilder)
+					throw new ParsingException(1, charIndex, str, "Unexpected ':' in value for key '" + keyBuilder + "'", null);
+				currentBuilder = valueBuilder;
+			} else if (c == ';') {
+				if (currentBuilder == keyBuilder)
+					throw new ParsingException(1, charIndex, str, "Unexpected ';' in key '" + keyBuilder + "'", null);
+				addKeyValueYamlPair(node, keyBuilder.toString(), valueBuilder.toString(), keyIndex, str);
+				keyIndex = charIndex + 1;
+				keyBuilder.setLength(0);
+				valueBuilder.setLength(0);
+				currentBuilder = keyBuilder;
+			} else {
+				currentBuilder.append(c);
+			}
+		}
+		
+		if (escaped)
+			throw new ParsingException(1, charIndex, str, "Incomplete '\\'", null);
+		if (currentBuilder == keyBuilder && keyBuilder.length() > 0)
+			throw new ParsingException(1, charIndex, str, "Incomplete key '" + keyBuilder + "'", null);
+		if (currentBuilder == valueBuilder)
+			addKeyValueYamlPair(node, keyBuilder.toString(), valueBuilder.toString(), keyIndex, str);
+		
+		return node;
+	}
+	private static void addKeyValueYamlPair(ConfigurationNode node, String key, String value, int keyIndex, String str) throws ConfigurateException {
+		StringBuilder keyParts = new StringBuilder();
+		
+		for (String keyPart : key.split("\\.")) {
+			node = node.node(keyPart);
+			
+			if (keyParts.length() > 0)
+				keyParts.append('.');
+			keyParts.append(keyPart);
+			
+			if (!node.virtual() && !node.isMap())
+				throw new ParsingException(1, keyIndex, str, "Duplicate key '" + keyParts + "'", null);
+		}
+		
+		if (!node.virtual())
+			throw new ParsingException(1, keyIndex, str, "Duplicate key '" + key + "'", null);
+		
+		node.from(parseYamlString(value));
 	}
 	
 }

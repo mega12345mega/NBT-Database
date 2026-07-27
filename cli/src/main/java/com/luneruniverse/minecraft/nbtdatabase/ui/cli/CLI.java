@@ -20,6 +20,11 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
+import org.spongepowered.configurate.ConfigurationNode;
+import org.spongepowered.configurate.loader.HeaderMode;
+import org.spongepowered.configurate.yaml.NodeStyle;
+import org.spongepowered.configurate.yaml.YamlConfigurationLoader;
+
 import com.luneruniverse.minecraft.nbtdatabase.Config;
 import com.luneruniverse.minecraft.nbtdatabase.DataVersion;
 import com.luneruniverse.minecraft.nbtdatabase.Entry;
@@ -32,7 +37,12 @@ import com.luneruniverse.minecraft.nbtdatabase.connection.access.RemoteNBTDataba
 import com.luneruniverse.minecraft.nbtdatabase.connection.exceptions.RequestFailedException;
 import com.luneruniverse.minecraft.nbtdatabase.connection.exceptions.ServerException;
 import com.luneruniverse.minecraft.nbtdatabase.connection.server.NBTDatabaseAccessServer;
+import com.luneruniverse.minecraft.nbtdatabase.connection.server.ServerConfig;
+import com.luneruniverse.minecraft.nbtdatabase.connection.server.auth.permission.GlobalPermissionManager;
+import com.luneruniverse.minecraft.nbtdatabase.connection.server.auth.permission.NoPermissionMatchedException;
+import com.luneruniverse.minecraft.nbtdatabase.connection.server.auth.permission.PermissionAuthorizationManager;
 import com.luneruniverse.minecraft.nbtdatabase.connection.user.Profile;
+import com.luneruniverse.minecraft.nbtdatabase.connection.util.ConfigurateUtil;
 import com.luneruniverse.minecraft.nbtdatabase.connection.util.FutureUtil;
 import com.luneruniverse.minecraft.nbtdatabase.request.EntryFilter;
 import com.luneruniverse.minecraft.nbtdatabase.request.EntryView;
@@ -140,8 +150,16 @@ public class CLI implements AsyncCloseable {
 		
 		root.addCommand(new GroupCommand("server")
 				.addCommand(new SingleCommand("start", inputs -> serverStartCmd(
-						inputs.hasFlag("port") ? inputs.getFlag("port", Integer.class) : NBTDatabase.DEFAULT_PORT))
-						.addFlag("port", "p", new IntegerInput()))
+						inputs.hasFlag("port") ? inputs.getFlag("port", Integer.class) : NBTDatabase.DEFAULT_PORT,
+						inputs.getFlagOptional("global_perms", String.class),
+						inputs.getFlagOptional("config_file", String.class).map(File::new),
+						inputs.getFlagOptional("config", String.class),
+						inputs.hasFlag("verbose")))
+						.addFlag("port", "p", new IntegerInput())
+						.addFlag("global_perms", "g", new StringInput())
+						.addFlag("config_file", "f", new StringInput())
+						.addFlag("config", "c", new StringInput())
+						.addFlag("verbose", "v"))
 				.addCommand(new SingleCommand("stop", this::serverStopCmd)));
 		
 		root.addCommand(new GroupCommand("config")
@@ -552,14 +570,75 @@ public class CLI implements AsyncCloseable {
 		closeConnection(false);
 	}
 	
-	private void serverStartCmd(int port) {
+	private void serverStartCmd(int port, Optional<String> globalPerms, Optional<File> configFile, Optional<String> config, boolean verbose) {
+		if (globalPerms.isPresent() && (configFile.isPresent() || config.isPresent())) {
+			System.err.println("Cannot use --global_perms with --config_file or --config");
+			return;
+		}
+		if (verbose && !(configFile.isPresent() || config.isPresent())) {
+			System.err.println("Cannot use --verbose without --config_file or --config");
+			return;
+		}
+		
 		if (checkConnectionExists())
 			return;
 		
 		closeServer(true);
 		
 		try {
-			server = new NBTDatabaseAccessServer(connection, port);
+			ServerConfig serverConfig;
+			
+			if (configFile.isPresent() || config.isPresent()) {
+				File serverRoot = new File(".").getAbsoluteFile().getParentFile();
+				ConfigurationNode node = null;
+				
+				if (configFile.isPresent()) {
+					File configFileValue = configFile.get();
+					
+					if (configFileValue.isDirectory())
+						configFileValue = new File(configFileValue, "config.yaml");
+					
+					if (checkFileExists(configFileValue))
+						return;
+					
+					serverRoot = configFileValue.getAbsoluteFile().getParentFile();
+					node = ConfigurateUtil.parseYamlFile(configFileValue);
+				}
+				
+				if (config.isPresent()) {
+					ConfigurationNode node2 = ConfigurateUtil.parseInlineYamlString(config.get());
+					
+					if (node == null)
+						node = node2;
+					else
+						ConfigurateUtil.mergeOverriding(node, node2);
+				}
+				
+				if (verbose) {
+					System.out.println("Config with server root '" + serverRoot.getAbsolutePath() + "':");
+					System.out.println("  " + YamlConfigurationLoader.builder()
+							.headerMode(HeaderMode.NONE).indent(2).nodeStyle(NodeStyle.BLOCK).buildAndSaveString(node)
+							.replace("\n", "\n  "));
+				}
+				
+				serverConfig = ServerConfig.fromNode(serverRoot, node);
+			} else {
+				ServerConfig.Builder configBuilder = ServerConfig.builder();
+				
+				if (globalPerms.isPresent()) {
+					try {
+						configBuilder.authorizationManager(PermissionAuthorizationManager.create(
+								GlobalPermissionManager.fromMatchers(globalPerms.get().split(","))));
+					} catch (NoPermissionMatchedException e) {
+						System.err.println(e.getMessage());
+						return;
+					}
+				}
+				
+				serverConfig = configBuilder.build();
+			}
+			
+			server = new NBTDatabaseAccessServer(connection, port, serverConfig);
 			onServerStart();
 			System.out.println("Started server on port " + port);
 		} catch (IOException e) {

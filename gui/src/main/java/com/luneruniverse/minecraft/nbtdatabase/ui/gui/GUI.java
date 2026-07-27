@@ -5,16 +5,24 @@ import java.awt.CardLayout;
 import java.awt.Desktop;
 import java.awt.Dimension;
 import java.awt.EventQueue;
+import java.awt.FlowLayout;
 import java.awt.Toolkit;
 import java.awt.datatransfer.StringSelection;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ForkJoinPool;
@@ -23,7 +31,9 @@ import java.util.function.Consumer;
 
 import javax.swing.Box;
 import javax.swing.BoxLayout;
+import javax.swing.ButtonGroup;
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -32,13 +42,19 @@ import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JRadioButton;
 import javax.swing.JScrollPane;
 import javax.swing.JSeparator;
 import javax.swing.JSpinner;
 import javax.swing.JTabbedPane;
+import javax.swing.JTextArea;
+import javax.swing.JTextField;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingConstants;
 import javax.swing.UIManager;
+import javax.swing.border.EmptyBorder;
+
+import org.spongepowered.configurate.ConfigurateException;
 
 import com.luneruniverse.minecraft.nbtdatabase.DataVersion;
 import com.luneruniverse.minecraft.nbtdatabase.NBTDatabase;
@@ -49,7 +65,13 @@ import com.luneruniverse.minecraft.nbtdatabase.connection.access.RemoteNBTDataba
 import com.luneruniverse.minecraft.nbtdatabase.connection.exceptions.RequestFailedException;
 import com.luneruniverse.minecraft.nbtdatabase.connection.exceptions.ServerException;
 import com.luneruniverse.minecraft.nbtdatabase.connection.server.NBTDatabaseAccessServer;
+import com.luneruniverse.minecraft.nbtdatabase.connection.server.ServerConfig;
+import com.luneruniverse.minecraft.nbtdatabase.connection.server.auth.permission.GlobalPermissionManager;
+import com.luneruniverse.minecraft.nbtdatabase.connection.server.auth.permission.PermissionAuthorizationManager;
+import com.luneruniverse.minecraft.nbtdatabase.connection.server.auth.permission.Permissions;
+import com.luneruniverse.minecraft.nbtdatabase.connection.server.auth.permission.Roles;
 import com.luneruniverse.minecraft.nbtdatabase.connection.user.Profile;
+import com.luneruniverse.minecraft.nbtdatabase.connection.util.ConfigurateUtil;
 import com.luneruniverse.minecraft.nbtdatabase.connection.util.FutureUtil;
 import com.luneruniverse.minecraft.nbtdatabase.request.IllegalRequestException;
 import com.luneruniverse.minecraft.nbtdatabase.ui.LoginUtil;
@@ -150,13 +172,13 @@ public class GUI implements AsyncCloseable {
 		startServerMenu.setMnemonic('S');
 		serverMenu.add(startServerMenu);
 		
-		JMenuItem defaultPortStartServerMenuItem = new JMenuItem("Port " + NBTDatabase.DEFAULT_PORT, 'P');
-		startServerMenu.add(defaultPortStartServerMenuItem);
-		defaultPortStartServerMenuItem.addActionListener(event -> defaultPortStartServerMenuItem());
+		JMenuItem quickStartServerMenuItem = new JMenuItem("Quick", 'Q');
+		startServerMenu.add(quickStartServerMenuItem);
+		quickStartServerMenuItem.addActionListener(event -> quickStartServerMenuItem());
 		
-		JMenuItem customPortStartServerMenuItem = new JMenuItem("Custom Port", 'C');
-		startServerMenu.add(customPortStartServerMenuItem);
-		customPortStartServerMenuItem.addActionListener(event -> customPortStartServerMenuItem());
+		JMenuItem advancedStartServerMenuItem = new JMenuItem("Advanced", 'A');
+		startServerMenu.add(advancedStartServerMenuItem);
+		advancedStartServerMenuItem.addActionListener(event -> advancedStartServerMenuItem());
 		
 		JMenuItem stopServerMenuItem = new JMenuItem("Stop", 't');
 		serverMenu.add(stopServerMenuItem);
@@ -516,7 +538,7 @@ public class GUI implements AsyncCloseable {
 		updateConnectionInfo();
 	}
 	
-	private void defaultPortStartServerMenuItem() {
+	private void quickStartServerMenuItem() {
 		if (checkConnectionExists())
 			return;
 		
@@ -533,31 +555,183 @@ public class GUI implements AsyncCloseable {
 		updateConnectionInfo();
 	}
 	
-	private void customPortStartServerMenuItem() {
-		String portStr = JOptionPane.showInputDialog(frame, "Enter port:", "Start Server", JOptionPane.QUESTION_MESSAGE);
-		if (portStr == null)
-			return;
-		int port;
-		try {
-			port = Integer.parseInt(portStr);
-			if (port < 0 || port > 0xFFFF)
-				throw new NumberFormatException();
-		} catch (NumberFormatException e) {
-			JOptionPane.showMessageDialog(frame, "Invalid port number '" + portStr + "'", "Error", JOptionPane.ERROR_MESSAGE);
-			return;
-		}
-		
+	private void advancedStartServerMenuItem() {
 		if (checkConnectionExists())
 			return;
+		
+		JPanel panel = new JPanel(TableLayout.ofColumns(1, 4));
+		
+		JPanel portPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+		panel.add(portPanel);
+		
+		portPanel.add(new JLabel("Port:"));
+		
+		JSpinner portField = new JSpinner(new SpinnerNumberModel(NBTDatabase.DEFAULT_PORT, 0, 0xFFFF, 1));
+		portPanel.add(portField);
+		
+		JTabbedPane configTabs = new JTabbedPane();
+		panel.add(configTabs);
+		
+		JPanel basicConfigPanel = new JPanel(TableLayout.ofColumns(1, 4));
+		configTabs.addTab("Basic Config", basicConfigPanel);
+		
+		JRadioButton noPerms = new JRadioButton("Authorization: Allow");
+		basicConfigPanel.add(noPerms);
+		noPerms.setSelected(true);
+		
+		JRadioButton globalPerms = new JRadioButton("Authorization: Global Permission");
+		basicConfigPanel.add(globalPerms);
+		
+		ButtonGroup permsRadio = new ButtonGroup();
+		permsRadio.add(noPerms);
+		permsRadio.add(globalPerms);
+		
+		JPanel permissionsPanel = new JPanel(TableLayout.ofColumns(4, 4).columnMajor());
+		basicConfigPanel.add(permissionsPanel);
+		
+		List<String> permissions = new ArrayList<>();
+		permissions.addAll(Roles.getRoles().keySet());
+		permissions.addAll(Permissions.getPermissions());
+		
+		Map<String, JCheckBox> permissionFields = new HashMap<>();
+		for (String permission : permissions) {
+			JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+			permissionsPanel.add(row);
+			
+			JCheckBox checkbox = new JCheckBox();
+			row.add(checkbox);
+			checkbox.setEnabled(false);
+			permissionFields.put(permission, checkbox);
+			
+			JLabel label = new JLabel(permission);
+			row.add(label);
+			
+			label.addMouseListener(new MouseAdapter() {
+				@Override
+				public void mouseClicked(MouseEvent mouseEvent) {
+					if (checkbox.isEnabled())
+						checkbox.setSelected(!checkbox.isSelected());
+				}
+			});
+		}
+		
+		noPerms.addActionListener(event -> permissionFields.values().forEach(checkbox -> checkbox.setEnabled(false)));
+		globalPerms.addActionListener(event -> permissionFields.values().forEach(checkbox -> checkbox.setEnabled(true)));
+		
+		JPanel fullConfigPanel = new JPanel(new BorderLayout(4, 4));
+		configTabs.addTab("Full Config", fullConfigPanel);
+		fullConfigPanel.setBorder(new EmptyBorder(4, 4, 4, 4));
+		
+		JPanel fullConfigHeaderPanel = new JPanel(TableLayout.ofColumns(1, 4));
+		fullConfigPanel.add(BorderLayout.NORTH, fullConfigHeaderPanel);
+		
+		JPanel configFilePanel = new JPanel(TableLayout.ofRows(1, 4));
+		fullConfigHeaderPanel.add(BorderLayout.NORTH, configFilePanel);
+		
+		JButton loadConfigFileBtn = new JButton("Load Config File");
+		configFilePanel.add(loadConfigFileBtn);
+		
+		JButton saveConfigFileBtn = new JButton("Save Config File");
+		configFilePanel.add(saveConfigFileBtn);
+		
+		JPanel serverRootPanel = new JPanel(TableLayout.ofRows(1, 4));
+		fullConfigHeaderPanel.add(BorderLayout.NORTH, serverRootPanel);
+		
+		serverRootPanel.add(new JLabel("Server Root:"));
+		
+		JTextField serverRootField = new JTextField(new File(".").getAbsoluteFile().getParent());
+		serverRootPanel.add(serverRootField);
+		
+		JTextArea configField = new JTextArea();
+		fullConfigPanel.add(BorderLayout.CENTER, new JScrollPane(configField));
+		
+		loadConfigFileBtn.addActionListener(event -> {
+			JnaFileChooser chooser = new JnaFileChooser(".");
+			chooser.setTitle("Select Config File");
+			chooser.addFilter("YAML (*.yaml)", "yaml");
+			chooser.addFilter("All Files (*.*)", "*");
+			if (!chooser.showOpenDialog(frame))
+				return;
+			File file = chooser.getSelectedFile();
+			try {
+				configField.setText(new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8).replace("\r", ""));
+				serverRootField.setText(file.getAbsoluteFile().getParent());
+			} catch (IOException e) {
+				e.printStackTrace();
+				JOptionPane.showMessageDialog(frame, "Failed to load '" + file.getName() + "'", "Error", JOptionPane.ERROR_MESSAGE);
+			}
+		});
+		
+		saveConfigFileBtn.addActionListener(event -> {
+			JnaFileChooser chooser = new JnaFileChooser(".");
+			chooser.setTitle("Select Config File");
+			chooser.addFilter("YAML (*.yaml)", "yaml");
+			chooser.addFilter("All Files (*.*)", "*");
+			if (!chooser.showSaveDialog(frame))
+				return;
+			File file = chooser.getSelectedFile();
+			
+			if (file.exists()) {
+				if (JOptionPane.showConfirmDialog(frame, "'" + file.getName() + "' already exists. Overwrite?",
+						"Save Config File", JOptionPane.OK_CANCEL_OPTION) != JOptionPane.OK_OPTION) {
+					return;
+				}
+			}
+			
+			try {
+				Files.write(file.toPath(), configField.getText().getBytes(StandardCharsets.UTF_8));
+			} catch (IOException e) {
+				e.printStackTrace();
+				JOptionPane.showMessageDialog(frame, "Failed to save '" + file.getName() + "'", "Error", JOptionPane.ERROR_MESSAGE);
+			}
+		});
+		
+		if (JOptionPane.showConfirmDialog(frame, panel, "Advanced Start Server", JOptionPane.OK_CANCEL_OPTION) != JOptionPane.OK_OPTION)
+			return;
+		
+		int port = (Integer) portField.getValue();
+		
+		ServerConfig config;
+		if (configTabs.getSelectedComponent() == basicConfigPanel) {
+			ServerConfig.Builder configBuilder = ServerConfig.builder();
+			
+			if (globalPerms.isSelected()) {
+				permissions.clear();
+				
+				for (Map.Entry<String, JCheckBox> permission : permissionFields.entrySet()) {
+					if (permission.getValue().isSelected())
+						permissions.add(permission.getKey());
+				}
+				
+				configBuilder.authorizationManager(PermissionAuthorizationManager.create(
+						GlobalPermissionManager.fromMatchers(permissions.toArray(new String[0]))));
+			}
+			
+			config = configBuilder.build();
+		} else {
+			File serverRoot = new File(serverRootField.getText());
+			if (!serverRoot.isDirectory()) {
+				JOptionPane.showMessageDialog(frame, "'" + serverRoot.getName() + "' is not a folder", "Error", JOptionPane.ERROR_MESSAGE);
+				return;
+			}
+			
+			try {
+				config = ServerConfig.fromNode(serverRoot, ConfigurateUtil.parseYamlString(configField.getText()));
+			} catch (ConfigurateException e) {
+				e.printStackTrace();
+				JOptionPane.showMessageDialog(frame, "Failed to parse config", "Error", JOptionPane.ERROR_MESSAGE);
+				return;
+			}
+		}
 		
 		closeServer();
 		
 		try {
-			server = new NBTDatabaseAccessServer(connection, port);
+			server = new NBTDatabaseAccessServer(connection, port, config);
 			onServerStart();
 		} catch (IOException e) {
 			e.printStackTrace();
-			JOptionPane.showMessageDialog(frame, "Failed to start server on port '" + port + "'", "Error", JOptionPane.ERROR_MESSAGE);
+			JOptionPane.showMessageDialog(frame, "Failed to start server", "Error", JOptionPane.ERROR_MESSAGE);
 		}
 		
 		updateConnectionInfo();

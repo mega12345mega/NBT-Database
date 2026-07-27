@@ -13,7 +13,7 @@ import com.luneruniverse.minecraft.nbtdatabase.connection.util.ConfigurateUtil;
 public class AuthorizationManagers {
 	
 	public static interface AuthorizationManagerDeserializer {
-		public AuthorizationManager deserialize(File parent, ConfigurationNode node) throws SerializationException;
+		public AuthorizationManager deserialize(File serverRoot, ConfigurationNode node) throws SerializationException;
 	}
 	
 	private static final Map<String, AuthorizationManagerDeserializer> MANAGERS = new HashMap<>();
@@ -22,12 +22,12 @@ public class AuthorizationManagers {
 		return manager;
 	}
 	
-	public static AuthorizationManager deserialize(File parent, ConfigurationNode node) throws SerializationException {
+	public static AuthorizationManager deserialize(File serverRoot, ConfigurationNode node) throws SerializationException {
 		String name = ConfigurateUtil.requireStringFromList(node.node("manager"), MANAGERS.keySet());
-		return MANAGERS.get(name).deserialize(parent, node.node(name));
+		return MANAGERS.get(name).deserialize(serverRoot, node.node(name));
 	}
 	
-	public static final AuthorizationManagerDeserializer ALLOW = r("allow", (parent, node) -> AllowAuthorizationManager.create());
+	public static final AuthorizationManagerDeserializer ALLOW = r("allow", (serverRoot, node) -> AllowAuthorizationManager.create());
 	public static final AuthorizationManagerDeserializer PERMISSION = r("permission", PermissionAuthorizationManager::deserialize);
 	
 }

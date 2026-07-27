@@ -12,7 +12,7 @@ import com.luneruniverse.minecraft.nbtdatabase.connection.util.ConfigurateUtil;
 public class PermissionManagers {
 	
 	public static interface PermissionManagerDeserializer {
-		public PermissionManager deserialize(File parent, ConfigurationNode node) throws SerializationException;
+		public PermissionManager deserialize(File serverRoot, ConfigurationNode node) throws SerializationException;
 	}
 	
 	private static final Map<String, PermissionManagerDeserializer> MANAGERS = new HashMap<>();
@@ -21,9 +21,9 @@ public class PermissionManagers {
 		return manager;
 	}
 	
-	public static PermissionManager deserialize(File parent, ConfigurationNode node) throws SerializationException {
+	public static PermissionManager deserialize(File serverRoot, ConfigurationNode node) throws SerializationException {
 		String name = ConfigurateUtil.requireStringFromList(node.node("manager"), MANAGERS.keySet());
-		return MANAGERS.get(name).deserialize(parent, node.node(name));
+		return MANAGERS.get(name).deserialize(serverRoot, node.node(name));
 	}
 	
 	public static final PermissionManagerDeserializer GLOBAL = r("global", GlobalPermissionManager::deserialize);
