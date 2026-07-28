@@ -1,0 +1,29 @@
+# ========== User Map Permission Manager Configuration ==========
+# Format: (anyone|guest|<uuid>) (<permission matcher>) (false|true)
+# guest refers specifically to logged out users; if you want to refer to all users, use anyone
+# false can be used to remove previously granted permissions; later permissions overwrite earlier ones
+
+# Below are suggested configurations
+# jeb_ (853c80ef-3c37-49fd-aa49-938b674adae6) is used as a placeholder for maintainers
+# Notch (069a79f4-44e9-4726-a5be-fca90e38aaf5) is used as a placeholder for owners
+
+# ===== Personal (not accessible from the internet) =====
+# anyone admin true
+
+# ===== Public Sharing =====
+# anyone viewer_anyone true
+# anyone contributor_self true
+# 853c80ef-3c37-49fd-aa49-938b674adae6 contributor_anyone true
+# 069a79f4-44e9-4726-a5be-fca90e38aaf5 admin true
+
+# ===== Public Curated Collection =====
+# anyone viewer_anyone true
+# 853c80ef-3c37-49fd-aa49-938b674adae6 contributor_anyone true
+# 069a79f4-44e9-4726-a5be-fca90e38aaf5 admin true
+
+# ===== Private Collections =====
+# anyone contributor_self true
+# 069a79f4-44e9-4726-a5be-fca90e38aaf5 admin true
+
+# ===== Archive =====
+# anyone viewer_anyone true

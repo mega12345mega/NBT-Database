@@ -68,14 +68,14 @@ public class WebsiteHandler extends SimpleChannelInboundHandler<FullHttpRequest>
 	
 	public WebsiteHandler(NBTDatabaseAccess database) {
 		this.database = database;
-		this.websiteHtml = IOUtil.readStringAndCloseOrNull(getClass().getClassLoader().getResourceAsStream("website.html"));
+		this.websiteHtml = IOUtil.readStringAndCloseOrNull(getClass().getClassLoader().getResourceAsStream("ui/website.html"));
 		this.resources = new HashMap<>();
 		addResource("logo_transparent_plain.svg", "image/svg+xml");
 		addResource("download.svg", "image/svg+xml");
 	}
 	private void addResource(String name, String contentType) {
 		resources.put(name, new AbstractMap.SimpleImmutableEntry<>(contentType,
-				IOUtil.readAllBytesAndCloseOrNull(getClass().getClassLoader().getResourceAsStream(name))));
+				IOUtil.readAllBytesAndCloseOrNull(getClass().getClassLoader().getResourceAsStream("ui/" + name))));
 	}
 	
 	@Override

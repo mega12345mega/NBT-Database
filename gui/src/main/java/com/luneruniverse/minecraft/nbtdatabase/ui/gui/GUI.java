@@ -73,6 +73,7 @@ import com.luneruniverse.minecraft.nbtdatabase.connection.server.auth.permission
 import com.luneruniverse.minecraft.nbtdatabase.connection.user.Profile;
 import com.luneruniverse.minecraft.nbtdatabase.connection.util.ConfigurateUtil;
 import com.luneruniverse.minecraft.nbtdatabase.connection.util.FutureUtil;
+import com.luneruniverse.minecraft.nbtdatabase.connection.util.IOUtil;
 import com.luneruniverse.minecraft.nbtdatabase.request.IllegalRequestException;
 import com.luneruniverse.minecraft.nbtdatabase.ui.LoginUtil;
 import com.luneruniverse.minecraft.nbtdatabase.ui.UIUtil;
@@ -168,21 +169,21 @@ public class GUI implements AsyncCloseable {
 		serverMenu.setMnemonic('S');
 		menuBar.add(serverMenu);
 		
-		JMenu startServerMenu = new JMenu("Start");
-		startServerMenu.setMnemonic('S');
-		serverMenu.add(startServerMenu);
-		
-		JMenuItem quickStartServerMenuItem = new JMenuItem("Quick", 'Q');
-		startServerMenu.add(quickStartServerMenuItem);
+		JMenuItem quickStartServerMenuItem = new JMenuItem("Quick Start", 'Q');
+		serverMenu.add(quickStartServerMenuItem);
 		quickStartServerMenuItem.addActionListener(event -> quickStartServerMenuItem());
 		
-		JMenuItem advancedStartServerMenuItem = new JMenuItem("Advanced", 'A');
-		startServerMenu.add(advancedStartServerMenuItem);
+		JMenuItem advancedStartServerMenuItem = new JMenuItem("Advanced Start", 'A');
+		serverMenu.add(advancedStartServerMenuItem);
 		advancedStartServerMenuItem.addActionListener(event -> advancedStartServerMenuItem());
 		
-		JMenuItem stopServerMenuItem = new JMenuItem("Stop", 't');
+		JMenuItem stopServerMenuItem = new JMenuItem("Stop", 'S');
 		serverMenu.add(stopServerMenuItem);
 		stopServerMenuItem.addActionListener(event -> stopServerMenuItem());
+		
+		JMenuItem templateServerMenuItem = new JMenuItem("Template", 'T');
+		serverMenu.add(templateServerMenuItem);
+		templateServerMenuItem.addActionListener(event -> templateServerMenuItem());
 		
 		accountMenu = new JMenu("Account");
 		accountMenu.setMnemonic('A');
@@ -744,6 +745,29 @@ public class GUI implements AsyncCloseable {
 		closeServer();
 		
 		updateConnectionInfo();
+	}
+	
+	private void templateServerMenuItem() {
+		JnaFileChooser chooser = new JnaFileChooser(".");
+		chooser.setTitle("Export Server Template");
+		chooser.setMode(JnaFileChooser.Mode.Directories);
+		if (!chooser.showSaveDialog(frame))
+			return;
+		File folder = chooser.getSelectedFile();
+		
+		try {
+			List<String> conflicts = IOUtil.extractResourcesDryRun("server_template", folder.toPath());
+			if (!conflicts.isEmpty()) {
+				JOptionPane.showMessageDialog(frame, conflicts.stream().map(conflict -> new File(folder, conflict).getAbsolutePath())
+						.reduce("File(s) already exist:", (a, b) -> a + "\n- " + b), "Error", JOptionPane.ERROR_MESSAGE);
+				return;
+			}
+			
+			IOUtil.extractResources("server_template", folder.toPath());
+		} catch (IOException e) {
+			e.printStackTrace();
+			JOptionPane.showMessageDialog(frame, "Failed to export to '" + folder.getName() + "'", "Error", JOptionPane.ERROR_MESSAGE);
+		}
 	}
 	
 	private void loginAccountMenuItem() {

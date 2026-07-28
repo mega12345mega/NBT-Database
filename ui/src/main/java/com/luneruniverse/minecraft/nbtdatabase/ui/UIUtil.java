@@ -19,7 +19,7 @@ public class UIUtil {
 	}
 	
 	public static void setJFrameLogo(JFrame frame) {
-		try (InputStream in = UIUtil.class.getClassLoader().getResourceAsStream("logo_transparent.png")) {
+		try (InputStream in = UIUtil.class.getClassLoader().getResourceAsStream("ui/logo_transparent.png")) {
 			frame.setIconImage(ImageIO.read(in));
 		} catch (IOException e) {
 			e.printStackTrace();

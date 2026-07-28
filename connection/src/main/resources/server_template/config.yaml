@@ -1,0 +1,49 @@
+# ========== NBT Database Server Configuration ==========
+# All paths are relative to this file's folder
+
+# Number of threads used by the server, shared between accepting clients and handling client requests
+# If set to 0, the number of threads will be automatically calculated based on the number of processors
+threads: 3
+
+# SSL can be used for all connection types
+ssl:
+  # One of: disabled, optional, required
+  mode: disabled
+
+  # Paths to the certificate chain and private key stored in .pem files
+  chain_file: fullchain.pem
+  private_key_file: privkey.pem
+
+  # Name of environment variable that stores the private key's password, or null if the key is not password protected
+  private_key_pass_env_var: null
+
+# Configure what requests from what users are allowed
+authorization:
+  # One of: allow, permission
+  # The matching section below is used to configure the selected manager
+  manager: allow
+
+  # Allows all requests; no additional configuration required
+  allow:
+
+  # Allows requests based on what permissions each user has
+  permission:
+    # One of: global, user_map
+    # The matching section below is used to configure the selected manager
+    manager: global
+
+    # Gives all users (including the guest user) the same permissions
+    global:
+      # The list of permission matchers for permissions to grant
+      permissions:
+      - admin
+
+    # Gives each user different permissions, using a basic permission granting file format
+    user_map:
+      # Path to the permissions file
+      permissions_file: user_map_perms.txt
+
+# If http:// requests should be rejected
+# Does not block ws:// requests
+# This option will be removed when the website is updated to use the authorization manager
+website_enabled: false

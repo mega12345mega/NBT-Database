@@ -1,4 +1,4 @@
-# <img src="connection/src/main/resources/logo_transparent_plain.svg" height=24 alt="NBT Database Logo" /> NBT Database
+# <img src="connection/src/main/resources/ui/logo_transparent_plain.svg" height=24 alt="NBT Database Logo" /> NBT Database
 [![Release](https://jitpack.io/v/mega12345mega/NBT-Database.svg)](https://jitpack.io/#mega12345mega/NBT-Database)
 
 Store NBT entries in an SQLite database

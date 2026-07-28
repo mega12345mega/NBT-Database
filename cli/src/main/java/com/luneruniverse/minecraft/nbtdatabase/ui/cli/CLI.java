@@ -44,6 +44,7 @@ import com.luneruniverse.minecraft.nbtdatabase.connection.server.auth.permission
 import com.luneruniverse.minecraft.nbtdatabase.connection.user.Profile;
 import com.luneruniverse.minecraft.nbtdatabase.connection.util.ConfigurateUtil;
 import com.luneruniverse.minecraft.nbtdatabase.connection.util.FutureUtil;
+import com.luneruniverse.minecraft.nbtdatabase.connection.util.IOUtil;
 import com.luneruniverse.minecraft.nbtdatabase.request.EntryFilter;
 import com.luneruniverse.minecraft.nbtdatabase.request.EntryView;
 import com.luneruniverse.minecraft.nbtdatabase.request.IllegalRequestException;
@@ -160,7 +161,10 @@ public class CLI implements AsyncCloseable {
 						.addFlag("config_file", "f", new StringInput())
 						.addFlag("config", "c", new StringInput())
 						.addFlag("verbose", "v"))
-				.addCommand(new SingleCommand("stop", this::serverStopCmd)));
+				.addCommand(new SingleCommand("stop", this::serverStopCmd))
+				.addCommand(new SingleCommand("template", inputs -> serverTemplateCmd(
+						new File(inputs.getArgument("folder", String.class))))
+						.addArgument("folder", new StringInput())));
 		
 		root.addCommand(new GroupCommand("config")
 				.addCommand(new SingleCommand("list", this::configListCmd))
@@ -651,6 +655,23 @@ public class CLI implements AsyncCloseable {
 			return;
 		
 		closeServer(false);
+	}
+	
+	private void serverTemplateCmd(File folder) {
+		try {
+			List<String> conflicts = IOUtil.extractResourcesDryRun("server_template", folder.toPath());
+			if (!conflicts.isEmpty()) {
+				System.err.println("File(s) already exist:");
+				for (String conflict : conflicts)
+					System.err.println("- " + new File(folder, conflict).getAbsolutePath());
+				return;
+			}
+			
+			IOUtil.extractResources("server_template", folder.toPath());
+			System.out.println("Exported server template to: " + folder.getAbsolutePath());
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 	
 	private void configListCmd() {
