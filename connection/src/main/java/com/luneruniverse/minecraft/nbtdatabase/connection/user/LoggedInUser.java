@@ -33,7 +33,7 @@ public class LoggedInUser extends User {
 	
 	@Override
 	public String toString() {
-		return username + " (" + uuid + ")";
+		return username;
 	}
 	
 }

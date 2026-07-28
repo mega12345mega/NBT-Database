@@ -6,6 +6,7 @@ import java.awt.Desktop;
 import java.awt.Dimension;
 import java.awt.EventQueue;
 import java.awt.FlowLayout;
+import java.awt.Font;
 import java.awt.Toolkit;
 import java.awt.datatransfer.StringSelection;
 import java.awt.event.MouseAdapter;
@@ -20,6 +21,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -71,6 +73,7 @@ import com.luneruniverse.minecraft.nbtdatabase.connection.server.auth.permission
 import com.luneruniverse.minecraft.nbtdatabase.connection.server.auth.permission.Permissions;
 import com.luneruniverse.minecraft.nbtdatabase.connection.server.auth.permission.Roles;
 import com.luneruniverse.minecraft.nbtdatabase.connection.user.Profile;
+import com.luneruniverse.minecraft.nbtdatabase.connection.user.User;
 import com.luneruniverse.minecraft.nbtdatabase.connection.util.ConfigurateUtil;
 import com.luneruniverse.minecraft.nbtdatabase.connection.util.FutureUtil;
 import com.luneruniverse.minecraft.nbtdatabase.connection.util.IOUtil;
@@ -184,6 +187,10 @@ public class GUI implements AsyncCloseable {
 		JMenuItem templateServerMenuItem = new JMenuItem("Template", 'T');
 		serverMenu.add(templateServerMenuItem);
 		templateServerMenuItem.addActionListener(event -> templateServerMenuItem());
+		
+		JMenuItem usersServerMenuItem = new JMenuItem("Users", 'U');
+		serverMenu.add(usersServerMenuItem);
+		usersServerMenuItem.addActionListener(event -> usersServerMenuItem());
 		
 		accountMenu = new JMenu("Account");
 		accountMenu.setMnemonic('A');
@@ -770,6 +777,41 @@ public class GUI implements AsyncCloseable {
 		}
 	}
 	
+	private void usersServerMenuItem() {
+		if (checkServerExists())
+			return;
+		
+		Collection<User> users = server.getUsers();
+		
+		JPanel panel = new JPanel(TableLayout.ofColumns(3, 4));
+		
+		if (users.isEmpty()) {
+			panel.add(new JLabel("No users"));
+		} else {
+			Font boldFont = panel.getFont().deriveFont(Font.BOLD);
+			
+			JLabel userLabel = new JLabel("User");
+			panel.add(userLabel);
+			userLabel.setFont(boldFont);
+			
+			JLabel ipLabel = new JLabel("IP");
+			panel.add(ipLabel);
+			ipLabel.setFont(boldFont);
+			
+			JLabel clientTypeLabel = new JLabel("Client Type");
+			panel.add(clientTypeLabel);
+			clientTypeLabel.setFont(boldFont);
+			
+			for (User user : users) {
+				panel.add(new JLabel(user.toString()));
+				panel.add(new JLabel(user.getIp()));
+				panel.add(new JLabel(user.getClientType().toString()));
+			}
+		}
+		
+		JOptionPane.showMessageDialog(frame, panel, "Server Users", JOptionPane.INFORMATION_MESSAGE);
+	}
+	
 	private void loginAccountMenuItem() {
 		AtomicBoolean cancelled = new AtomicBoolean();
 		LoginUtil.loginWithDeviceCode(url -> {
@@ -798,7 +840,7 @@ public class GUI implements AsyncCloseable {
 				this.profile = profile;
 				this.accessToken = accessToken;
 				updateAccountMenu();
-				JOptionPane.showMessageDialog(frame, "Logged in as " + profile.getUsername() + " (" + profile.getUuid() + ")",
+				JOptionPane.showMessageDialog(frame, "Logged in as " + profile.getUsername(),
 						"Login", JOptionPane.INFORMATION_MESSAGE);
 			});
 		}, () -> {

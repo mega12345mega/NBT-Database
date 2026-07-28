@@ -8,6 +8,7 @@ import java.nio.file.Files;
 import java.sql.SQLException;
 import java.util.ArrayDeque;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -42,6 +43,7 @@ import com.luneruniverse.minecraft.nbtdatabase.connection.server.auth.permission
 import com.luneruniverse.minecraft.nbtdatabase.connection.server.auth.permission.NoPermissionMatchedException;
 import com.luneruniverse.minecraft.nbtdatabase.connection.server.auth.permission.PermissionAuthorizationManager;
 import com.luneruniverse.minecraft.nbtdatabase.connection.user.Profile;
+import com.luneruniverse.minecraft.nbtdatabase.connection.user.User;
 import com.luneruniverse.minecraft.nbtdatabase.connection.util.ConfigurateUtil;
 import com.luneruniverse.minecraft.nbtdatabase.connection.util.FutureUtil;
 import com.luneruniverse.minecraft.nbtdatabase.connection.util.IOUtil;
@@ -164,7 +166,8 @@ public class CLI implements AsyncCloseable {
 				.addCommand(new SingleCommand("stop", this::serverStopCmd))
 				.addCommand(new SingleCommand("template", inputs -> serverTemplateCmd(
 						new File(inputs.getArgument("folder", String.class))))
-						.addArgument("folder", new StringInput())));
+						.addArgument("folder", new StringInput()))
+				.addCommand(new SingleCommand("users", this::serverUsersCmd)));
 		
 		root.addCommand(new GroupCommand("config")
 				.addCommand(new SingleCommand("list", this::configListCmd))
@@ -486,7 +489,7 @@ public class CLI implements AsyncCloseable {
 			executor.execute(() -> {
 				this.profile = profile;
 				this.accessToken = accessToken;
-				System.out.println("Logged in as " + profile.getUsername() + " (" + profile.getUuid() + ")");
+				System.out.println("Logged in as " + profile.getUsername());
 			});
 		}, () -> {
 			System.out.println("Login timed out");
@@ -672,6 +675,23 @@ public class CLI implements AsyncCloseable {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+	}
+	
+	private void serverUsersCmd() {
+		if (checkServerExists())
+			return;
+		
+		Collection<User> users = server.getUsers();
+		
+		if (users.isEmpty()) {
+			System.out.println("No users");
+			return;
+		}
+		
+		System.out.format("%-16s | %-15s | %s\n", "User", "IP", "Client Type");
+		System.out.println("================================================");
+		for (User user : users)
+			System.out.format("%-16s | %-15s | %s\n", user, user.getIp(), user.getClientType());
 	}
 	
 	private void configListCmd() {
