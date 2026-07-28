@@ -129,6 +129,8 @@ public class CLI implements AsyncCloseable {
 		
 		root.addCommand(new SingleCommand("exit", this::exitCmd));
 		
+		root.addCommand(new SingleCommand("status", this::statusCmd));
+		
 		root.addCommand(new SingleCommand("login", this::loginCmd));
 		
 		root.addCommand(new SingleCommand("logout", this::logoutCmd));
@@ -479,6 +481,12 @@ public class CLI implements AsyncCloseable {
 			if (e != null)
 				e.printStackTrace();
 		});
+	}
+	
+	private void statusCmd() {
+		System.out.println("Account: " + (profile == null ? "<guest>" : profile.getUsername()));
+		System.out.println("Connection: " + (connection == null ? "Not connected" : connection.getName()));
+		System.out.println("Server: " + (server == null ? "Not running" : "Running on port " + server.getPort()));
 	}
 	
 	private void loginCmd() {

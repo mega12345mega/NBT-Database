@@ -75,6 +75,7 @@ public class RemoteNBTDatabaseAccess implements NBTDatabaseAccess {
 	
 	private final String host;
 	private final int port;
+	private final boolean ssl;
 	private final CompletableFuture<Void> closeFuture;
 	private final Channel client;
 	private final ExecutorService executor;
@@ -85,6 +86,7 @@ public class RemoteNBTDatabaseAccess implements NBTDatabaseAccess {
 		
 		this.host = host;
 		this.port = port;
+		this.ssl = ssl;
 		
 		closeFuture = new CompletableFuture<>();
 		
@@ -148,9 +150,13 @@ public class RemoteNBTDatabaseAccess implements NBTDatabaseAccess {
 		return port;
 	}
 	
+	public boolean isSsl() {
+		return ssl;
+	}
+	
 	@Override
 	public String getName() {
-		return "[Remote] " + host + ":" + port;
+		return "[Remote] " + (ssl ? "nbts://" : "nbt://") + host + ":" + port;
 	}
 	
 	private <T, P> CompletableFuture<T> request(Packet packet, Class<P> responsePacketType, Function<P, T> unpacker) {
