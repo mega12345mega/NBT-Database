@@ -4,6 +4,8 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.sql.SQLException;
 import java.util.ArrayDeque;
@@ -144,11 +146,9 @@ public class CLI implements AsyncCloseable {
 						new File(inputs.getArgument("file", String.class))))
 						.addArgument("file", new StringInput()))
 				.addCommand(new SingleCommand("remote", inputs -> openRemoteCmd(
-						inputs.getArgument("host", String.class),
-						inputs.hasFlag("port") ? inputs.getFlag("port", Integer.class) : NBTDatabase.DEFAULT_PORT,
+						inputs.getArgument("address", String.class),
 						inputs.hasFlag("ssl")))
-						.addArgument("host", new StringInput())
-						.addFlag("port", "p", new IntegerInput())
+						.addArgument("address", new StringInput())
 						.addFlag("ssl", "s")));
 		
 		root.addCommand(new SingleCommand("close", this::closeCmd));
@@ -558,7 +558,7 @@ public class CLI implements AsyncCloseable {
 		}
 	}
 	
-	private void openRemoteCmd(String host, int port, boolean ssl) {
+	private void openRemoteCmd(String address, boolean ssl) {
 		if (accessToken != null && accessToken.isExpired()) {
 			profile = null;
 			accessToken = null;
@@ -567,12 +567,22 @@ public class CLI implements AsyncCloseable {
 			return;
 		}
 		
+		URI uri;
+		try {
+			uri = RemoteNBTDatabaseAccess.parseNBTUri(address);
+			if (ssl)
+				uri = new URI("nbts", null, uri.getHost(), uri.getPort(), "", null, null);
+		} catch (URISyntaxException e) {
+			System.err.println(e.getMessage());
+			return;
+		}
+		
 		closeConnection(true);
 		
 		try {
-			connection = new RemoteNBTDatabaseAccess(host, port, ssl, profile, accessToken == null ? null : accessToken.getToken());
+			connection = new RemoteNBTDatabaseAccess(uri, profile, accessToken == null ? null : accessToken.getToken());
 			onConnectionOpen();
-			System.out.println("Opened: " + host + ":" + port);
+			System.out.println("Opened: " + ((RemoteNBTDatabaseAccess) connection).getUriString());
 		} catch (IOException e) {
 			e.printStackTrace();
 		}

@@ -468,39 +468,25 @@ public class GUI implements AsyncCloseable {
 		String address = JOptionPane.showInputDialog(frame,
 				"Enter address:\n(Port will default to " + NBTDatabase.DEFAULT_PORT + ")",
 				"Connect To Remote", JOptionPane.QUESTION_MESSAGE);
-		if (address == null)
+		if (address == null || address.isEmpty())
 			return;
 		
-		boolean ssl = address.startsWith("nbts://");
-		if (ssl)
-			address = address.substring("nbts://".length());
-		else if (address.startsWith("nbt://"))
-			address = address.substring("nbt://".length());
-		
-		int lastColon = address.lastIndexOf(':');
-		String host;
-		int port;
-		if (lastColon == -1) {
-			host = address;
-			port = NBTDatabase.DEFAULT_PORT;
-		} else {
-			try {
-				port = Integer.parseInt(address.substring(lastColon + 1));
-				host = address.substring(0, lastColon);
-			} catch (NumberFormatException e) {
-				host = address;
-				port = NBTDatabase.DEFAULT_PORT;
-			}
+		URI uri;
+		try {
+			uri = RemoteNBTDatabaseAccess.parseNBTUri(address);
+		} catch (URISyntaxException e) {
+			JOptionPane.showMessageDialog(frame, e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+			return;
 		}
 		
 		closeConnection();
 		
 		try {
-			connection = new RemoteNBTDatabaseAccess(host, port, ssl, profile, accessToken == null ? null : accessToken.getToken());
+			connection = new RemoteNBTDatabaseAccess(uri, profile, accessToken == null ? null : accessToken.getToken());
 			onConnectionOpen();
 		} catch (IOException e) {
 			e.printStackTrace();
-			JOptionPane.showMessageDialog(frame, "Failed to connect to '" + host + ":" + port + "'", "Error", JOptionPane.ERROR_MESSAGE);
+			JOptionPane.showMessageDialog(frame, "Failed to connect to '" + uri + "'", "Error", JOptionPane.ERROR_MESSAGE);
 		}
 		
 		updateConnectionInfo();

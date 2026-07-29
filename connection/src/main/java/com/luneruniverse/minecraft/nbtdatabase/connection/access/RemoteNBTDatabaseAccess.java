@@ -1,6 +1,8 @@
 package com.luneruniverse.minecraft.nbtdatabase.connection.access;
 
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -9,9 +11,12 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import com.luneruniverse.minecraft.nbtdatabase.Config;
 import com.luneruniverse.minecraft.nbtdatabase.Entry;
+import com.luneruniverse.minecraft.nbtdatabase.NBTDatabase;
 import com.luneruniverse.minecraft.nbtdatabase.Tag;
 import com.luneruniverse.minecraft.nbtdatabase.connection.exceptions.DisconnectException;
 import com.luneruniverse.minecraft.nbtdatabase.connection.exceptions.RequestFailedException;
@@ -72,6 +77,45 @@ import io.netty.handler.ssl.ApplicationProtocolNegotiationHandler;
 import io.netty.handler.ssl.SslContextBuilder;
 
 public class RemoteNBTDatabaseAccess implements NBTDatabaseAccess {
+	
+	private static final Pattern NBT_URI = Pattern.compile("(?:(?<scheme>nbts?)://)?(?<host>[a-zA-Z0-9\\-.]+)(?::(?<port>[0-9]+))?");
+	
+	public static URI parseNBTUri(String uri) throws URISyntaxException {
+		Matcher matcher = NBT_URI.matcher(uri);
+		if (!matcher.matches())
+			throw new URISyntaxException(uri, "Expected [nbt[s]://]<host>[:<port>], but found", -1);
+		
+		String scheme = matcher.group("scheme");
+		if (scheme == null)
+			scheme = "nbt";
+		
+		String host = matcher.group("host");
+		
+		String portStr = matcher.group("port");
+		int port;
+		if (portStr == null) {
+			port = NBTDatabase.DEFAULT_PORT;
+		} else {
+			try {
+				port = Integer.parseInt(portStr);
+				if (port < 0 || port > 0xFFFF)
+					throw new NumberFormatException();
+			} catch (NumberFormatException e) {
+				throw new URISyntaxException(uri, "Invalid port", matcher.start("port"));
+			}
+		}
+		
+		return new URI(scheme, null, host, port, "", null, null);
+	}
+	
+	private static boolean isSsl(URI uri) throws IllegalArgumentException {
+		String scheme = uri.getScheme();
+		if (scheme == null || scheme.equalsIgnoreCase("nbt"))
+			return false;
+		if (scheme.equalsIgnoreCase("nbts"))
+			return true;
+		throw new IllegalArgumentException("Invalid scheme '" + scheme + "': expected 'nbt' or 'nbts'");
+	}
 	
 	private final String host;
 	private final int port;
@@ -138,8 +182,14 @@ public class RemoteNBTDatabaseAccess implements NBTDatabaseAccess {
 		
 		executor = Executors.newSingleThreadExecutor();
 	}
-	public RemoteNBTDatabaseAccess(String host, int port, boolean ssl) throws IOException, InterruptedException {
+	public RemoteNBTDatabaseAccess(String host, int port, boolean ssl) throws IOException {
 		this(host, port, ssl, null, null);
+	}
+	public RemoteNBTDatabaseAccess(URI uri, Profile profile, String accessToken) throws IOException, IllegalArgumentException {
+		this(uri.getHost(), uri.getPort(), isSsl(uri), profile, accessToken);
+	}
+	public RemoteNBTDatabaseAccess(URI uri) throws IOException, IllegalArgumentException {
+		this(uri, null, null);
 	}
 	
 	public String getHost() {
@@ -154,9 +204,17 @@ public class RemoteNBTDatabaseAccess implements NBTDatabaseAccess {
 		return ssl;
 	}
 	
+	public String getUriString() {
+		return (ssl ? "nbts://" : "nbt://") + host + ":" + port;
+	}
+	
+	public URI getUri() throws URISyntaxException {
+		return new URI(ssl ? "nbts" : "nbt", null, host, port, "", null, null);
+	}
+	
 	@Override
 	public String getName() {
-		return "[Remote] " + (ssl ? "nbts://" : "nbt://") + host + ":" + port;
+		return "[Remote] " + getUriString();
 	}
 	
 	private <T, P> CompletableFuture<T> request(Packet packet, Class<P> responsePacketType, Function<P, T> unpacker) {
