@@ -652,8 +652,10 @@ public class CLI implements AsyncCloseable {
 				
 				if (globalPerms.isPresent()) {
 					try {
+						String globalPermsValue = globalPerms.get();
 						configBuilder.authorizationManager(PermissionAuthorizationManager.create(
-								GlobalPermissionManager.fromMatchers(globalPerms.get().split(","))));
+								GlobalPermissionManager.fromMatchers(
+										globalPermsValue.isEmpty() ? new String[0] : globalPermsValue.split(","))));
 					} catch (NoPermissionMatchedException e) {
 						System.err.println(e.getMessage());
 						return;
@@ -665,7 +667,7 @@ public class CLI implements AsyncCloseable {
 			
 			server = new NBTDatabaseAccessServer(connection, port, serverConfig);
 			onServerStart();
-			System.out.println("Started server on port " + port);
+			System.out.println("Started server on port " + server.getPort());
 		} catch (IOException e) {
 			e.printStackTrace();
 		}

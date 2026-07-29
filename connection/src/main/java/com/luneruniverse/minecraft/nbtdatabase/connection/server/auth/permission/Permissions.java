@@ -38,6 +38,8 @@ public class Permissions {
 		if (matcher.equals(permission))
 			return true;
 		
+		if (matcher.equals(""))
+			return false;
 		if (!matcher.endsWith("/"))
 			matcher += "/";
 		

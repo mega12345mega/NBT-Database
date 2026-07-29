@@ -1,6 +1,7 @@
 package com.luneruniverse.minecraft.nbtdatabase.connection.server;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
@@ -96,7 +97,6 @@ public class NBTDatabaseAccessServer implements AsyncCloseable {
 	
 	public NBTDatabaseAccessServer(NBTDatabaseAccess database, int port, ServerConfig config) throws IOException {
 		this.database = database;
-		this.port = port;
 		this.auth = config.getAuthorizationManager();
 		
 		configLock = Lock.forConfig(database);
@@ -197,7 +197,9 @@ public class NBTDatabaseAccessServer implements AsyncCloseable {
 					}
 				})
 				.bind(port);
-		server = NettyUtil.addGroupShutdown(serverFuture, group);
+		
+		this.server = NettyUtil.addGroupShutdown(serverFuture, group);
+		this.port = ((InetSocketAddress) server.localAddress()).getPort();
 	}
 	public NBTDatabaseAccessServer(NBTDatabaseAccess database, int port) throws IOException {
 		this(database, port, ServerConfig.builder().build());
