@@ -592,13 +592,6 @@ public class EntriesTab {
 			if (file == null)
 				return;
 			
-			if (file.exists()) {
-				if (JOptionPane.showConfirmDialog(frame, "'" + file.getName() + "' already exists. Overwrite?",
-						"Export NBT Entry", JOptionPane.OK_CANCEL_OPTION) != JOptionPane.OK_OPTION) {
-					return;
-				}
-			}
-			
 			try {
 				Files.write(file.toPath(), nbtOptional.get());
 			} catch (IOException e) {

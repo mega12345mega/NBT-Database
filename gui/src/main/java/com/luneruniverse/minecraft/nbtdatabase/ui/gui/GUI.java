@@ -387,11 +387,6 @@ public class GUI implements AsyncCloseable {
 			return;
 		
 		if (file.exists()) {
-			if (JOptionPane.showConfirmDialog(frame, "'" + file.getName() + "' already exists. Overwrite?",
-					"New Database File", JOptionPane.OK_CANCEL_OPTION) != JOptionPane.OK_OPTION) {
-				return;
-			}
-			
 			try {
 				Files.delete(file.toPath());
 			} catch (IOException e) {
@@ -648,13 +643,6 @@ public class GUI implements AsyncCloseable {
 			File file = FileKitWrapper.openFileSaver(frame, "Save Config File", null, "yaml");
 			if (file == null)
 				return;
-			
-			if (file.exists()) {
-				if (JOptionPane.showConfirmDialog(frame, "'" + file.getName() + "' already exists. Overwrite?",
-						"Save Config File", JOptionPane.OK_CANCEL_OPTION) != JOptionPane.OK_OPTION) {
-					return;
-				}
-			}
 			
 			try {
 				Files.write(file.toPath(), configField.getText().getBytes(StandardCharsets.UTF_8));
