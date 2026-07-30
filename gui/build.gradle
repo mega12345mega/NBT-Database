@@ -5,8 +5,13 @@ plugins {
 dependencies {
 	api project(":ui")
 	runtimeOnly libs.slf4j.simple
-	implementation libs.steos.jnafilechooser
+	implementation libs.filekit.dialogs
 	implementation libs.querz.nbt
+}
+
+java {
+	sourceCompatibility = JavaVersion.VERSION_1_8
+	targetCompatibility = JavaVersion.VERSION_17
 }
 
 jar {

@@ -81,7 +81,6 @@ import com.luneruniverse.minecraft.nbtdatabase.request.IllegalRequestException;
 import com.luneruniverse.minecraft.nbtdatabase.ui.LoginUtil;
 import com.luneruniverse.minecraft.nbtdatabase.ui.UIUtil;
 
-import jnafilechooser.api.JnaFileChooser;
 import net.raphimc.minecraftauth.java.model.MinecraftToken;
 
 public class GUI implements AsyncCloseable {
@@ -383,13 +382,9 @@ public class GUI implements AsyncCloseable {
 	}
 	
 	private void newFileDatabaseMenuItem() {
-		JnaFileChooser chooser = new JnaFileChooser(".");
-		chooser.setTitle("New Database File");
-		chooser.addFilter("Database (*.db)", "db");
-		chooser.addFilter("All Files (*.*)", "*");
-		if (!chooser.showSaveDialog(frame))
+		File file = FileKitWrapper.openFileSaver(frame, "New Database File", null, "db");
+		if (file == null)
 			return;
-		File file = chooser.getSelectedFile();
 		
 		if (file.exists()) {
 			if (JOptionPane.showConfirmDialog(frame, "'" + file.getName() + "' already exists. Overwrite?",
@@ -424,13 +419,9 @@ public class GUI implements AsyncCloseable {
 	}
 	
 	private void openFileDatabaseMenuItem() {
-		JnaFileChooser chooser = new JnaFileChooser(".");
-		chooser.setTitle("Open Database File");
-		chooser.addFilter("Database (*.db)", "db");
-		chooser.addFilter("All Files (*.*)", "*");
-		if (!chooser.showOpenDialog(frame))
+		File file = FileKitWrapper.openFilePicker(frame, "Open Database File", "db");
+		if (file == null)
 			return;
-		File file = chooser.getSelectedFile();
 		
 		if (!file.exists()) {
 			if (JOptionPane.showConfirmDialog(frame, "'" + file.getName() + "' doesn't exist. Create?",
@@ -640,13 +631,10 @@ public class GUI implements AsyncCloseable {
 		fullConfigPanel.add(BorderLayout.CENTER, new JScrollPane(configField));
 		
 		loadConfigFileBtn.addActionListener(event -> {
-			JnaFileChooser chooser = new JnaFileChooser(".");
-			chooser.setTitle("Select Config File");
-			chooser.addFilter("YAML (*.yaml)", "yaml");
-			chooser.addFilter("All Files (*.*)", "*");
-			if (!chooser.showOpenDialog(frame))
+			File file = FileKitWrapper.openFilePicker(frame, "Load Config File", "yaml");
+			if (file == null)
 				return;
-			File file = chooser.getSelectedFile();
+			
 			try {
 				configField.setText(new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8).replace("\r", ""));
 				serverRootField.setText(file.getAbsoluteFile().getParent());
@@ -657,13 +645,9 @@ public class GUI implements AsyncCloseable {
 		});
 		
 		saveConfigFileBtn.addActionListener(event -> {
-			JnaFileChooser chooser = new JnaFileChooser(".");
-			chooser.setTitle("Select Config File");
-			chooser.addFilter("YAML (*.yaml)", "yaml");
-			chooser.addFilter("All Files (*.*)", "*");
-			if (!chooser.showSaveDialog(frame))
+			File file = FileKitWrapper.openFileSaver(frame, "Save Config File", null, "yaml");
+			if (file == null)
 				return;
-			File file = chooser.getSelectedFile();
 			
 			if (file.exists()) {
 				if (JOptionPane.showConfirmDialog(frame, "'" + file.getName() + "' already exists. Overwrite?",
@@ -741,12 +725,9 @@ public class GUI implements AsyncCloseable {
 	}
 	
 	private void templateServerMenuItem() {
-		JnaFileChooser chooser = new JnaFileChooser(".");
-		chooser.setTitle("Export Server Template");
-		chooser.setMode(JnaFileChooser.Mode.Directories);
-		if (!chooser.showSaveDialog(frame))
+		File folder = FileKitWrapper.openDirectoryPicker(frame, "Export Server Template");
+		if (folder == null)
 			return;
-		File folder = chooser.getSelectedFile();
 		
 		try {
 			List<String> conflicts = IOUtil.extractResourcesDryRun("server_template", folder.toPath());

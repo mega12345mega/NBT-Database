@@ -15,7 +15,7 @@ mega12345mega-simplecli = "com.github.mega12345mega:Simple-CLI:0.0.2"
 
 slf4j-simple = "org.slf4j:slf4j-simple:2.0.13"
 
-steos-jnafilechooser = "com.github.steos:jnafilechooser:1.1.2"
+filekit-dialogs = "io.github.vinceglb:filekit-dialogs:0.14.2"
 
 [plugins]
 shadow = "com.gradleup.shadow:9.0.0-rc1"

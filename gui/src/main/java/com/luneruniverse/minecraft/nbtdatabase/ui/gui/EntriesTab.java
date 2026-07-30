@@ -47,7 +47,6 @@ import com.luneruniverse.minecraft.nbtdatabase.ui.UIUtil;
 import com.luneruniverse.minecraft.nbtdatabase.ui.UUIDInput;
 import com.luneruniverse.simplecli.CommandParseException;
 
-import jnafilechooser.api.JnaFileChooser;
 import net.querz.nbt.io.NBTSerializer;
 import net.querz.nbt.io.NBTUtil;
 import net.querz.nbt.io.NamedTag;
@@ -397,13 +396,9 @@ public class EntriesTab {
 			panel.add(selectFileBtn);
 			AtomicReference<File> selectFileField = new AtomicReference<>();
 			selectFileBtn.addActionListener(event -> {
-				JnaFileChooser chooser = new JnaFileChooser(".");
-				chooser.setTitle("Select NBT File");
-				chooser.addFilter("Named Binary Tag (*.nbt)", "nbt");
-				chooser.addFilter("All Files (*.*)", "*");
-				if (!chooser.showOpenDialog(frame))
+				File file = FileKitWrapper.openFilePicker(frame, "Select NBT File", "nbt");
+				if (file == null)
 					return;
-				File file = chooser.getSelectedFile();
 				
 				selectFileField.set(file);
 				selectFileBtn.setText(file.getName());
@@ -593,14 +588,9 @@ public class EntriesTab {
 				return;
 			}
 			
-			JnaFileChooser chooser = new JnaFileChooser(".");
-			chooser.setTitle("Export NBT Entry");
-			chooser.setDefaultFileName(UIUtil.filterInvalidFileNameChars(name) + ".nbt");
-			chooser.addFilter("Named Binary Tag (*.nbt)", "nbt");
-			chooser.addFilter("All Files (*.*)", "*");
-			if (!chooser.showSaveDialog(frame))
+			File file = FileKitWrapper.openFileSaver(frame, "Export NBT Entry", UIUtil.filterInvalidFileNameChars(name), "nbt");
+			if (file == null)
 				return;
-			File file = chooser.getSelectedFile();
 			
 			if (file.exists()) {
 				if (JOptionPane.showConfirmDialog(frame, "'" + file.getName() + "' already exists. Overwrite?",
