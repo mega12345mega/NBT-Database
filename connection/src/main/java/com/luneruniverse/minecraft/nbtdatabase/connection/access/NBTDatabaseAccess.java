@@ -25,15 +25,15 @@ public interface NBTDatabaseAccess extends AsyncCloseable {
 	public CompletableFuture<Void> editEntry(long id, Optional<String> name, Optional<byte[]> nbt, Optional<Entry.Type> type,
 			Optional<Integer> dataVersion, Optional<UUID> authorUuid, Optional<String> authorUsername, Optional<Boolean> verified);
 	public CompletableFuture<Void> removeEntry(long id);
-	public CompletableFuture<Entry> getEntry(long id);
-	public CompletableFuture<byte[]> getEntryNBT(long id);
+	public CompletableFuture<Optional<Entry>> getEntry(long id);
+	public CompletableFuture<Optional<byte[]>> getEntryNBT(long id);
 	public CompletableFuture<List<Entry>> getEntries(EntryFilter filter, EntryView view);
 	public CompletableFuture<Void> lockTag(String name);
 	public CompletableFuture<Void> unlockTag(String name);
 	public CompletableFuture<Void> addTag(String name, int color);
 	public CompletableFuture<Void> editTag(String currentName, Optional<String> name, Optional<Integer> color);
 	public CompletableFuture<Void> removeTag(String name);
-	public CompletableFuture<Tag> getTag(String name);
+	public CompletableFuture<Optional<Tag>> getTag(String name);
 	public CompletableFuture<List<Tag>> getTags(TagFilter filter);
 	public CompletableFuture<Void> addTagToEntry(long entry, String tag);
 	public CompletableFuture<Void> removeTagFromEntry(long entry, String tag);

@@ -2,6 +2,7 @@ package com.luneruniverse.minecraft.nbtdatabase.connection.server.auth.permissio
 
 import java.io.File;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
@@ -101,14 +102,20 @@ public class PermissionAuthorizationManager implements AuthorizationManager {
 			}
 			@Override
 			public CompletableFuture<I> checkRequestDuringLock(NBTDatabaseAccess access, User user, I request) {
-				return FutureUtil.thenApply(access.getEntry(getId.apply(request)), entry -> {
+				return FutureUtil.thenApply(access.getEntry(getId.apply(request)), entryOptional -> {
+					if (!entryOptional.isPresent())
+						return request;
+					Entry entry = entryOptional.get();
+					
 					boolean isAuthor = user.hasUuid(entry.getAuthorUuid());
 					if (!isAuthor)
 						hasPermissionOrThrow(user, selfPermission.replace("/self/", "/anyone/"));
+					
 					if (verifyRequired && entry.isVerified()) {
 						hasPermissionOrThrow(user, isAuthor
 								? Permissions.ENTRY_VERIFIED_SELF_EDIT_VERIFY : Permissions.ENTRY_VERIFIED_ANYONE_EDIT_VERIFY);
 					}
+					
 					return request;
 				});
 			}
@@ -218,7 +225,11 @@ public class PermissionAuthorizationManager implements AuthorizationManager {
 			}
 			@Override
 			public CompletableFuture<EditEntryRequestPacket> checkRequestDuringLock(NBTDatabaseAccess access, User user, EditEntryRequestPacket request) {
-				return FutureUtil.thenCompose(access.getEntry(request.getId()), entry -> {
+				return FutureUtil.thenCompose(access.getEntry(request.getId()), entryOptional -> {
+					if (!entryOptional.isPresent())
+						return CompletableFuture.completedFuture(request);
+					Entry entry = entryOptional.get();
+					
 					UUID newAuthorUuid = request.getAuthorUuid().orElse(entry.getAuthorUuid());
 					
 					boolean fromSelf = user.hasUuid(entry.getAuthorUuid());
@@ -309,16 +320,16 @@ public class PermissionAuthorizationManager implements AuthorizationManager {
 	}
 	
 	@Override
-	public AuthorizationCheck<GetEntryRequestPacket, Entry> getEntry() {
-		return new AuthorizationCheck<GetEntryRequestPacket, Entry>() {
+	public AuthorizationCheck<GetEntryRequestPacket, Optional<Entry>> getEntry() {
+		return new AuthorizationCheck<GetEntryRequestPacket, Optional<Entry>>() {
 			@Override
 			public GetEntryRequestPacket checkRequest(User user, GetEntryRequestPacket request) throws AuthorizationServerException {
 				hasPermissionOrThrow(user, Permissions.ENTRY_SELF_GET);
 				return request;
 			}
 			@Override
-			public Entry checkResponse(User user, Entry response) throws AuthorizationServerException {
-				if (!user.hasUuid(response.getAuthorUuid()))
+			public Optional<Entry> checkResponse(User user, Optional<Entry> response) throws AuthorizationServerException {
+				if (response.isPresent() && !user.hasUuid(response.get().getAuthorUuid()))
 					hasPermissionOrThrow(user, Permissions.ENTRY_ANYONE_GET);
 				return response;
 			}
@@ -326,7 +337,7 @@ public class PermissionAuthorizationManager implements AuthorizationManager {
 	}
 	
 	@Override
-	public AuthorizationCheck<GetEntryNBTRequestPacket, byte[]> getEntryNBT() {
+	public AuthorizationCheck<GetEntryNBTRequestPacket, Optional<byte[]>> getEntryNBT() {
 		return entryAuthorCheck(Permissions.ENTRY_SELF_EXPORT, false, GetEntryNBTRequestPacket::getId);
 	}
 	
@@ -392,7 +403,7 @@ public class PermissionAuthorizationManager implements AuthorizationManager {
 	}
 	
 	@Override
-	public AuthorizationCheck<GetTagRequestPacket, Tag> getTag() {
+	public AuthorizationCheck<GetTagRequestPacket, Optional<Tag>> getTag() {
 		return permissionCheck(Permissions.TAG_GET);
 	}
 	
@@ -418,9 +429,14 @@ public class PermissionAuthorizationManager implements AuthorizationManager {
 				Long entryId = request.getFilter().getEntryId();
 				if (entryId == null)
 					return null;
-				return FutureUtil.thenApply(access.getEntry(entryId), entry -> {
+				return FutureUtil.thenApply(access.getEntry(entryId), entryOptional -> {
+					if (!entryOptional.isPresent())
+						return request;
+					Entry entry = entryOptional.get();
+					
 					if (!user.hasUuid(entry.getAuthorUuid()))
 						hasPermissionOrThrow(user, Permissions.TAG_ANYONE_FILTER);
+					
 					return request;
 				});
 			}

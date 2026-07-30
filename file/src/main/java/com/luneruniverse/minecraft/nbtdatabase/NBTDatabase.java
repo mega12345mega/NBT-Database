@@ -185,7 +185,7 @@ public class NBTDatabase implements AutoCloseable {
 	
 	public void editEntry(long id, Optional<String> name, Optional<byte[]> nbt, Optional<Entry.Type> type, Optional<Integer> dataVersion,
 			Optional<UUID> authorUuid, Optional<String> authorUsername, Optional<Boolean> verified) throws IllegalRequestException, SQLException {
-		Entry oldEntry = getEntry(id);
+		Entry oldEntry = getEntry(id).orElse(null);
 		if (oldEntry == null)
 			throw new IllegalRequestException("Entry doesn't exist: " + id);
 		
@@ -228,7 +228,7 @@ public class NBTDatabase implements AutoCloseable {
 		update.addColumn("`modified`=?", PreparedStatement::setLong, modified);
 		byte[] oldEntryNBT = null;
 		if (!nbt.isPresent()) {
-			oldEntryNBT = getEntryNBT(id);
+			oldEntryNBT = getEntryNBT(id).orElse(null);
 			if (oldEntryNBT == null)
 				throw new IllegalRequestException("Entry doesn't exist: " + id);
 		}
@@ -255,27 +255,27 @@ public class NBTDatabase implements AutoCloseable {
 		}
 	}
 	
-	public Entry getEntry(long id) throws SQLException {
+	public Optional<Entry> getEntry(long id) throws SQLException {
 		try (PreparedStatement sql = connection.prepareStatement("SELECT " + Entry.DATABASE_COLUMNS + " FROM `entries` WHERE `id`=?")) {
 			sql.setQueryTimeout(5);
 			sql.setLong(1, id);
 			ResultSet result = sql.executeQuery();
 			
 			if (!result.isBeforeFirst())
-				return null;
-			return Entry.fromDatabase(result);
+				return Optional.empty();
+			return Optional.of(Entry.fromDatabase(result));
 		}
 	}
 	
-	public byte[] getEntryNBT(long id) throws SQLException {
+	public Optional<byte[]> getEntryNBT(long id) throws SQLException {
 		try (PreparedStatement sql = connection.prepareStatement("SELECT `nbt` FROM `entries` WHERE `id`=?")) {
 			sql.setQueryTimeout(5);
 			sql.setLong(1, id);
 			ResultSet result = sql.executeQuery();
 			
 			if (!result.isBeforeFirst())
-				return null;
-			return result.getBytes("nbt");
+				return Optional.empty();
+			return Optional.of(result.getBytes("nbt"));
 		}
 	}
 	
@@ -400,15 +400,15 @@ public class NBTDatabase implements AutoCloseable {
 		}
 	}
 	
-	public Tag getTag(String name) throws SQLException {
+	public Optional<Tag> getTag(String name) throws SQLException {
 		try (PreparedStatement sql = connection.prepareStatement("SELECT * FROM `tags` WHERE `name`=?")) {
 			sql.setQueryTimeout(5);
 			sql.setString(1, name);
 			ResultSet result = sql.executeQuery();
 			
 			if (!result.isBeforeFirst())
-				return null;
-			return Tag.fromDatabase(result);
+				return Optional.empty();
+			return Optional.of(Tag.fromDatabase(result));
 		}
 	}
 	
@@ -442,12 +442,14 @@ public class NBTDatabase implements AutoCloseable {
 			try {
 				sql.executeUpdate();
 			} catch (SQLiteException e) {
-				if (e.getResultCode() == SQLiteErrorCode.SQLITE_CONSTRAINT_UNIQUE)
+				if (e.getResultCode() == SQLiteErrorCode.SQLITE_CONSTRAINT_UNIQUE) {
 					throw new IllegalRequestException("Entry with id " + entry + " already has tag '" + tag + "'");
-				else if (e.getResultCode() == SQLiteErrorCode.SQLITE_CONSTRAINT_FOREIGNKEY)
-					throw new IllegalRequestException(getEntry(entry) == null ? "Entry doesn't exist: " + entry : "Tag doesn't exist: " + tag);
-				else
+				} else if (e.getResultCode() == SQLiteErrorCode.SQLITE_CONSTRAINT_FOREIGNKEY) {
+					throw new IllegalRequestException(
+							!getEntry(entry).isPresent() ? "Entry doesn't exist: " + entry : "Tag doesn't exist: " + tag);
+				} else {
 					throw e;
+				}
 			}
 		}
 	}
@@ -458,9 +460,9 @@ public class NBTDatabase implements AutoCloseable {
 			sql.setLong(1, entry);
 			sql.setString(2, tag);
 			if (sql.executeUpdate() == 0) {
-				if (getEntry(entry) == null)
+				if (!getEntry(entry).isPresent())
 					throw new IllegalRequestException("Entry doesn't exist: " + entry);
-				if (getTag(tag) == null)
+				if (!getTag(tag).isPresent())
 					throw new IllegalRequestException("Tag doesn't exist: " + tag);
 				throw new IllegalRequestException("Entry with id " + entry + " already doesn't have tag '" + tag + "'");
 			}

@@ -2,6 +2,7 @@ package com.luneruniverse.minecraft.nbtdatabase.connection.packets.entries;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 import com.esotericsoftware.kryo.kryo5.serializers.FieldSerializer.NotNull;
 import com.luneruniverse.minecraft.nbtdatabase.Entry;
@@ -21,6 +22,9 @@ public class EntriesPacket extends Packet {
 		this.entries = new Entry[entry == null ? 0 : 1];
 		if (entry != null)
 			entries[0] = entry;
+	}
+	public EntriesPacket(Optional<Entry> entry) {
+		this(entry.orElse(null));
 	}
 	EntriesPacket() {
 		// Deserialization
@@ -43,6 +47,9 @@ public class EntriesPacket extends Packet {
 		if (entries.length == 0)
 			return null;
 		return entries[0];
+	}
+	public Optional<Entry> getEntryOptional() throws IllegalStateException {
+		return Optional.ofNullable(getEntryNullable());
 	}
 	
 }

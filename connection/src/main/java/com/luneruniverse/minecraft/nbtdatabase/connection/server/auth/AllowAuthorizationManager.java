@@ -1,6 +1,7 @@
 package com.luneruniverse.minecraft.nbtdatabase.connection.server.auth;
 
 import java.util.List;
+import java.util.Optional;
 
 import com.luneruniverse.minecraft.nbtdatabase.Config;
 import com.luneruniverse.minecraft.nbtdatabase.Entry;
@@ -86,12 +87,12 @@ public class AllowAuthorizationManager implements AuthorizationManager {
 	}
 	
 	@Override
-	public AuthorizationCheck<GetEntryRequestPacket, Entry> getEntry() {
+	public AuthorizationCheck<GetEntryRequestPacket, Optional<Entry>> getEntry() {
 		return AuthorizationCheck.allow();
 	}
 	
 	@Override
-	public AuthorizationCheck<GetEntryNBTRequestPacket, byte[]> getEntryNBT() {
+	public AuthorizationCheck<GetEntryNBTRequestPacket, Optional<byte[]>> getEntryNBT() {
 		return AuthorizationCheck.allow();
 	}
 	
@@ -126,7 +127,7 @@ public class AllowAuthorizationManager implements AuthorizationManager {
 	}
 	
 	@Override
-	public AuthorizationCheck<GetTagRequestPacket, Tag> getTag() {
+	public AuthorizationCheck<GetTagRequestPacket, Optional<Tag>> getTag() {
 		return AuthorizationCheck.allow();
 	}
 	

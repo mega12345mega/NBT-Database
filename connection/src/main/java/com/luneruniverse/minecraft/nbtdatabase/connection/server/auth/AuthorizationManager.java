@@ -1,6 +1,7 @@
 package com.luneruniverse.minecraft.nbtdatabase.connection.server.auth;
 
 import java.util.List;
+import java.util.Optional;
 
 import com.luneruniverse.minecraft.nbtdatabase.Config;
 import com.luneruniverse.minecraft.nbtdatabase.Entry;
@@ -40,15 +41,15 @@ public interface AuthorizationManager {
 	public AuthorizationCheck<AddEntryRequestPacket, Long> addEntry();
 	public AuthorizationCheck<EditEntryRequestPacket, Void> editEntry();
 	public AuthorizationCheck<RemoveEntryRequestPacket, Void> removeEntry();
-	public AuthorizationCheck<GetEntryRequestPacket, Entry> getEntry();
-	public AuthorizationCheck<GetEntryNBTRequestPacket, byte[]> getEntryNBT();
+	public AuthorizationCheck<GetEntryRequestPacket, Optional<Entry>> getEntry();
+	public AuthorizationCheck<GetEntryNBTRequestPacket, Optional<byte[]>> getEntryNBT();
 	public AuthorizationCheck<GetEntriesRequestPacket, List<Entry>> getEntries();
 	public AuthorizationCheck<LockTagRequestPacket, Void> lockTag();
 	public AuthorizationCheck<UnlockTagRequestPacket, Void> unlockTag();
 	public AuthorizationCheck<AddTagRequestPacket, Void> addTag();
 	public AuthorizationCheck<EditTagRequestPacket, Void> editTag();
 	public AuthorizationCheck<RemoveTagRequestPacket, Void> removeTag();
-	public AuthorizationCheck<GetTagRequestPacket, Tag> getTag();
+	public AuthorizationCheck<GetTagRequestPacket, Optional<Tag>> getTag();
 	public AuthorizationCheck<GetTagsRequestPacket, List<Tag>> getTags();
 	public AuthorizationCheck<AddTagToEntryRequestPacket, Void> addTagToEntry();
 	public AuthorizationCheck<RemoveTagFromEntryRequestPacket, Void> removeTagFromEntry();

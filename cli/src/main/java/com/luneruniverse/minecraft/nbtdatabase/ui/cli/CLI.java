@@ -778,12 +778,12 @@ public class CLI implements AsyncCloseable {
 		if (checkConnectionExists())
 			return;
 		
-		whenComplete(connection.getEntry(id), entry -> {
-			if (entry == null)
-				System.err.println("Entry doesn't exist: " + id);
-			else {
-				results = Arrays.asList(entry);
+		whenComplete(connection.getEntry(id), entryOptional -> {
+			if (entryOptional.isPresent()) {
+				results = Arrays.asList(entryOptional.get());
 				resultsCmd(verbose);
+			} else {
+				System.err.println("Entry doesn't exist: " + id);
 			}
 		});
 	}
@@ -797,16 +797,16 @@ public class CLI implements AsyncCloseable {
 			return;
 		}
 		
-		whenComplete(connection.getEntryNBT(id), nbt -> {
-			if (nbt == null)
-				System.err.println("Entry doesn't exist: " + id);
-			else {
+		whenComplete(connection.getEntryNBT(id), nbtOptional -> {
+			if (nbtOptional.isPresent()) {
 				try {
-					Files.write(file.toPath(), nbt);
+					Files.write(file.toPath(), nbtOptional.get());
 					System.out.println("Exported " + id + " to: " + file.getAbsolutePath());
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
+			} else {
+				System.err.println("Entry doesn't exist: " + id);
 			}
 		});
 	}
@@ -848,11 +848,13 @@ public class CLI implements AsyncCloseable {
 		if (checkConnectionExists())
 			return;
 		
-		whenComplete(connection.getTag(name), tag -> {
-			if (tag == null)
-				System.err.println("Tag doesn't exist: " + name);
-			else
+		whenComplete(connection.getTag(name), tagOptional -> {
+			if (tagOptional.isPresent()) {
+				Tag tag = tagOptional.get();
 				System.out.println(tag.getName() + " (#" + ColorInput.toString(tag.getColor()) + ")");
+			} else {
+				System.err.println("Tag doesn't exist: " + name);
+			}
 		});
 	}
 	

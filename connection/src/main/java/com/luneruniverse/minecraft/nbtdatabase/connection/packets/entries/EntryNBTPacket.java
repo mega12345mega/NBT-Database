@@ -1,19 +1,22 @@
 package com.luneruniverse.minecraft.nbtdatabase.connection.packets.entries;
 
+import java.util.Optional;
+
+import com.esotericsoftware.kryo.kryo5.serializers.FieldSerializer.NotNull;
 import com.luneruniverse.minecraft.nbtdatabase.connection.packets.Packet;
 
 public class EntryNBTPacket extends Packet {
 	
-	private byte[] nbt;
+	private @NotNull Optional<byte[]> nbt;
 	
-	public EntryNBTPacket(byte[] nbt) {
+	public EntryNBTPacket(Optional<byte[]> nbt) {
 		this.nbt = nbt;
 	}
 	EntryNBTPacket() {
 		// Deserialization
 	}
 	
-	public byte[] getNBT() {
+	public Optional<byte[]> getNBT() {
 		return nbt;
 	}
 	

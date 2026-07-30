@@ -582,8 +582,8 @@ public class EntriesTab {
 	}
 	
 	private void exportEntryBtn(long id, String name) {
-		gui.whenComplete(gui.getConnection().getEntryNBT(id), nbt -> {
-			if (nbt == null) {
+		gui.whenComplete(gui.getConnection().getEntryNBT(id), nbtOptional -> {
+			if (!nbtOptional.isPresent()) {
 				JOptionPane.showMessageDialog(frame, "Entry doesn't exist: " + id, "Error", JOptionPane.ERROR_MESSAGE);
 				return;
 			}
@@ -600,7 +600,7 @@ public class EntriesTab {
 			}
 			
 			try {
-				Files.write(file.toPath(), nbt);
+				Files.write(file.toPath(), nbtOptional.get());
 			} catch (IOException e) {
 				e.printStackTrace();
 				JOptionPane.showMessageDialog(frame, "Failed to export to '" + file.getName() + "'", "Error", JOptionPane.ERROR_MESSAGE);

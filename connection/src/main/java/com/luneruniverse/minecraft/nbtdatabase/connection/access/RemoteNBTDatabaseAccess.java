@@ -285,12 +285,12 @@ public class RemoteNBTDatabaseAccess implements NBTDatabaseAccess {
 	}
 	
 	@Override
-	public CompletableFuture<Entry> getEntry(long id) {
-		return request(new GetEntryRequestPacket(id), EntriesPacket.class, EntriesPacket::getEntryNullable);
+	public CompletableFuture<Optional<Entry>> getEntry(long id) {
+		return request(new GetEntryRequestPacket(id), EntriesPacket.class, EntriesPacket::getEntryOptional);
 	}
 	
 	@Override
-	public CompletableFuture<byte[]> getEntryNBT(long id) {
+	public CompletableFuture<Optional<byte[]>> getEntryNBT(long id) {
 		return request(new GetEntryNBTRequestPacket(id), EntryNBTPacket.class, EntryNBTPacket::getNBT);
 	}
 	
@@ -325,8 +325,8 @@ public class RemoteNBTDatabaseAccess implements NBTDatabaseAccess {
 	}
 	
 	@Override
-	public CompletableFuture<Tag> getTag(String name) {
-		return request(new GetTagRequestPacket(name), TagsPacket.class, TagsPacket::getTagNullable);
+	public CompletableFuture<Optional<Tag>> getTag(String name) {
+		return request(new GetTagRequestPacket(name), TagsPacket.class, TagsPacket::getTagOptional);
 	}
 	
 	@Override

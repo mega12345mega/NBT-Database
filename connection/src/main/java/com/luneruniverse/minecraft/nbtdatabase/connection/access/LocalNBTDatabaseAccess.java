@@ -85,12 +85,12 @@ public class LocalNBTDatabaseAccess implements NBTDatabaseAccess {
 	}
 	
 	@Override
-	public CompletableFuture<Entry> getEntry(long id) {
+	public CompletableFuture<Optional<Entry>> getEntry(long id) {
 		return FutureUtil.supplyAsync(() -> database.getEntry(id), executor);
 	}
 	
 	@Override
-	public CompletableFuture<byte[]> getEntryNBT(long id) {
+	public CompletableFuture<Optional<byte[]>> getEntryNBT(long id) {
 		return FutureUtil.supplyAsync(() -> database.getEntryNBT(id), executor);
 	}
 	
@@ -125,7 +125,7 @@ public class LocalNBTDatabaseAccess implements NBTDatabaseAccess {
 	}
 	
 	@Override
-	public CompletableFuture<Tag> getTag(String name) {
+	public CompletableFuture<Optional<Tag>> getTag(String name) {
 		return FutureUtil.supplyAsync(() -> database.getTag(name), executor);
 	}
 	

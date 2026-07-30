@@ -1,6 +1,7 @@
 package com.luneruniverse.minecraft.nbtdatabase.connection.server.auth;
 
 import java.util.List;
+import java.util.Optional;
 
 import com.luneruniverse.minecraft.nbtdatabase.Config;
 import com.luneruniverse.minecraft.nbtdatabase.Entry;
@@ -41,15 +42,15 @@ public class CachedAuthorizationManager implements AuthorizationManager {
 	private final AuthorizationCheck<AddEntryRequestPacket, Long> addEntry;
 	private final AuthorizationCheck<EditEntryRequestPacket, Void> editEntry;
 	private final AuthorizationCheck<RemoveEntryRequestPacket, Void> removeEntry;
-	private final AuthorizationCheck<GetEntryRequestPacket, Entry> getEntry;
-	private final AuthorizationCheck<GetEntryNBTRequestPacket, byte[]> getEntryNBT;
+	private final AuthorizationCheck<GetEntryRequestPacket, Optional<Entry>> getEntry;
+	private final AuthorizationCheck<GetEntryNBTRequestPacket, Optional<byte[]>> getEntryNBT;
 	private final AuthorizationCheck<GetEntriesRequestPacket, List<Entry>> getEntries;
 	private final AuthorizationCheck<LockTagRequestPacket, Void> lockTag;
 	private final AuthorizationCheck<UnlockTagRequestPacket, Void> unlockTag;
 	private final AuthorizationCheck<AddTagRequestPacket, Void> addTag;
 	private final AuthorizationCheck<EditTagRequestPacket, Void> editTag;
 	private final AuthorizationCheck<RemoveTagRequestPacket, Void> removeTag;
-	private final AuthorizationCheck<GetTagRequestPacket, Tag> getTag;
+	private final AuthorizationCheck<GetTagRequestPacket, Optional<Tag>> getTag;
 	private final AuthorizationCheck<GetTagsRequestPacket, List<Tag>> getTags;
 	private final AuthorizationCheck<AddTagToEntryRequestPacket, Void> addTagToEntry;
 	private final AuthorizationCheck<RemoveTagFromEntryRequestPacket, Void> removeTagFromEntry;
@@ -130,12 +131,12 @@ public class CachedAuthorizationManager implements AuthorizationManager {
 	}
 	
 	@Override
-	public AuthorizationCheck<GetEntryRequestPacket, Entry> getEntry() {
+	public AuthorizationCheck<GetEntryRequestPacket, Optional<Entry>> getEntry() {
 		return getEntry;
 	}
 	
 	@Override
-	public AuthorizationCheck<GetEntryNBTRequestPacket, byte[]> getEntryNBT() {
+	public AuthorizationCheck<GetEntryNBTRequestPacket, Optional<byte[]>> getEntryNBT() {
 		return getEntryNBT;
 	}
 	
@@ -170,7 +171,7 @@ public class CachedAuthorizationManager implements AuthorizationManager {
 	}
 	
 	@Override
-	public AuthorizationCheck<GetTagRequestPacket, Tag> getTag() {
+	public AuthorizationCheck<GetTagRequestPacket, Optional<Tag>> getTag() {
 		return getTag;
 	}
 	

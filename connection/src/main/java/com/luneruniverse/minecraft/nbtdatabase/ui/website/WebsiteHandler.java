@@ -133,10 +133,10 @@ public class WebsiteHandler extends SimpleChannelInboundHandler<FullHttpRequest>
 		CompletableFuture<List<Entry>> request;
 		Optional<Long> id = parseParam(params.get("id"), new LongInput());
 		if (id.isPresent()) {
-			request = FutureUtil.thenApply(database.getEntry(id.get()), entry -> {
-				if (entry == null)
-					throw new IllegalRequestException("Entry doesn't exist: " + id.get());
-				return Arrays.asList(entry);
+			request = FutureUtil.thenApply(database.getEntry(id.get()), entryOptional -> {
+				if (entryOptional.isPresent())
+					return Arrays.asList(entryOptional.get());
+				throw new IllegalRequestException("Entry doesn't exist: " + id.get());
 			});
 		} else {
 			parseParam(params.get("name"), new StringInput()).ifPresent(filter::filterByName);
@@ -336,10 +336,10 @@ public class WebsiteHandler extends SimpleChannelInboundHandler<FullHttpRequest>
 	}
 	
 	private void writeEntryNBT(ChannelHandlerContext ctx, FullHttpRequest msg, long id) {
-		writeDatabaseRequest(ctx, msg, database.getEntryNBT(id), nbt -> {
-			if (nbt == null)
+		writeDatabaseRequest(ctx, msg, database.getEntryNBT(id), nbtOptional -> {
+			if (!nbtOptional.isPresent())
 				writeError(ctx, HttpResponseStatus.BAD_REQUEST, "Entry doesn't exist: " + id);
-			return nbt;
+			return nbtOptional.orElse(null);
 		}, "application/octet-stream",
 				headers -> headers.set(HttpHeaderNames.CONTENT_DISPOSITION, "attachment"));
 	}
