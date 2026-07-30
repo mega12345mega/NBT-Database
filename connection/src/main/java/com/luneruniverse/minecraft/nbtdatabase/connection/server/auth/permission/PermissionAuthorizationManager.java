@@ -223,10 +223,9 @@ public class PermissionAuthorizationManager implements AuthorizationManager {
 					
 					boolean fromSelf = user.hasUuid(entry.getAuthorUuid());
 					boolean toSelf = user.hasUuid(newAuthorUuid);
+					boolean toVerified = request.isVerified().orElse(entry.isVerified());
 					
 					if (request.getAuthorUuid().isPresent()) {
-						boolean toVerified = request.isVerified().orElse(entry.isVerified());
-						
 						if (fromSelf) {
 							if (toVerified) {
 								hasPermissionOrThrow(user, toSelf
@@ -270,11 +269,14 @@ public class PermissionAuthorizationManager implements AuthorizationManager {
 							}
 						}
 					} else {
-						if (!fromSelf) {
-							if (request.isVerified().isPresent()) {
-								hasPermissionOrThrow(user, request.isVerified().get()
-										? Permissions.ENTRY_VERIFIED_ANYONE_EDIT_VERIFY : Permissions.ENTRY_VERIFIED_ANYONE_EDIT_UNVERIFY);
-							}
+						if (fromSelf) {
+							if (!request.isVerified().isPresent() && entry.isVerified())
+								hasPermissionOrThrow(user, Permissions.ENTRY_VERIFIED_SELF_EDIT_VERIFY);
+						} else {
+							if (toVerified)
+								hasPermissionOrThrow(user, Permissions.ENTRY_VERIFIED_ANYONE_EDIT_VERIFY);
+							else if (request.isVerified().isPresent())
+								hasPermissionOrThrow(user, Permissions.ENTRY_VERIFIED_ANYONE_EDIT_UNVERIFY);
 						}
 					}
 					
