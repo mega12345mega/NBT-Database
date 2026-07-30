@@ -10,7 +10,7 @@ configurate-core = "org.spongepowered:configurate-core:4.2.0"
 configurate-yaml = "org.spongepowered:configurate-yaml:4.2.0"
 mega12345mega-nettymux = "com.github.mega12345mega:Netty-Multiplexer:2.0.0"
 owasp-encoder = "org.owasp.encoder:encoder:1.3.1"
-apache-httpclient = "org.apache.httpcomponents.client5:httpclient5:5.5"
+lenni0451-httpclient = "net.lenni0451.commons:httpclient:1.9.2"
 mega12345mega-simplecli = "com.github.mega12345mega:Simple-CLI:0.0.2"
 
 slf4j-simple = "org.slf4j:slf4j-simple:2.0.13"

@@ -1,8 +1,6 @@
 package com.luneruniverse.minecraft.nbtdatabase.connection.user;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -13,16 +11,17 @@ import java.util.concurrent.CompletableFuture;
 
 import javax.crypto.SecretKey;
 
-import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
-import org.apache.hc.client5.http.impl.classic.HttpClients;
-import org.apache.hc.core5.http.ContentType;
-import org.apache.hc.core5.http.io.support.ClassicRequestBuilder;
-
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.luneruniverse.minecraft.nbtdatabase.connection.util.FutureUtil;
+
+import net.lenni0451.commons.httpclient.HttpClient;
+import net.lenni0451.commons.httpclient.HttpResponse;
+import net.lenni0451.commons.httpclient.constants.ContentTypes;
+import net.lenni0451.commons.httpclient.content.impl.StringContent;
+import net.lenni0451.commons.httpclient.utils.URLWrapper;
 
 public class MojangAuth {
 	
@@ -36,6 +35,7 @@ public class MojangAuth {
 		return new BigInteger(digest.digest()).toString(16);
 	}
 	
+	private static final HttpClient CLIENT = new HttpClient();
 	private static final Gson GSON = new Gson();
 	private static final String JOIN_URL = "https://sessionserver.mojang.com/session/minecraft/join";
 	private static final String HAS_JOINED_URL = "https://sessionserver.mojang.com/session/minecraft/hasJoined";
@@ -46,15 +46,12 @@ public class MojangAuth {
 		request.addProperty("selectedProfile", uuid.toString().replace("-", ""));
 		request.addProperty("accessToken", accessToken);
 		
-		try (CloseableHttpClient client = HttpClients.createDefault()) {
-			client.execute(ClassicRequestBuilder.post(JOIN_URL)
-					.setEntity(GSON.toJson(request), ContentType.APPLICATION_JSON).build(), response -> {
-				if (response.getCode() >= 400) {
-					throw new IOException(
-							"Join request failed with status code " + response.getCode() + " " + response.getReasonPhrase());
-				}
-				return null;
-			});
+		HttpResponse response = CLIENT.execute(CLIENT.post(JOIN_URL)
+				.setContent(new StringContent(ContentTypes.APPLICATION_JSON, GSON.toJson(request))));
+		
+		if (response.getStatusCode() != 204) {
+			throw new IOException(
+					"Join request failed with status code " + response.getStatusCode() + " " + response.getStatusMessage());
 		}
 	}
 	
@@ -62,21 +59,19 @@ public class MojangAuth {
 		if (!username.matches("\\w{3,16}"))
 			return false;
 		
-		try (CloseableHttpClient client = HttpClients.createDefault()) {
-			return client.execute(ClassicRequestBuilder.get(HAS_JOINED_URL)
-					.addParameter("serverId", serverId).addParameter("username", username).build(), response -> {
-				if (response.getCode() >= 400 || response.getEntity() == null)
-					return false;
-				InputStream in = response.getEntity().getContent();
-				try {
-					JsonObject obj = GSON.fromJson(new InputStreamReader(in), JsonObject.class);
-					JsonElement id = obj.get("id");
-					return id != null && id.isJsonPrimitive() && id.getAsJsonPrimitive().isString() &&
-							id.getAsString().equals(uuid.toString().replace("-", ""));
-				} catch (JsonParseException e) {
-					return false;
-				}
-			});
+		HttpResponse response = CLIENT.execute(CLIENT.get(URLWrapper.ofURL(HAS_JOINED_URL)
+				.wrapQueryParameters().addParameter("serverId", serverId).addParameter("username", username).apply().toURL()));
+		
+		if (response.getStatusCode() != 200)
+			return false;
+		
+		try {
+			JsonObject obj = GSON.fromJson(response.getContent().getAsString(), JsonObject.class);
+			JsonElement id = obj.get("id");
+			return id != null && id.isJsonPrimitive() && id.getAsJsonPrimitive().isString() &&
+					id.getAsString().equals(uuid.toString().replace("-", ""));
+		} catch (JsonParseException e) {
+			return false;
 		}
 	}
 	

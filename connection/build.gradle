@@ -3,7 +3,7 @@ dependencies {
 	implementation libs.mega12345mega.nettymux
 	implementation libs.esotericsoftware.kryo
 	implementation libs.owasp.encoder
-	implementation libs.apache.httpclient
+	implementation libs.lenni0451.httpclient
 	implementation libs.google.gson
 	api libs.configurate.core
 	api libs.configurate.yaml

@@ -1,5 +1,6 @@
 package com.luneruniverse.minecraft.nbtdatabase.ui.website;
 
+import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.util.AbstractMap;
@@ -14,8 +15,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-import org.apache.hc.core5.http.NameValuePair;
-import org.apache.hc.core5.net.URIBuilder;
 import org.owasp.encoder.Encode;
 
 import com.luneruniverse.minecraft.nbtdatabase.DataVersion;
@@ -58,9 +57,20 @@ import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpUtil;
 import io.netty.handler.codec.http.HttpVersion;
+import net.lenni0451.commons.httpclient.utils.URLWrapper;
 
 @Sharable
 public class WebsiteHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
+	
+	private static String[] splitPath(String path) {
+		if (path == null)
+			return new String[0];
+		
+		if (!path.startsWith("/"))
+			throw new IllegalArgumentException("Expected starting '/' in path");
+		
+		return path.substring(1).split("/", -1);
+	}
 	
 	private final NBTDatabaseAccess database;
 	private final String websiteHtml;
@@ -85,25 +95,25 @@ public class WebsiteHandler extends SimpleChannelInboundHandler<FullHttpRequest>
 			return;
 		}
 		
-		URIBuilder uri;
+		URLWrapper url;
 		try {
-			uri = new URIBuilder(msg.uri());
+			url = new URLWrapper(new URI(msg.uri()));
 		} catch (URISyntaxException e) {
 			writeError(ctx, HttpResponseStatus.BAD_REQUEST, null);
 			return;
 		}
-		List<String> path = uri.getPathSegments();
+		String[] path = splitPath(url.getPath());
 		
-		if (path.isEmpty() || path.size() == 1 && path.get(0).isEmpty()) {
+		if (path.length == 0 || path.length == 1 && path[0].isEmpty()) {
 			Map<String, String> params = new HashMap<>();
-			for (NameValuePair param : uri.getQueryParams())
-				params.putIfAbsent(param.getName(), param.getValue());
+			for (URLWrapper.Parameter param : url.wrapQueryParameters().getParameters())
+				params.putIfAbsent(param.getKey(), param.getValue());
 			writeWebsite(ctx, msg, params);
 			return;
 		}
 		
-		if (path.size() == 1 && resources.containsKey(path.get(0))) {
-			Map.Entry<String, byte[]> resource = resources.get(path.get(0));
+		if (path.length == 1 && resources.containsKey(path[0])) {
+			Map.Entry<String, byte[]> resource = resources.get(path[0]);
 			if (resource.getValue() == null)
 				writeError(ctx, HttpResponseStatus.INTERNAL_SERVER_ERROR, null);
 			else
@@ -111,9 +121,9 @@ public class WebsiteHandler extends SimpleChannelInboundHandler<FullHttpRequest>
 			return;
 		}
 		
-		if (path.size() == 2 && path.get(0).equals("entry")) {
+		if (path.length == 2 && path[0].equals("entry")) {
 			try {
-				long id = Long.parseLong(path.get(1));
+				long id = Long.parseLong(path[1]);
 				writeEntryNBT(ctx, msg, id);
 				return;
 			} catch (NumberFormatException e) {}
