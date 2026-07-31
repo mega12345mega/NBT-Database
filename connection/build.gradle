@@ -1,5 +1,6 @@
 dependencies {
 	api project(":file")
+	implementation libs.netty.codec.http
 	implementation libs.mega12345mega.nettymux
 	implementation libs.esotericsoftware.kryo
 	implementation libs.owasp.encoder
