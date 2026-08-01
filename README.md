@@ -13,9 +13,7 @@ Interfaces:
 * Website (when running a server, read-only)
 * Library (`:file`, `:connection`)
 
-An option in the GUI, command in the CLI, and `:connection` module allow you to host a NBT Database server.
-You can then connect to the server with all of those, and additionally, you can put the server address into a browser.
-Note that WebSockets are also supported, but you would have to implement the protocol yourself.
+You can host servers to allow other people or programs to access databases remotely. See [wiki/Servers](https://github.com/mega12345mega/NBT-Database/wiki/Servers) for details.
 
 **The standard port is 28260, which should be used whenever possible!**
 
@@ -29,4 +27,4 @@ cd nbtdatabase
 gradlew build
 ```
 
-Note that this project uses a LGPL 3 library ([RaphiMC/MinecraftAuth](https://github.com/RaphiMC/MinecraftAuth)) - you can modify this dependency by modifying `connection/build.gradle` and rebuilding.
+Note that this project uses a LGPL 3 library ([RaphiMC/MinecraftAuth](https://github.com/RaphiMC/MinecraftAuth)) - you can modify this dependency by modifying `ui/build.gradle` and rebuilding.
